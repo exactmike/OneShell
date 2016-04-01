@@ -115,7 +115,7 @@
     "Identity":  "534896a8-96fb-4059-b5d8-780cfa942348",
     "General":  {
                     "SharePointSite":  "https://contoso.sharepoint.com/teams/exchangemigration",
-                    "Default":  true,
+                    "Default":  false,
                     "MailRelayServerFQDN":  "smtp.contoso.local",
                     "OrganizationSpecifiModule":  null,
                     "Name":  "Contoso",

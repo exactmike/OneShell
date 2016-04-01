@@ -806,6 +806,25 @@ else {
     Return $true
 }
 }
+Function Add-ExchangeAliasToTestExchangeAlias 
+{
+[cmdletbinding()]
+param(
+    [string]$Alias
+    ,
+    [guid]$ObjectGUID #should be the AD ObjectGuid
+)
+    if ($Global:TestExchangeAlias.ContainsKey($alias))
+    {
+        Write-Log -Message "Alias already exists in the TestExchangeAlias Table" -EntryType Failed
+        Return $false
+    }
+    else
+    {
+        $Global:TestExchangeAlias.$alias = @()
+        $Global:TestExchangeAlias.$alias += $r.guid.tostring()
+    }
+}
 Function Test-ExchangeProxyAddress {
 [cmdletbinding()]
 param(
@@ -2270,7 +2289,8 @@ Function Connect-ADInstance {
             catch {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
-                Return $false
+                $_
+                $false
             }#catch
         } #if
     }#process  
