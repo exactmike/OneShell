@@ -761,34 +761,42 @@ param(
 [string]$ExchangeOrganization
 )
 #Function to populate the Global TestExchangeAlias Hash Table
-function RefreshData {
+function RefreshData 
+{
     $Global:TestExchangeAlias =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
-    foreach ($r in $AllRecipients) {
+    foreach ($r in $AllRecipients) 
+    {
         $alias = $r.alias
-        if ($Global:TestExchangeAlias.ContainsKey($alias)) {
+        if ($Global:TestExchangeAlias.ContainsKey($alias)) 
+        {
             $Global:TestExchangeAlias.$alias += $r.guid.tostring()
         }
-        else {
+        else 
+        {
             $Global:TestExchangeAlias.$alias = @()
             $Global:TestExchangeAlias.$alias += $r.guid.tostring()
         }
     }
 }
 #Populate the Global TestExchangeAlias Hash Table if needed
-if (Test-Path -Path variable:\TestExchangeAlias) {
-    if ($RefreshAliasData) {
+if (Test-Path -Path variable:\TestExchangeAlias) 
+{
+    if ($RefreshAliasData) 
+    {
         Write-Log -message "RefreshData to run" -Verbose
         RefreshData
     }
 }
-else {
+else 
+{
     Write-Log -message "RefreshData to run" -Verbose
     RefreshData
 }
 #Test the Alias
-if ($global:TestExchangeAlias.ContainsKey($Alias)) {
+if ($global:TestExchangeAlias.ContainsKey($Alias)) 
+{
     $ConflictingGUIDs = @($global:TestExchangeAlias.$Alias | Where-Object {$_ -notin $ExemptObjectGUIDs})
     if ($ConflictingGUIDs.count -gt 0) {
         if ($ReturnConflicts) {
@@ -822,10 +830,11 @@ param(
     else
     {
         $Global:TestExchangeAlias.$alias = @()
-        $Global:TestExchangeAlias.$alias += $r.guid.tostring()
+        $Global:TestExchangeAlias.$alias += $ObjectGUID
     }
 }
-Function Test-ExchangeProxyAddress {
+Function Test-ExchangeProxyAddress 
+{
 [cmdletbinding()]
 param(
 [string]$ProxyAddress
@@ -883,11 +892,11 @@ else {
     Write-Log -message "RefreshData to run" -Verbose
     RefreshData
 }
-
-#Test the Alias
+#Fix the ProxyAddress if needed
 if ($ProxyAddress -notlike "{$proxyaddresstype}:*") {
     $ProxyAddress = "${proxyaddresstype}:$ProxyAddress"
 }
+#Test the ProxyAddress
 if ($global:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
     $ConflictingGUIDs = @($global:TestExchangeProxyAddress.$ProxyAddress | Where-Object {$_ -notin $ExemptObjectGUIDs})
     if ($ConflictingGUIDs.count -gt 0) {
@@ -906,6 +915,35 @@ else {
     Return $true
 }
 }
+Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
+{
+[cmdletbinding()]
+param(
+    [string]$ProxyAddress
+    ,
+    [guid]$ObjectGUID #should be the AD ObjectGuid
+    ,
+    [parameter()]
+    [ValidateSet('SMTP','X500')]
+    [string]$ProxyAddressType = 'SMTP'
+)
+
+#Fix the ProxyAddress if needed
+if ($ProxyAddress -notlike "{$proxyaddresstype}:*") {
+    $ProxyAddress = "${proxyaddresstype}:$ProxyAddress"
+}
+#Test the Proxy Address
+if ($Global:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
+{
+    Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
+    Return $false
+}
+else
+{
+    $Global:TestExchangeProxyAddress.$ProxyAddress = @()
+    $Global:TestExchangeProxyAddress.$ProxyAddress += $ObjectGUID
+}
+}#function Add-ExchangeProxyAddressToTestExchangeProxyAddress
 Function Test-DirectorySynchronization {
 [cmdletbinding()]
 Param(
