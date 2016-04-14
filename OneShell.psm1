@@ -4220,12 +4220,57 @@ Identity: $($DefaultAdminUserProfile.Identity)
     }#if
 }
 ##########################################################################################################
-#Globals
+#Module Variables and Variable Functions
 ##########################################################################################################
 #Import-Module PsMenu -Global #moved to module manifest - remove comment later
+function Get-OneShellVariable 
+{
+param
+(
+[string]$Name
+)
+    Get-Variable -Scope Script -Name $name 
+}
+function Get-OneShellVariableValue 
+{
+param
+(
+[string]$Name
+)
+    Get-Variable -Scope Script -Name $name -ValueOnly
+}
+function Set-OneShellVariable 
+{
+param
+(
+[string]$Name
+,
+$Value
+)
+    Set-Variable -Scope Script -Name $Name -Value $value  
+}
+function New-OneShellVariable 
+{
+param 
+(
+[string]$Name
+,
+$Value
+)
+    New-Variable -Scope Script -Name $name -Value $Value
+}
+function Remove-OneShellVariable
+{
+param
+(
+[string]$Name
+)
+    Remove-Variable -Scope Script -Name $name
+}
+#Global Variabls to be replaced with Module/Script Level Variables in a coming release
 function Set-OneShellGlobalVariables {
     Write-Log -message 'Setting OneShell Global Variables' -Verbose
-    $Global:OneShellModuleFolderPath = Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
+    $Global:OneShellModuleFolderPath = $Script:PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     [string]$Global:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
     [string]$Global:E3_SkuPartNumber = 'ENTERPRISEPACK' 
     [string]$Global:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
