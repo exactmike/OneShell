@@ -746,23 +746,14 @@ Function Test-ForLocalModule {
     }
     Else {$False}
 } 
-Function Test-ExchangeAlias {
+function New-TestExchangeAlias
+{
 [cmdletbinding()]
-param(
-[string]$Alias
-,
-[string[]]$ExemptObjectGUIDs
-,
-[switch]$RefreshAliasData
-,
-[switch]$ReturnConflicts
-,
+param
+(
 [parameter(Mandatory=$true)]
 [string]$ExchangeOrganization
 )
-#Function to populate the Global TestExchangeAlias Hash Table
-function RefreshData 
-{
     $Global:TestExchangeAlias =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
@@ -780,19 +771,34 @@ function RefreshData
         }
     }
 }
+Function Test-ExchangeAlias
+{
+[cmdletbinding()]
+param(
+[string]$Alias
+,
+[string[]]$ExemptObjectGUIDs
+,
+[switch]$RefreshAliasData
+,
+[switch]$ReturnConflicts
+,
+[parameter(Mandatory=$true)]
+[string]$ExchangeOrganization
+)
 #Populate the Global TestExchangeAlias Hash Table if needed
 if (Test-Path -Path variable:\TestExchangeAlias) 
 {
     if ($RefreshAliasData) 
     {
-        Write-Log -message "RefreshData to run" -Verbose
-        RefreshData
+        Write-Log -message "New-TestExchangeAlias to run" -Verbose
+        New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
     }
 }
 else 
 {
-    Write-Log -message "RefreshData to run" -Verbose
-    RefreshData
+    Write-Log -message "New-TestExchangeAlias to run" -Verbose
+    New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
 }
 #Test the Alias
 if ($global:TestExchangeAlias.ContainsKey($Alias)) 
@@ -833,27 +839,14 @@ param(
         $Global:TestExchangeAlias.$alias += $ObjectGUID
     }
 }
-Function Test-ExchangeProxyAddress 
+function New-TestExchangeProxyAddress
 {
 [cmdletbinding()]
-param(
-[string]$ProxyAddress
-,
-[string[]]$ExemptObjectGUIDs
-,
-[switch]$RefreshProxyAddressData
-,
-[switch]$ReturnConflicts
-,
+param
+(
 [parameter(Mandatory=$true)]
 [string]$ExchangeOrganization
-,
-[parameter()]
-[ValidateSet('SMTP','X500')]
-[string]$ProxyAddressType = 'SMTP'
 )
-#Function to populate the Global TestExchangeProxyAddress Hash Table
-function RefreshData {
     $Global:TestExchangeProxyAddress =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
@@ -881,16 +874,35 @@ function RefreshData {
     }
     Write-Progress @writeProgressParams -Completed
 }
+Function Test-ExchangeProxyAddress 
+{
+[cmdletbinding()]
+param(
+[string]$ProxyAddress
+,
+[string[]]$ExemptObjectGUIDs
+,
+[switch]$RefreshProxyAddressData
+,
+[switch]$ReturnConflicts
+,
+[parameter(Mandatory=$true)]
+[string]$ExchangeOrganization
+,
+[parameter()]
+[ValidateSet('SMTP','X500')]
+[string]$ProxyAddressType = 'SMTP'
+)
 #Populate the Global TestExchangeProxyAddress Hash Table if needed
 if (Test-Path -Path variable:\TestExchangeProxyAddress) {
     if ($RefreshProxyAddressData) {
-        Write-Log -message "RefreshData to run" -Verbose
-        RefreshData
+        Write-Log -message "New-TestExchangeProxyAddress to run" -Verbose
+        New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
     }
 }
 else {
-    Write-Log -message "RefreshData to run" -Verbose
-    RefreshData
+    Write-Log -message "New-TestExchangeProxyAddress to run" -Verbose
+    New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
 }
 #Fix the ProxyAddress if needed
 if ($ProxyAddress -notlike "$($proxyaddresstype):*") {
