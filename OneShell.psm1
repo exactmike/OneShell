@@ -826,7 +826,7 @@ Function Add-ExchangeAliasToTestExchangeAlias
 param(
     [string]$Alias
     ,
-    [guid]$ObjectGUID #should be the AD ObjectGuid
+    [string]$ObjectGUID #should be the AD ObjectGuid
 )
     if ($Global:TestExchangeAlias.ContainsKey($alias))
     {
@@ -933,7 +933,7 @@ Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
 param(
     [string]$ProxyAddress
     ,
-    [guid]$ObjectGUID #should be the AD ObjectGuid
+    [string]$ObjectGUID #should be the AD ObjectGuid
     ,
     [parameter()]
     [ValidateSet('SMTP','X500')]
