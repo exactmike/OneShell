@@ -4393,7 +4393,7 @@ function Set-OneShellGlobalVariables {
         'mailNickname'
         'homeMDB'
         'homeMTA'
-        'msExchHomeServer'
+        'msExchHomeServerName'
         'legacyExchangeDN'
         'msExchArchiveGUID'
         'msExchArchiveName'
