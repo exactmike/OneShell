@@ -4443,7 +4443,7 @@ function Set-OneShellGlobalVariables {
         'msExchPoliciesExcluded'
     )#MultiValuedADAttributesToRetrieve
     $Global:AllADAttributesToRetrieve = @($ScalarADAttributesToRetrieve + $MultiValuedADAttributesToRetrieve)
-    $Global:AllADContactAttributesToRetrieve = $Global:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServer')}
+    $Global:AllADContactAttributesToRetrieve = $Global:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Global:Stamp = Get-TimeStamp
     #Module Menu Definitions
     $menudefinition = [pscustomobject]@{
