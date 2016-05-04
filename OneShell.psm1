@@ -3665,7 +3665,7 @@ param(
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'OrgName')]
     #add locations validation with Test-Path
-    [string[]]$Location = @($Global:OneShellModuleFolderPath,"$env:ALLUSERSPROFILE\OneShell")
+    [string[]]$Location = @("$env:ALLUSERSPROFILE\OneShell")
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
@@ -3720,6 +3720,7 @@ foreach ($loc in $Location)
             }
         }
         else {
+            $null
             Write-Log -message "No valid Organization Profiles Were Found in $loc" -EntryType Notification -Verbose
         }
     }
@@ -3740,13 +3741,14 @@ $GetOrgProfileParams=@{
     ErrorAction = 'Stop'
     Raw = $true
 }
-if (-not $Location -eq $null)
+if ($PSBoundParameters.ContainsKey('Location'))
 {$GetOrgProfileParams.Location = $Location}
-if (-not [string]::IsNullOrWhiteSpace($OrgProfileType))
+if ($PSBoundParameters.ContainsKey('OrgProfileType'))
 {$GetOrgProfileParams.OrgProfileType = $OrgProfileType}
-try
+Try
 {
-    $Script:OrgProfiles = @(Get-OrgProfile @GetOrgProfileParams)
+    $OrgProfilesToImport = @(Get-OrgProfile @GetOrgProfileParams) 
+    Set-OneShellVariable -Name OrgProfiles -Value $OrgProfilesToImport
     Return $True
 }
 catch
@@ -3788,14 +3790,14 @@ begin
         if ($script:CurrentOrgProfile -and $profile.Identity -ne $script:CurrentOrgProfile.Identity)
         {
             $script:CurrentOrgProfile = $profile
-            Write-Log -message "Org Profile has been changed to $($script:CurrentOrgProfile.Identity).  Remove PSSessions and select an Admin Profile to load." -EntryType Notification -Verbose
+            Write-Log -message "Org Profile has been changed to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name).  Remove PSSessions and select an Admin Profile to load." -EntryType Notification -Verbose
         }
         else
         {
             $script:CurrentOrgProfile = $profile
             Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name)." -EntryType Notification -Verbose
         }
-        $Script:CurrentOrgAdminProfileSystems = @()
+        $Global:CurrentOrgAdminProfileSystems = @()
         Return $true
     }#process
 }
@@ -3866,11 +3868,11 @@ $systems
 Function Use-AdminUserProfile
 {
 param(
-    [parameter(ParameterSetName = 'Object')]
+    [parameter(ParameterSetName = 'Object',ValueFromPipeline=$true)]
     $profile 
     ,
-    [parameter(ParameterSetName = 'Identity')]
-    $Identity
+    [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyname = $true)]
+    [string]$Identity
 )
 begin
 {
@@ -3899,7 +3901,7 @@ process{
     #Retrieve the systems from the current org profile
     $systems = Get-OrgProfileSystem -OrganizationIdentity $script:CurrentAdminUserProfile.general.OrganizationIdentity
     #Build the autoconnect property and the mapped credentials for each system and store in the CurrentOrgAdminProfileSystems Global variable
-    $script:CurrentOrgAdminProfileSystems = 
+    $Global:CurrentOrgAdminProfileSystems = 
     @(
         foreach ($sys in $systems) {
             $sys | Add-Member -MemberType NoteProperty -Name Autoconnect -Value $null
@@ -3929,7 +3931,7 @@ process{
 }
 Function Get-AdminUserProfile
 {
-[cmdletbinding()]
+[cmdletbinding(DefaultParameterSetName='All')]
 param(
     #Add Location Validation to Parameter validation script
     [parameter(ParameterSetName = 'All')]
@@ -3942,7 +3944,10 @@ param(
     [parameter(ParameterSetName = 'Name')]
     $ProfileType = 'OneShellAdminUserProfile'
     ,
-    $OrgIdentity = $($CurrentOrgProfile.Identity)
+    [parameter(ParameterSetName = 'All')]
+    [parameter(ParameterSetName = 'Identity')]
+    [parameter(ParameterSetName = 'Name')]
+    $OrgIdentity
     ,
     [parameter(ParameterSetName = 'Identity')]
     $Identity
@@ -3959,35 +3964,101 @@ param(
     [switch]$raw
 )
 if ($PSCmdlet.ParameterSetName -eq 'Imported')
-{$AdminUserProfiles}
+{$outputprofiles = $AdminUserProfiles}
 else
 {
-foreach ($loc in $Location)
-{
-    $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
-    if ($JSONProfiles.Count -ge 1) {
-        $PotentialAdminUserProfiles = foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json}
-        $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType -and $_.general.organizationidentity -eq $OrgIdentity})
-        if ($AdminUserProfiles.Count -ge 1) {
-            switch ($operation) {
-                'Load' {
-                    $Global:AdminUserProfiles = $AdminUserProfiles #.Clone()
-                    if ($operation -notcontains 'List') {Return $True}
-                }
-                'List' {
-                    $AdminUserProfiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}}
+$outputprofiles = @(
+    foreach ($loc in $Location)
+    {
+        $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
+        if ($JSONProfiles.Count -ge 1) {
+            $PotentialAdminUserProfiles = foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json}
+            $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType})
+            if ($FoundAdminUserProfiles.Count -ge 1) {
+                switch ($PSCmdlet.ParameterSetName) {
+                    'All'
+                    {
+                        $FoundAdminUserProfiles
+                    }
+                    'Identity'
+                    {
+                        $FoundAdminUserProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                    }
+                    'Name'
+                    {
+                        $FoundAdminUserProfiles | Where-Object -FilterScript {$_.General.Name -eq $Name}
+                    }
                 }
             }
         }
-        else {
-            Write-Warning "No valid Admin User Profiles Were Found in $location for $env:USERNAME for Organization Profile $($currentOrgProfile.Identity) for $($currentOrgProfile.General.Name)"
-            Return $false
-        }
-    }
-    else {
-        Write-Error "No valid Admin User Profiles Were Found in $location for $env:USERNAME for Organization Profile $($currentOrgProfile.Identity) for $($currentOrgProfile.General.Name)"
-        Return $false
-    }
+    }#foreach
+)#outputprofiles
+#filter the found profiles for OrgIdentity if specified
+if (-not [string]::IsNullOrWhiteSpace($OrgIdentity))
+{
+    if ($OrgIdentity -eq 'CurrentOrg')
+    {$OrgIdentity = $script:CurrentOrgProfile.Identity}
+    $outputprofiles = $outputprofiles | Where-Object -FilterScript {$_.general.organizationidentity -eq $OrgIdentity}
+}
+#output the found profiles
+if ($raw)
+{
+    $outputprofiles
+}#if Raw
+else
+{
+    $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}},@{n='OrgIdentity';e={$_.general.organizationidentity}}
+}#else when not "Raw"
+}#else when not "Imported"
+}#function Get-AdminUserProfile
+Function Import-AdminUserProfile
+{
+[cmdletbinding()]
+param
+(
+$Location
+,
+$ProfileType
+,
+$OrgIdentity
+,
+$Identity
+,
+$Name
+)
+$getAdminUserProfileParams=
+@{
+    raw = $true
+    ErrorAction = 'stop'
+}
+if ($PSBoundParameters.ContainsKey('Location'))
+{
+    $getAdminUserProfileParams.Location = $Location
+}
+if ($PSBoundParameters.ContainsKey('ProfileType'))
+{
+    $getAdminUserProfileParams.ProfileType = $ProfileType
+}
+if ($PSBoundParameters.ContainsKey('Identity'))
+{
+    $getAdminUserProfileParams.Identity = $Identity
+}
+if ($PSBoundParameters.ContainsKey('Name'))
+{
+    $getAdminUserProfileParams.Name = $Name
+}
+if ($PSBoundParameters.ContainsKey('OrgIdentity'))
+{
+    $getAdminUserProfileParams.OrgIdentity = $OrgIdentity
+}
+try
+{
+    $Script:AdminUserProfiles = @(Get-AdminUserProfile @getAdminUserProfileParams)
+    Return $True
+}
+catch
+{
+    Return $false
 }
 }
 Function Select-AdminUserProfile {
@@ -4003,7 +4074,7 @@ Function Select-AdminUserProfile {
         ParentGUID = $null
         Choices = @()
     }
-    foreach ($profile in $Global:AdminUserProfiles) {
+    foreach ($profile in $Script:AdminUserProfiles) {
         $MenuDefinition.choices += [pscustomobject]@{
             choice = $profile.general.Name
             command = switch ($purpose) {
@@ -4022,7 +4093,7 @@ function New-AdminUserProfile {
         ,
         [string]$name
     )
-    $targetOrgProfile = @($Global:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $OrganizationIdentity})
+    $targetOrgProfile = @($Script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $OrganizationIdentity})
     switch ($targetOrgProfile.Count) {
         1 {}
         0 {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
@@ -4113,7 +4184,7 @@ function Set-AdminUserProfile {
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Object' {$editAdminUserProfile = $profile}
-        'Identity' {$editAdminUserProfile = $($Global:AdminUserProfiles | Where-Object Identity -eq $Identity)}
+        'Identity' {$editAdminUserProfile = $($Script:AdminUserProfiles | Where-Object Identity -eq $Identity)}
     }
     $OrganizationIdentity = $editAdminUserProfile.General.OrganizationIdentity
     $targetOrgProfile = @($Global:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $OrganizationIdentity})
@@ -4388,9 +4459,9 @@ Identity: $($DefaultOrgProfile.Identity)
         }#If Get-OrgProfile -operation Load
         if ($OrgProfileLoaded)
         {
-            if (Get-AdminUserProfile -operation load)
+            if (Import-AdminUserProfile -OrgIdentity CurrentOrg)
             {
-                $DefaultAdminUserProfile = @($global:AdminUserProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
+                $DefaultAdminUserProfile = @($script:AdminUserProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
             }
             switch ($DefaultAdminUserProfile.Count) 
             {
@@ -4408,7 +4479,6 @@ Identity: $($DefaultAdminUserProfile.Identity)
                         Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
                         Connect-RemoteSystems
                     }#if
-
                 }
                 {$_ -gt 1}
                 {
@@ -4441,7 +4511,7 @@ Identity: $($DefaultAdminUserProfile.Identity)
             Title = 'OneShell Module Startup Menu'
             Initialization = $Null
             Choices = @(
-                [pscustomobject]@{choice='Connect to Autoconnect Remote Systems from Initialized Profile (Runs command Connect-RemoteSystems)';command='Connect-RemoteSystems';exit=$true}
+                #[pscustomobject]@{choice='Connect to Autoconnect Remote Systems from Initialized Profile (Runs command Connect-RemoteSystems)';command='Connect-RemoteSystems';exit=$true}
                 [pscustomobject]@{choice='Manage Organization and/or Admin User Profiles';command='Invoke-Menu -menuGUID 9e7ff8e1-afbb-418d-a31f-9c07bce3ab33'}
                 [pscustomobject]@{choice='Exit to Command Line';command='';exit=$true}
             )
