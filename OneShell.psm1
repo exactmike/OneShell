@@ -963,6 +963,7 @@ param
 (
 [string]$EmailAddress
 )
+#Regex borrowed from: http://www.regular-expressions.info/email.html
 $EmailAddress -imatch '^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}$)[A-Z0-9._%+-]{1,64}@(?:(?=[A-Z0-9-]{1,63}\.)[A-Z0-9]+(?:-[A-Z0-9]+)*\.){1,8}[A-Z]{2,63}$'
 }
 Function Test-DirectorySynchronization {
