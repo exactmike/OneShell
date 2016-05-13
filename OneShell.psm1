@@ -4160,7 +4160,7 @@ function New-AdminUserProfile {
     try {
         if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -location $newAdminUserProfile.General.profileFolder -ErrorAction Stop) {
             if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop) {
-                if (Get-AdminUserProfile -operation load -ErrorAction Stop) {
+                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop) {
                     Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue
                     Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
                 }
