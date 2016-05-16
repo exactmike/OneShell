@@ -4187,10 +4187,10 @@ function Set-AdminUserProfile
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Object' {$editAdminUserProfile = $profile}
-        'Identity' {$editAdminUserProfile = $(Get-AdminUserProfile -Identity $Identity)}
+        'Identity' {$editAdminUserProfile = $(Get-AdminUserProfile -Identity $Identity -raw)}
     }
     $OrganizationIdentity = $editAdminUserProfile.General.OrganizationIdentity
-    $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity)
+    $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
     switch ($targetOrgProfile.Count) {
         1 {}
         0 {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
