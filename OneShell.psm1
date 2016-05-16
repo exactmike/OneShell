@@ -3843,7 +3843,7 @@ function Get-OrgProfileSystem
 param(
     $OrganizationIdentity
 )
-$targetOrgProfile = @($Script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $OrganizationIdentity})
+$targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
 switch ($targetOrgProfile.Count)
 {
     1
@@ -3883,7 +3883,7 @@ begin
         {}
         'Identity'
         {
-            $profile = $script:AdminUserProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity} | Select-Object -First 1
+            $profile = $(Get-AdminUserProfile -Identity $Identity -OrgIdentity CurrentOrg -raw)
         }
     }
 }#begin
