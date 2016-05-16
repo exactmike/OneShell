@@ -3817,7 +3817,7 @@ $MenuDefinition =
     ParentGUID = $null
     Choices = @()
 }
-foreach ($profile in $Global:OrgProfiles)
+foreach ($profile in Get-OrgProfile)
 {
     $MenuDefinition.choices += 
     [pscustomobject]@{
@@ -4088,7 +4088,8 @@ Function Select-AdminUserProfile {
     }
     Invoke-Menu -menudefinition $MenuDefinition 
 }
-function New-AdminUserProfile {
+function New-AdminUserProfile
+{
     param(
         $OrganizationIdentity
         ,
@@ -4174,7 +4175,8 @@ function New-AdminUserProfile {
     }
     Return $newAdminUserProfile
 }
-function Set-AdminUserProfile {
+function Set-AdminUserProfile
+{
     [cmdletbinding()]
     param(
         [parameter(ParameterSetName = 'Object')]
@@ -4185,10 +4187,10 @@ function Set-AdminUserProfile {
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Object' {$editAdminUserProfile = $profile}
-        'Identity' {$editAdminUserProfile = $($Script:AdminUserProfiles | Where-Object Identity -eq $Identity)}
+        'Identity' {$editAdminUserProfile = $(Get-AdminUserProfile -Identity $Identity)}
     }
     $OrganizationIdentity = $editAdminUserProfile.General.OrganizationIdentity
-    $targetOrgProfile = @($Global:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $OrganizationIdentity})
+    $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity)
     switch ($targetOrgProfile.Count) {
         1 {}
         0 {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
@@ -4283,7 +4285,7 @@ function Set-AdminUserProfile {
     try {
         if (Add-AdminUserProfileFolders -AdminUserProfile $editAdminUserProfile -ErrorAction Stop) {
             if (Export-AdminUserProfile -profile $editAdminUserProfile -ErrorAction Stop) {
-                if (Get-AdminUserProfile -operation load -ErrorAction Stop) {
+                if (Get-AdminUserProfile -Identity $editAdminUserProfile.Identity.tostring() -ErrorAction Stop) {
                     Write-Log -Message "Edited Admin Profile with Name: $($editAdminUserProfile.General.Name) and Identity: $($editAdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
                     Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($editAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
                 }
@@ -4457,7 +4459,7 @@ Identity: $($DefaultOrgProfile.Identity)
                     Write-Error 'FAILED: No Org Profiles Are Set as Default'
                 }
             }#Switch $DefaultOrgProfile.Count
-        }#If Get-OrgProfile -operation Load
+        }#If Get-OrgProfile
         if ($OrgProfileLoaded)
         {
             if (Import-AdminUserProfile -OrgIdentity CurrentOrg)
@@ -4668,7 +4670,7 @@ function Set-OneShellGlobalVariables {
         Title = 'OneShell Admin User Profile Maintenance'
         Initialization = $Null
         Choices = @(
-            [pscustomobject]@{choice='View Existing Admin User Profiles';command='Get-AdminUserProfile -operation List; Read-Host -Prompt "Press enter to Continue"'}
+            [pscustomobject]@{choice='View Existing Admin User Profiles';command='Get-AdminUserProfile -OrgIdentity CurrentOrg; Read-Host -Prompt "Press enter to Continue"'}
             [pscustomobject]@{choice='Edit an existing Admin User Profile';command='Select-AdminUserProfile -purpose Edit'}
             [pscustomobject]@{choice='Use an existing Admin User Profile';command='Select-AdminUserProfile -purpose Use';exit = $true}
             [pscustomobject]@{choice='Create a new Admin User Profile';command='$prompt = "Enter a short descriptive name for this profile";New-AdminUserProfile -OrganizationIdentity $($CurrentOrgProfile.Identity) -name (read-host -Prompt $prompt)'}
@@ -4682,7 +4684,7 @@ function Set-OneShellGlobalVariables {
     Title = 'OneShell Organization Profile Maintenance'
     Initialization = $Null
     Choices = @(
-        [pscustomobject]@{choice='View Existing Organization Profiles';command='Get-OrgProfile -operation List; Read-Host -Prompt "Press enter to Continue"'}
+        [pscustomobject]@{choice='View Existing Organization Profiles';command='Get-OrgProfile; Read-Host -Prompt "Press enter to Continue"'}
         #[pscustomobject]@{choice='Edit an existing Organization Profile';command='Select-AdminUserProfile -purpose Edit'}
         [pscustomobject]@{choice='Use an existing Organization Profile';command='Select-OrgProfile -purpose Use'; exit = $true}
         #[pscustomobject]@{choice='Create a new Organization Profile';command='$prompt = "Enter a short descriptive name for this profile";New-AdminUserProfile -OrganizationIdentity $($CurrentOrgProfile.Identity) -name (read-host -Prompt $prompt)'}
@@ -4698,7 +4700,7 @@ Set-OneShellGlobalVariables
 #Do one of the following in your profile or run script:
 #Initialize-AdminEnvironment
 # OR
-#Get-OrgProfile -operation load
+#Get-OrgProfile 
 #Select-OrgProfile -purpose Use
-#Get-AdminUserProfile -operation load
+#Get-AdminUserProfile -OrgIdentity CurrentOrg
 #Use-AdminUserProfile -Identity [GUID] 
