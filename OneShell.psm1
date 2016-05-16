@@ -4095,7 +4095,7 @@ function New-AdminUserProfile
         ,
         [string]$name
     )
-    $targetOrgProfile = @($Script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $OrganizationIdentity})
+    $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
     switch ($targetOrgProfile.Count) {
         1 {}
         0 {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
