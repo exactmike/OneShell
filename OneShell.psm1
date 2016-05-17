@@ -351,7 +351,8 @@ function Start-WindowsSecurity {
 }
 function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
-function Merge-Hashtables {
+function Merge-Hashtables
+{
     #requires -Version 2.0
     <#
         .NOTES
@@ -441,7 +442,8 @@ function Merge-Hashtables {
     # return firstClone
     $firstClone
 }
-function Convert-HashtableToObject {
+function Convert-HashtableToObject
+{
     [CmdletBinding()]
     PARAM(
         [Parameter(ValueFromPipeline=$true, Mandatory=$true)]
@@ -480,7 +482,8 @@ function Convert-HashtableToObject {
         }
     }
 }
-Function Convert-ObjectToHashTable {
+Function Convert-ObjectToHashTable
+{
 
     <#
         .Synopsis
@@ -593,7 +596,8 @@ Function Convert-ObjectToHashTable {
     }#close process
 
 }
-function ConvertTo-String {
+function ConvertTo-String
+{
     <#
         .SYNOPSIS
         Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user. 
@@ -626,25 +630,29 @@ function ConvertTo-String {
     }
     END {}
 }
-function Get-GuidFromByteArray {
+function Get-GuidFromByteArray
+{
     param(
         [byte[]]$GuidByteArray
     )
     New-Object -TypeName guid -ArgumentList (,$GuidByteArray)   
 }
-function Get-ImmutableIDFromGUID {
+function Get-ImmutableIDFromGUID
+{
     param(
         [guid]$Guid
     )
     [System.Convert]::ToBase64String($Guid.ToByteArray())
 }
-function Get-GUIDFromImmutableID {
+function Get-GUIDFromImmutableID
+{
     param(
         $ImmutableID
     )
     [GUID][system.convert]::frombase64string($ImmutableID) 
 }
-function Get-Checksum {
+function Get-Checksum
+{
     Param (
         [string]$File=$(throw("You must specify a filename to get the checksum of."))
         ,
@@ -658,7 +666,8 @@ function Get-Checksum {
     $fs.Close()
     $hash
 }
-function Test-Member { 
+function Test-Member
+{ 
     <# 
         .ForwardHelpTargetName Get-Member 
         .ForwardHelpCategory Cmdlet 
@@ -720,7 +729,8 @@ function Test-Member {
         } 
     } 
 }
-function Test-IP {
+function Test-IP
+{
 #https://gallery.technet.microsoft.com/scriptcenter/A-short-tip-to-validate-IP-4f039260
     param
     (
@@ -730,11 +740,13 @@ function Test-IP {
     )
     $ip
 }
-function Test-CurrentPrincipalIsAdmin {
+function Test-CurrentPrincipalIsAdmin
+{
     $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
     $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator") 
 }
-Function Test-ForLocalModule {
+Function Test-ForLocalModule
+{
     Param(
         [parameter(Mandatory=$True)]
         [string]$Name
@@ -745,6 +757,44 @@ Function Test-ForLocalModule {
         $True
     }
     Else {$False}
+}
+Function Test-CommandExists
+{
+ Param ([string]$command)
+ Try {if(Get-Command $command -ErrorAction Stop){$true}}
+ Catch {$false}
+} #end function Test-CommandExists
+function Get-UninstallEntry
+{
+[cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
+param(
+[parameter(ParameterSetName = 'Raw')]
+[switch]$raw
+,
+[parameter(ParameterSetName = 'SpecifiedProperties')]
+[string[]]$property = @('DisplayName','DisplayVersion','InstallDate','Publisher')
+)
+    # paths: x86 and x64 registry keys are different
+    if ([IntPtr]::Size -eq 4) {
+        $path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    }
+    else {
+        $path = @(
+            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+            'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+        )
+    }
+    $UninstallEntries = Get-ItemProperty $path 
+    # use only with name and unistall information
+    #.{process{ if ($_.DisplayName -and $_.UninstallString) { $_ } }} |
+    # select more or less common subset of properties
+    #Select-Object DisplayName, Publisher, InstallDate, DisplayVersion, HelpLink, UninstallString |
+    # and finally sort by name
+    #Sort-Object DisplayName
+    if ($raw) {$UninstallEntries | Sort-Object DisplayName}
+    else {
+        $UninstallEntries | Sort-Object DisplayName | Select-Object -Property $property
+    }
 } 
 function New-TestExchangeAlias
 {
@@ -966,7 +1016,8 @@ param
 #Regex borrowed from: http://www.regular-expressions.info/email.html
 $EmailAddress -imatch '^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}$)[A-Z0-9._%+-]{1,64}@(?:(?=[A-Z0-9-]{1,63}\.)[A-Z0-9]+(?:-[A-Z0-9]+)*\.){1,8}[A-Z]{2,63}$'
 }
-Function Test-DirectorySynchronization {
+Function Test-DirectorySynchronization
+{
 [cmdletbinding()]
 Param(
 [string]$identity
