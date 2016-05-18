@@ -4714,7 +4714,7 @@ function Set-OneShellGlobalVariables {
         )
         ParentGUID = $null
     }
-    Add-GlobalMenuDefinition -MenuDefinition $menudefinition
+    Add-MenuDefinition -MenuDefinition $menudefinition
 
     $menudefinition = [pscustomobject]@{
         GUID = '9e7ff8e1-afbb-418d-a31f-9c07bce3ab33'
@@ -4728,7 +4728,7 @@ function Set-OneShellGlobalVariables {
         )
         ParentGUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
     }
-    Add-GlobalMenuDefinition -MenuDefinition $menudefinition
+    Add-MenuDefinition -MenuDefinition $menudefinition
 
     $menudefinition = [pscustomobject]@{
     GUID = 'bfbcf228-1e2e-4289-a7cd-eae003cc3740'
@@ -4742,7 +4742,7 @@ function Set-OneShellGlobalVariables {
     )
     ParentGUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
     }
-    Add-GlobalMenuDefinition -MenuDefinition $menudefinition
+    Add-MenuDefinition -MenuDefinition $menudefinition
 }
 Set-OneShellGlobalVariables
 ##########################################################################################################
