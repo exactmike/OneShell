@@ -804,20 +804,20 @@ param
 [parameter(Mandatory=$true)]
 [string]$ExchangeOrganization
 )
-    $Global:TestExchangeAlias =@{}
+    $Script:TestExchangeAlias =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
     foreach ($r in $AllRecipients) 
     {
         $alias = $r.alias
-        if ($Global:TestExchangeAlias.ContainsKey($alias)) 
+        if ($Script:TestExchangeAlias.ContainsKey($alias)) 
         {
-            $Global:TestExchangeAlias.$alias += $r.guid.tostring()
+            $Script:TestExchangeAlias.$alias += $r.guid.tostring()
         }
         else 
         {
-            $Global:TestExchangeAlias.$alias = @()
-            $Global:TestExchangeAlias.$alias += $r.guid.tostring()
+            $Script:TestExchangeAlias.$alias = @()
+            $Script:TestExchangeAlias.$alias += $r.guid.tostring()
         }
     }
 }
@@ -837,7 +837,7 @@ param(
 [string]$ExchangeOrganization
 )
 #Populate the Global TestExchangeAlias Hash Table if needed
-if (Test-Path -Path variable:\TestExchangeAlias) 
+if (Test-Path -Path variable:Script:TestExchangeAlias) 
 {
     if ($RefreshAliasData) 
     {
@@ -851,9 +851,9 @@ else
     New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
 }
 #Test the Alias
-if ($global:TestExchangeAlias.ContainsKey($Alias)) 
+if ($Script:TestExchangeAlias.ContainsKey($Alias))
 {
-    $ConflictingGUIDs = @($global:TestExchangeAlias.$Alias | Where-Object {$_ -notin $ExemptObjectGUIDs})
+    $ConflictingGUIDs = @($Script:TestExchangeAlias.$Alias | Where-Object {$_ -notin $ExemptObjectGUIDs})
     if ($ConflictingGUIDs.count -gt 0) {
         if ($ReturnConflicts) {
             Return $ConflictingGUIDs
@@ -878,15 +878,15 @@ param(
     ,
     [string]$ObjectGUID #should be the AD ObjectGuid
 )
-    if ($Global:TestExchangeAlias.ContainsKey($alias))
+    if ($Script:TestExchangeAlias.ContainsKey($alias))
     {
         Write-Log -Message "Alias already exists in the TestExchangeAlias Table" -EntryType Failed
         Return $false
     }
     else
     {
-        $Global:TestExchangeAlias.$alias = @()
-        $Global:TestExchangeAlias.$alias += $ObjectGUID
+        $Script:TestExchangeAlias.$alias = @()
+        $Script:TestExchangeAlias.$alias += $ObjectGUID
     }
 }
 function New-TestExchangeProxyAddress
@@ -897,7 +897,7 @@ param
 [parameter(Mandatory=$true)]
 [string]$ExchangeOrganization
 )
-    $Global:TestExchangeProxyAddress =@{}
+    $Script:TestExchangeProxyAddress =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
     $RecordCount = $AllRecipients.count
@@ -913,12 +913,12 @@ param
         Write-Progress @writeProgressParams
         $ProxyAddresses = $r.EmailAddresses
         foreach ($ProxyAddress in $ProxyAddresses) {
-            if ($Global:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
-                $Global:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
+            if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
+                $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
             }
             else {
-                $Global:TestExchangeProxyAddress.$ProxyAddress = @()
-                $Global:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
+                $Script:TestExchangeProxyAddress.$ProxyAddress = @()
+                $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
             }
         }
     }
@@ -944,25 +944,32 @@ param(
 [string]$ProxyAddressType = 'SMTP'
 )
 #Populate the Global TestExchangeProxyAddress Hash Table if needed
-if (Test-Path -Path variable:\TestExchangeProxyAddress) {
-    if ($RefreshProxyAddressData) {
+if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
+{
+    if ($RefreshProxyAddressData)
+    {
         Write-Log -message "New-TestExchangeProxyAddress to run" -Verbose
         New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
     }
 }
-else {
+else
+{
     Write-Log -message "New-TestExchangeProxyAddress to run" -Verbose
     New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
 }
 #Fix the ProxyAddress if needed
-if ($ProxyAddress -notlike "$($proxyaddresstype):*") {
+if ($ProxyAddress -notlike "$($proxyaddresstype):*")
+{
     $ProxyAddress = "$($proxyaddresstype):$ProxyAddress"
 }
 #Test the ProxyAddress
-if ($global:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
-    $ConflictingGUIDs = @($global:TestExchangeProxyAddress.$ProxyAddress | Where-Object {$_ -notin $ExemptObjectGUIDs})
-    if ($ConflictingGUIDs.count -gt 0) {
-        if ($ReturnConflicts) {
+if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
+{
+    $ConflictingGUIDs = @($Script:TestExchangeProxyAddress.$ProxyAddress | Where-Object {$_ -notin $ExemptObjectGUIDs})
+    if ($ConflictingGUIDs.count -gt 0)
+    {
+        if ($ReturnConflicts)
+        {
             Return $ConflictingGUIDs
         }
         else {
@@ -991,7 +998,8 @@ param(
 )
 
 #Fix the ProxyAddress if needed
-if ($ProxyAddress -notlike "{$proxyaddresstype}:*") {
+if ($ProxyAddress -notlike "{$proxyaddresstype}:*")
+{
     $ProxyAddress = "${$proxyaddresstype}:$ProxyAddress"
 }
 #Test the Proxy Address
@@ -1002,8 +1010,8 @@ if ($Global:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
 }
 else
 {
-    $Global:TestExchangeProxyAddress.$ProxyAddress = @()
-    $Global:TestExchangeProxyAddress.$ProxyAddress += $ObjectGUID
+    $Script:TestExchangeProxyAddress.$ProxyAddress = @()
+    $Script:TestExchangeProxyAddress.$ProxyAddress += $ObjectGUID
 }
 }#function Add-ExchangeProxyAddressToTestExchangeProxyAddress
 Function Test-EmailAddress
@@ -1039,7 +1047,6 @@ $RecipientAttributeValue
 )
 Begin {}
 Process {
-    #Read-Choice -Message "Waiting for Directory Synchronization for $identity.  Please allow the script to complete." -Choices "OK" -DefaultChoice 0 -Title "Converting Mailbox" | Out-Null
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $ExchangeOrganization -string "-Identity $Identity -ErrorAction SilentlyContinue" -ErrorAction SilentlyContinue
     if ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue) {
@@ -1108,14 +1115,14 @@ Function Write-Log {
         [string]$Message
         ,
         [Parameter(Mandatory=$false,Position=1)]
-        [ValidateScript({if (-not [string]::IsNullOrWhiteSpace($Global:LogPath)) {if ([string]::IsNullOrWhiteSpace($_)){$false} else {$true}}})]
+        [ValidateScript({if (-not [string]::IsNullOrWhiteSpace($Script:LogPath)) {if ([string]::IsNullOrWhiteSpace($_)){$false} else {$true}}})]
         [string]$LogPath
         ,
         [Parameter(Position=2)]
         [switch]$ErrorLog
         ,
         [Parameter(Mandatory=$false,Position=3)]
-        [ValidateScript({if (-not [string]::IsNullOrWhiteSpace($Global:ErrorLogPath)) {if ([string]::IsNullOrWhiteSpace($_)){$false} else {$true}}})]
+        [ValidateScript({if (-not [string]::IsNullOrWhiteSpace($Script:ErrorLogPath)) {if ([string]::IsNullOrWhiteSpace($_)){$false} else {$true}}})]
         [string]$ErrorLogPath
         ,
         [Parameter(Mandatory=$false,Position=4)]
@@ -1125,7 +1132,7 @@ Function Write-Log {
     #Add the Entry Type to the message or add nothing to the message if there is not EntryType specified - preserves legacy functionality and adds new EntryType capability
     if (-not [string]::IsNullOrWhiteSpace($EntryType)) {$Message = $EntryType + ':' + $Message}
     #check the Log Preference to see if the message should be logged or not
-    if ($Global:LogPreference -eq $null -or $Global:LogPreference -eq $true) {
+    if ($LogPreference -eq $null -or $LogPreference -eq $true) {
         $writelog++
         #Set the LogPath and ErrorLogPath to the parent scope values if they were not specified in parameter input.  This allows either global or parent scopes to set the path if not set locally
         if ([string]::IsNullOrWhiteSpace($LogPath)) {
@@ -1150,12 +1157,12 @@ Function Write-Log {
                 Write-Output -InputObject "$(Get-Date) $Message" | Out-File -FilePath $LogPath -Append
             }#2
             1 {
-                if (Test-Path -Path variable:\UnwrittenLogEntries) {
-                    $Global:UnwrittenLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
+                if (Test-Path -Path variable:script:UnwrittenLogEntries) {
+                    $Script:UnwrittenLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
                 }
                 else {
-                    $Global:UnwrittenLogEntries = @()
-                    $Global:UnwrittenLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
+                    $Script:UnwrittenLogEntries = @()
+                    $Script:UnwrittenLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
                 }
             }#1
         }#switch
@@ -1169,11 +1176,11 @@ Function Write-Log {
                 }#2
                 1 {
                     if (Test-Path -Path variable:\UnwrittenErrorLogEntries) {
-                        $Global:UnwrittenErrorLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
+                        $Script:UnwrittenErrorLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
                     }
                     else {
-                        $Global:UnwrittenErrorLogEntries = @()
-                        $Global:UnwrittenErrorLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
+                        $Script:UnwrittenErrorLogEntries = @()
+                        $Script:UnwrittenErrorLogEntries += Write-Output -InputObject "$(Get-Date) $Message" 
                     }
                 }#1
             }#Switch
@@ -1191,7 +1198,7 @@ Write-Log -Message "$CallingFunction starting."}
 Function Export-Data {
     [cmdletbinding(DefaultParameterSetName='delimited')]
     param(
-        $ExportFolderPath = $global:ExportDataPath
+        $ExportFolderPath = $script:ExportDataPath
         ,
         [string]$DataToExportTitle
         ,
@@ -1277,39 +1284,24 @@ function Export-Credential {
     }
     return $exportCredential
 }
-Function Update-ProcessStatus {
-    param(
-        $ProcessStatus
-        ,
-        [switch]$Failed
-    )
-    if ($Failed) {
-        $ProcessStatus.Outcome = $false
-        $Global:DGPProceed = $false
-    }
-    else {
-        $ProcessStatus.Outcome = $true
-    }
-
-    $PSO = $ProcessStatus | Convert-HashTableToObject
-    $Global:DGPProcessStatus += $PSO
-
-}
 Function Remove-AgedFiles {
+[cmdletbinding(SupportsShouldProcess,ConfirmImpact = 'Medium')]
     param(
-        [int]$days
+        [int]$Days
         ,
-        [string[]]$directoriesToClean
+        [parameter()]
+        [validatescript({if ((Test-Path $_) -and (Get-Item -Path $_).PSIsContainer) {$true} else {$false}})]
+        [string[]]$Directory
     )
     $now = Get-Date
     $daysAgo = $now.AddDays(-$days)
-    $DirectoriesToClean = $Global:DGPDirectoriesToClean
-    foreach ($directory in $DirectoriesToClean) {
-        $files = Get-ChildItem -Path $directory
-        $files | Where-Object {$_.CreationTime -lt $daysAgo -and $_.LastWriteTime -lt $daysAgo} | Remove-Item 
+    foreach ($d in $Directory) {
+        $files = Get-ChildItem -Path $d
+        $filestodelete = $files | Where-Object {$_.CreationTime -lt $daysAgo -and $_.LastWriteTime -lt $daysAgo}
+        $filestodelete | Remove-Item
     }
 } 
-Function Send-MonitoringMessage {
+Function Send-OneShellMailMessage {
     [cmdletbinding()]
     param(
         [switch]$Test
@@ -1322,13 +1314,13 @@ Function Send-MonitoringMessage {
         ,
         $ToRecipientList
     )
-    if ($test) {$ToRecipientList = $Global:mailnotificationsender}
+    if ($test) {$ToRecipientList = $Script:CurrentAdminUserProfile.General.MailFrom}
     $SendMailParams = @{
         Attachments =$Attachments
-        From = $Global:MailNotificationSender
+        From = $($Script:CurrentAdminUserProfile.General.MailFrom) #need to add this to the admin user profile creations
         To = $ToRecipientList
         #CC = ''
-        SmtpServer = $Global:MailRelayServer
+        SmtpServer = $($Script:CurrentOrgProfile.General.MailRelayServerFQDN)
         BodyAsHtml = $true
         Body = $Body
         Subject = $Subject
@@ -1692,7 +1684,8 @@ Function Connect-Exchange {
         [string]$Server
         ,
         [parameter(ParameterSetName='OnPremises')]
-        [string]$AuthMethod = $Global:OnPremAuthMethod
+        [ValidateSet('Basic','Kerberos','Negotiate','Default','CredSSP','Digest','NegotiateWithImplicitCredential')]
+        [string]$AuthMethod
         ,
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
@@ -1740,7 +1733,7 @@ Function Connect-Exchange {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -1760,7 +1753,7 @@ Function Connect-Exchange {
         switch ($PSCmdlet.ParameterSetName) {
             'Organization' {
                 $Org = $PSBoundParameters[$ParameterName]
-                $orgobj = $Global:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
+                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
                 $orgtype = $orgobj.orgtype
                 $credential = $orgobj.credential
                 $orgName = $orgobj.Name
@@ -1913,7 +1906,8 @@ Function Connect-Skype {
         [string]$Server
         ,
         [parameter(ParameterSetName='OnPremises')]
-        [string]$AuthMethod = $Global:OnPremAuthMethod
+        [ValidateSet('Basic','Kerberos','Negotiate','Default','CredSSP','Digest','NegotiateWithImplicitCredential')]
+        [string]$AuthMethod
         ,
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
@@ -1961,7 +1955,7 @@ Function Connect-Skype {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -1981,7 +1975,7 @@ Function Connect-Skype {
         switch ($PSCmdlet.ParameterSetName) {
             'Organization' {
                 $Org = $PSBoundParameters[$ParameterName]
-                $orgobj = $Global:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
+                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
                 $orgtype = $orgobj.orgtype
                 $credential = $orgobj.credential
                 $orgName = $orgobj.Name
@@ -2010,40 +2004,57 @@ Function Connect-Skype {
         }
     }
     Process {
-        try {
-            Import-RequiredModule -ModuleName LyncOnlineConnector -ErrorAction Stop
+        try
+        {
             $existingsession = Get-PSSession -Name $SessionName -ErrorAction Stop
             Write-Log -Message "Existing session for $SessionName exists"
             Write-Log -Message "Checking $SessionName State" 
-            if ($existingsession.State -ne 'Opened') {
+            if ($existingsession.State -ne 'Opened')
+            {
                 Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'" -Verbose
                 Remove-PSSession -Name $SessionName 
                 $UseExistingSession = $False
             }#if
-            else {
+            else
+            {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
-                switch ($orgtype){
-                    'OnPremises'{
-                        try {
+                switch ($orgtype)
+                {
+                    'OnPremises'
+                    {
+                        try
+                        {
                             $Global:ErrorActionPreference = 'Stop'
                             Invoke-SkypeCommand -cmdlet 'Get-CsTenantFederationConfiguration' -SkypeOrganization $orgName -string '-erroraction Stop' -WarningAction SilentlyContinue
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
-                        catch {
+                        catch
+                        {
                             $Global:ErrorActionPreference = 'Continue'
                             Remove-PSSession -Name $SessionName
                             $UseExistingSession = $false
                         }#catch
                     }#OnPremises
-                    'Online' {
-                        try {
+                    'Online'
+                    {
+                        try
+                        {
+                            try
+                            {Import-RequiredModule -ModuleName LyncOnlineConnector -ErrorAction Stop}
+                            catch
+                            {
+                                Write-Log -Message 'Unable to load LyncOnlineConnector Module' -EntryType Failed -ErrorLog -Verbose
+                                Write-Log -Message $_.tostring() -ErrorLog 
+                                Return $false
+                            }
                             $Global:ErrorActionPreference = 'Stop'
                             Invoke-SkypeCommand -cmdlet 'Get-CsTenantFederationConfiguration' -SkypeOrganization $orgName -string '-erroraction Stop'
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
-                        catch {
+                        catch
+                        {
                             $Global:ErrorActionPreference = 'Continue'
                             Remove-PSSession -Name $SessionName
                             $UseExistingSession = $false
@@ -2052,7 +2063,8 @@ Function Connect-Skype {
                 }#switch $orgtype
             }#else
         }#try
-        catch {
+        catch
+        {
             Write-Log -Message "No existing session for $SessionName exists" 
             $UseExistingSession = $false
         }#catch
@@ -2154,7 +2166,7 @@ Function Connect-AADSync {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AADSyncServers' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AADSyncServers' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2177,7 +2189,7 @@ Function Connect-AADSync {
         switch ($PSCmdlet.ParameterSetName) {
             'Profile' {
                 $SelectedProfile = $PSBoundParameters[$ParameterName]
-                $Profile = $Global:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'AADSyncServers' | Where-Object {$_.name -eq $selectedProfile}
+                $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'AADSyncServers' | Where-Object {$_.name -eq $selectedProfile}
                 $CommandPrefix = $Profile.Name
                 $SessionName = "$commandPrefix-AADSync"
                 $Server = $Profile.Server
@@ -2309,7 +2321,7 @@ Function Connect-ADInstance {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2334,7 +2346,7 @@ Function Connect-ADInstance {
         Switch ($PSCmdlet.ParameterSetName) {
             'Instance' {
                 $ADI = $PSBoundParameters[$ParameterName]
-                $ADIobj = $Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object {$_.name -eq $ADI}
+                $ADIobj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object {$_.name -eq $ADI}
                 $name = $ADIobj.Name
                 $server = $ADIobj.Server
                 $Credential = $ADIobj.credential
@@ -2433,7 +2445,7 @@ Function Connect-AzureAD {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2460,7 +2472,7 @@ Function Connect-AzureAD {
             'Tenant' 
             {
                 $Identity = $PSBoundParameters[$ParameterName]
-                $Credential = $Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' 
             {
@@ -2516,7 +2528,7 @@ Function Connect-AADRM {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2542,7 +2554,7 @@ Function Connect-AADRM {
         switch ($PSCmdlet.ParameterSetName) {
             'Tenant' {
                 $Identity = $PSBoundParameters[$ParameterName]
-                $Credential = $Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' {
             }#manual
@@ -2603,7 +2615,7 @@ Function Connect-PowerShellSystem {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowerShellSystems' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowerShellSystems' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2626,7 +2638,7 @@ Function Connect-PowerShellSystem {
         switch ($PSCmdlet.ParameterSetName) {
             'Profile' {
                 $SelectedProfile = $PSBoundParameters[$ParameterName]
-                $Profile = $Global:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'PowerShellSystems' | Where-Object {$_.name -eq $selectedProfile}
+                $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'PowerShellSystems' | Where-Object {$_.name -eq $selectedProfile}
                 $SessionName = "$($Profile.Name)"
                 $System = $Profile.System
                 $Credential = $Profile.Credential
@@ -2723,7 +2735,7 @@ Function Connect-RemoteSystems {
     }
     try {
         # Connect To Exchange Systems
-        foreach ($sys in ($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
         {
             try {
                 Write-Log -Message "Attempting: Connect to $sys-Exchange." -Verbose
@@ -2736,10 +2748,10 @@ Function Connect-RemoteSystems {
             }#catch
         }
         # Connect to Azure AD Sync
-        foreach ($sys in ($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AADSyncServers' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name)) 
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AADSyncServers' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name)) 
         {
             $ConnectAADSyncParams = @{AADSyncServer = $sys; ErrorAction = 'Stop'}
-            if (($Global:AADSyncServers | Where-Object AutoConnect -EQ $true).count -gt 1) {$ConnectAADSyncParams.UsePrefix = $true}
+            if (($Script:AADSyncServers | Where-Object AutoConnect -EQ $true).count -gt 1) {$ConnectAADSyncParams.UsePrefix = $true}
             try {
                 Write-Log -Message "Attempting: Connect to $sys-AADSync." -Verbose
                 Connect-AADSync @ConnectAADSyncParams
@@ -2753,7 +2765,7 @@ Function Connect-RemoteSystems {
         # Connect to Active Directory Forests
         if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop) 
         {
-            foreach ($sys in ($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name)) {
+            foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name)) {
                 try {
                     Write-Log -Message "Attempting: Connect to AD Instance $sys." -Verbose
                     Connect-ADInstance -ActiveDirectoryInstance $sys -ErrorAction Stop
@@ -2766,14 +2778,14 @@ Function Connect-RemoteSystems {
             }
         }
         # Connect to default Azure AD
-        $DefaultTenant = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.autoconnect -eq $true} | Select-Object -First 1)
+        $DefaultTenant = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.autoconnect -eq $true} | Select-Object -First 1)
         if ($DefaultTenant.Count -eq 1) 
         {
             Connect-AzureAD -Tenant $DefaultTenant.Name -ErrorAction Stop
             Connect-AADRM -Tenant $DefaultTenant.Name -ErrorAction Stop
         }
         # Connect To PowerShell Systems
-        foreach ($sys in ($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowershellSystems' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowershellSystems' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
         {
             try {
                 $message = "Connect to PowerShell on System $sys"
@@ -2830,7 +2842,7 @@ function Invoke-ExchangeCommand {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2852,7 +2864,7 @@ function Invoke-ExchangeCommand {
         if ([string]::IsNullOrWhiteSpace($CommandPrefix)) {
             $Org = $PsBoundParameters[$ParameterName]
             if (-not [string]::IsNullOrWhiteSpace($Org)) {
-                $orgobj = $Global:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
+                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
                 $CommandPrefix = $orgobj.CommandPrefix
             }
             else {$CommandPrefix = ''}
@@ -2908,7 +2920,7 @@ function Invoke-SkypeCommand {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -2930,7 +2942,7 @@ function Invoke-SkypeCommand {
         if ([string]::IsNullOrWhiteSpace($CommandPrefix)) {
             $Org = $PsBoundParameters[$ParameterName]
             if (-not [string]::IsNullOrWhiteSpace($Org)) {
-                $orgobj = $Global:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
+                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
                 $CommandPrefix = $orgobj.CommandPrefix
             }
             else {$CommandPrefix = ''}
@@ -3136,7 +3148,7 @@ function Find-ADUser {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -3175,8 +3187,8 @@ function Find-ADUser {
         }
         #Setup exception reporting
         if ($ReportExceptions) {
-            $Global:LookupADUserNotFound = @()
-            $Global:LookupADUserAmbiguous = @()
+            $Script:LookupADUserNotFound = @()
+            $Script:LookupADUserAmbiguous = @()
         }
     }#Begin
 
@@ -3249,7 +3261,7 @@ function Find-ADUser {
             catch {
                 Write-Log -Message "FAILED: Get-ADUser with identifier $ID for Attribute $IdentityType" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
-                if ($ReportExceptions) {$Global:LookupADUserNotFound += $ID}
+                if ($ReportExceptions) {$Script:LookupADUserNotFound += $ID}
             }
             switch ($aduser.Count) {
                 1 {
@@ -3257,7 +3269,7 @@ function Find-ADUser {
                     Return $TrimmedADUser
                 }#1
                 0 {
-                    if ($ReportExceptions) {$Global:LookupADUserNotFound += $ID}
+                    if ($ReportExceptions) {$Script:LookupADUserNotFound += $ID}
                 }#0
                 Default {
                     if ($AmbiguousAllowed) {
@@ -3265,7 +3277,7 @@ function Find-ADUser {
                         Return $TrimmedADUser    
                     }
                     else {
-                        if ($ReportExceptions) {$Global:LookupADUserAmbiguous += $ID}
+                        if ($ReportExceptions) {$Script:LookupADUserAmbiguous += $ID}
                     }
                 }#Default
             }#switch
@@ -3274,13 +3286,13 @@ function Find-ADUser {
 
     end {
         if ($ReportExceptions) {
-            if ($Global:LookupADUserNotFound.count -ge 1) {
-                Write-Log -Message 'Review logs or variable $Global:LookupADUserNotFound for exceptions' -Verbose -ErrorLog
-                Write-Log -Message "$($Global:LookupADUserNotFound -join "`n`t")" -ErrorLog
+            if ($Script:LookupADUserNotFound.count -ge 1) {
+                Write-Log -Message 'Review logs or OneShell variable $LookupADUserNotFound for exceptions' -Verbose -ErrorLog
+                Write-Log -Message "$($Script:LookupADUserNotFound -join "`n`t")" -ErrorLog
             }#if
-            if ($Global:LookupADUserAmbiguous.count -ge 1) {
-                Write-Log -Message 'Review logs or variable $Global:LookupADUserAmbiguous for exceptions' -Verbose -ErrorLog
-                Write-Log -Message "$($Global:LookupADUserAmbiguous -join "`n`t")" -ErrorLog
+            if ($Script:LookupADUserAmbiguous.count -ge 1) {
+                Write-Log -Message 'Review logs or OneShell variable $LookupADUserAmbiguous for exceptions' -Verbose -ErrorLog
+                Write-Log -Message "$($Script:LookupADUserAmbiguous -join "`n`t")" -ErrorLog
             }#if
         }#if
         if ($DoNotPreserveLocation -ne $true) {Pop-Location -StackName 'Lookup-ADUser'}#if
@@ -3326,7 +3338,7 @@ function Find-ADContact {
         $AttributeCollection.Add($ParameterAttribute)
 
         # Generate and set the ValidateSet 
-        $ValidateSet = @($Global:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
         $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
 
         # Add the ValidateSet to the attributes collection
@@ -3362,8 +3374,8 @@ function Find-ADContact {
             $GetADObjectParams.Properties = $Properties
         }
         if ($ReportExceptions) {
-            $Global:LookupADContactNotFound = @()
-            $Global:LookupADContactAmbiguous = @()
+            $Script:LookupADContactNotFound = @()
+            $Script:LookupADContactAmbiguous = @()
         }
     }#Begin
 
@@ -3410,7 +3422,7 @@ function Find-ADContact {
             catch {
                 Write-Log -Message "FAILED: Get-ADObject with identifier $ID for Attribute $IdentityType" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
-                if ($ReportExceptions) {$Global:LookupADContactNotFound += $ID}
+                if ($ReportExceptions) {$Script:LookupADContactNotFound += $ID}
             }
             switch ($ADContact.Count) {
                 1 {
@@ -3418,7 +3430,7 @@ function Find-ADContact {
                     Return $TrimmedADObject
                 }#1
                 0 {
-                    if ($ReportExceptions) {$Global:LookupADContactNotFound += $ID}
+                    if ($ReportExceptions) {$Script:LookupADContactNotFound += $ID}
                 }#0
                 Default {
                     if ($AmbiguousAllowed) {
@@ -3426,7 +3438,7 @@ function Find-ADContact {
                         Return $TrimmedADObject    
                     }
                     else {
-                        if ($ReportExceptions) {$Global:LookupADContactAmbiguous += $ID}
+                        if ($ReportExceptions) {$Script:LookupADContactAmbiguous += $ID}
                     }
                 }#Default
             }#switch
@@ -3435,13 +3447,13 @@ function Find-ADContact {
 
     end {
         if ($ReportExceptions) {
-            if ($Global:LookupADContactNotFound.count -ge 1) {
-                Write-Log -Message 'Review logs or variable $Global:LookupADObjectNotFound for exceptions' -Verbose -ErrorLog
-                Write-Log -Message "$($Global:LookupADContactNotFound -join "`n`t")" -ErrorLog
+            if ($Script:LookupADContactNotFound.count -ge 1) {
+                Write-Log -Message 'Review logs or OneShell variable $LookupADObjectNotFound for exceptions' -Verbose -ErrorLog
+                Write-Log -Message "$($Script:LookupADContactNotFound -join "`n`t")" -ErrorLog
             }#if
-            if ($Global:LookupADContactAmbiguous.count -ge 1) {
-                Write-Log -Message 'Review logs or variable $Global:LookupADObjectAmbiguous for exceptions' -Verbose -ErrorLog
-                Write-Log -Message "$($Global:LookupADContactAmbiguous -join "`n`t")" -ErrorLog
+            if ($Script:LookupADContactAmbiguous.count -ge 1) {
+                Write-Log -Message 'Review logs or OneShell variable $LookupADObjectAmbiguous for exceptions' -Verbose -ErrorLog
+                Write-Log -Message "$($Script:LookupADContactAmbiguous -join "`n`t")" -ErrorLog
             }#if
         }#if
         if ($DoNotPreserveLocation -ne $true) {Pop-Location -StackName 'Find-ADContact'}#if
@@ -3688,7 +3700,7 @@ Function Export-OrgProfile
     )
     $profileobject = $profile | Convert-HashTableToObject
     $name = $profileobject.Identity
-    $path = "$($Global:OneShellModuleFolderPath)\$name.json"
+    $path = "$($Script:OneShellModuleFolderPath)\$name.json"
     $JSONparams =@{
         InputObject = $profileobject
         ErrorAction = 'Stop'
@@ -3849,7 +3861,7 @@ begin
             $script:CurrentOrgProfile = $profile
             Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name)." -EntryType Notification -Verbose
         }
-        $Global:CurrentOrgAdminProfileSystems = @()
+        $Script:CurrentOrgAdminProfileSystems = @()
         Return $true
     }#process
 }
@@ -3952,8 +3964,8 @@ process{
     }
     #Retrieve the systems from the current org profile
     $systems = Get-OrgProfileSystem -OrganizationIdentity $script:CurrentAdminUserProfile.general.OrganizationIdentity
-    #Build the autoconnect property and the mapped credentials for each system and store in the CurrentOrgAdminProfileSystems Global variable
-    $Global:CurrentOrgAdminProfileSystems = 
+    #Build the autoconnect property and the mapped credentials for each system and store in the CurrentOrgAdminProfileSystems Script variable
+    $Script:CurrentOrgAdminProfileSystems = 
     @(
         foreach ($sys in $systems) {
             $sys | Add-Member -MemberType NoteProperty -Name Autoconnect -Value $null
@@ -3973,11 +3985,11 @@ process{
     #set folder paths
     $script:OneShellAdminUserProfileFolder = $script:CurrentAdminUserProfile.general.ProfileFolder
     #need to update the following to Script (Module) scoped variables . . . 
-    $Global:LogFolderPath = "$script:OneShellAdminUserProfileFolder\Logs\"
-    $Global:ReferenceFolder = "$script:OneShellAdminUserProfileFolder\Reference\"
-    $Global:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Global:Stamp" + '-AdminOperations.log'
-    $Global:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Global:Stamp" + '-AdminOperations-Errors.log'
-    $Global:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
+    $Script:LogFolderPath = "$script:OneShellAdminUserProfileFolder\Logs\"
+    $Script:ReferenceFolder = "$script:OneShellAdminUserProfileFolder\Reference\"
+    $Script:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations.log'
+    $Script:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations-Errors.log'
+    $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
     Return $true
 }#process
 }
@@ -4542,7 +4554,7 @@ Identity: $($DefaultAdminUserProfile.Identity)
                 {$_ -lt 1}
                 {
                     Write-Warning "No Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity)"
-                    switch ($global:AdminUserProfiles.count)
+                    switch ($Script:AdminUserProfiles.count)
                     {
                         {$_ -ge 1}
                         {
@@ -4625,16 +4637,17 @@ param
     Remove-Variable -Scope Script -Name $name
 }
 #Global Variabls to be replaced with Module/Script Level Variables in a coming release
-function Set-OneShellGlobalVariables {
+function Set-OneShellVariables {
     Write-Log -message 'Setting OneShell Global Variables' -Verbose
-    $Global:OneShellModuleFolderPath = $Script:PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
-    [string]$Global:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
-    [string]$Global:E3_SkuPartNumber = 'ENTERPRISEPACK' 
-    [string]$Global:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
-    [string]$Global:E1_SkuPartNumber = 'STANDARDPACK'
-    [string]$Global:K1_SkuPartNumber = 'DESKLESSPACK' 
-    $Global:LogPreference = $True
-    $Global:ScalarADAttributesToRetrieve = @(
+    $Script:OneShellModuleFolderPath = $Script:PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
+    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
+    [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
+    [string]$Script:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
+    [string]$Script:E1_SkuPartNumber = 'STANDARDPACK'
+    [string]$Script:K1_SkuPartNumber = 'DESKLESSPACK' 
+    $Script:LogPreference = $True
+    #AdvancedOneShell needs updated for the following:
+    $Script:ScalarADAttributesToRetrieve = @(
         'altRecipient'
         'forwardingAddress'
         'msExchGenericForwardingAddress'
@@ -4692,7 +4705,7 @@ function Set-OneShellGlobalVariables {
         'country'
         'physicalDeliveryOfficeName'
     )#Scalar Attributes to Retrieve
-    $Global:MultiValuedADAttributesToRetrieve = @(
+    $Script:MultiValuedADAttributesToRetrieve = @(
         'proxyAddresses'
         'msexchextensioncustomattribute1'
         'msexchextensioncustomattribute2'
@@ -4702,9 +4715,9 @@ function Set-OneShellGlobalVariables {
         'memberof'
         'msExchPoliciesExcluded'
     )#MultiValuedADAttributesToRetrieve
-    $Global:AllADAttributesToRetrieve = @($ScalarADAttributesToRetrieve + $MultiValuedADAttributesToRetrieve)
-    $Global:AllADContactAttributesToRetrieve = $Global:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServer')}
-    $Global:Stamp = Get-TimeStamp
+    $Script:AllADAttributesToRetrieve = @($ScalarADAttributesToRetrieve + $MultiValuedADAttributesToRetrieve)
+    $Script:AllADContactAttributesToRetrieve = $Global:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServer')}
+    $Script:Stamp = Get-TimeStamp
     #Module Menu Definitions
     $menudefinition = [pscustomobject]@{
         GUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
@@ -4744,7 +4757,7 @@ function Set-OneShellGlobalVariables {
     }
     Add-MenuDefinition -MenuDefinition $menudefinition
 }
-Set-OneShellGlobalVariables
+Set-OneShellVariables
 ##########################################################################################################
 #Initialization
 ##########################################################################################################
