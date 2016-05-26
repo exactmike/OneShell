@@ -1306,25 +1306,52 @@ Function Send-OneShellMailMessage {
     param(
         [switch]$Test
         ,
-        $Body 
+        [string]$Body
         ,
-        $Subject 
+        [switch]$BodyAsHtml
         ,
-        $Attachments 
+        [parameter(Mandatory=$true)]
+        [string]$Subject
         ,
-        $ToRecipientList
+        [string[]]$Attachments
+        ,
+        [parameter(Mandatory=$true)]
+        [validatescript({Test-EmailAddress -EmailAddress $_})]
+        [string[]]$To
+        ,
+        [parameter()]
+        [validatescript({Test-EmailAddress -EmailAddress $_})]
+        [string[]]$CC
+        ,
+        [parameter()]
+        [validatescript({Test-EmailAddress -EmailAddress $_})]
+        [string[]]$BCC
     )
-    if ($test) {$ToRecipientList = $Script:CurrentAdminUserProfile.General.MailFrom}
+    if ($test) {$To = $Script:CurrentAdminUserProfile.General.MailFrom}
+    $SMTPServer=
+    switch ($Script:CurrentAdminUserProfile.General.MailRelayServerFQDN)
+    {
+        $null
+        {
+            $($Script:CurrentOrgProfile.General.MailRelayServerFQDN)
+        }
+        Default
+        {
+            $($Script:CurrentAdminUserProfile.General.MailRelayServerFQDN)
+        }
+    }
     $SendMailParams = @{
-        Attachments =$Attachments
+        SmtpServer = $SMTPServer
         From = $($Script:CurrentAdminUserProfile.General.MailFrom) #need to add this to the admin user profile creations
-        To = $ToRecipientList
-        #CC = ''
-        SmtpServer = $($Script:CurrentOrgProfile.General.MailRelayServerFQDN)
-        BodyAsHtml = $true
-        Body = $Body
+        To = $To
         Subject = $Subject
     }
+    if ($BodyAsHtml) {$SendMailParams.BodyAsHtml = $true}
+    if ($PSBoundParameters.ContainsKey('CC')) {$SendMailParams.CC = $CC}
+    if ($PSBoundParameters.ContainsKey('BCC')) {$SendMailParams.BCC = $BCC}
+    if ($PSBoundParameters.ContainsKey('Body')) {$SendMailParams.Body = $Body}
+    if ($PSBoundParameters.ContainsKey('BodyAsHtml')) {$SendMailParams.BodyAsHtml = $BodyAsHtml}
+    if ($PSBoundParameters.ContainsKey('Attachments')) {$SendMailParams.Attachments = $Attachments}
     Send-MailMessage @SendMailParams
 }
 function New-Timer {
@@ -3784,7 +3811,6 @@ foreach ($loc in $Location)
             }
         }
         else {
-            $null
             Write-Log -message "No valid Organization Profiles Were Found in $loc" -EntryType Notification -Verbose
         }
     }
@@ -4153,16 +4179,26 @@ Function Select-AdminUserProfile {
 }
 function New-AdminUserProfile
 {
-    param(
-        $OrganizationIdentity
-        ,
-        [string]$name
-    )
+[cmdletbinding()]
+param(
+    [parameter(Mandatory)]
+    [string]$OrganizationIdentity
+    ,
+    [string]$name
+)
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
     switch ($targetOrgProfile.Count) {
         1 {}
-        0 {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
-        Default {throw "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"}
+        0
+        {
+            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+        Default
+        {
+            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
     }
     $newAdminUserProfile = [ordered]@{
         Identity = [guid]::NewGuid()
@@ -4177,6 +4213,18 @@ function New-AdminUserProfile
         Systems = @()
         Credentials = @()
     }
+    do {$address = Read-InputBoxDialog -Message 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.' -WindowTitle 'OneShell Admin Profile E-mail Address'}
+    until (Test-EmailAddress -EmailAddress $address)
+    $newAdminUserProfile.General.MailFrom = $address
+    if ((Read-Choice -Message "Would you like to override the Organization Mail Relay Server FQDN: $($targetorgprofile.general.MailRelayServerFQDN)?" -Choices 'Yes','No' -DefaultChoice 1 -Title 'Override Mail Relay Server?') -eq 0)
+    {
+        $OverrideRelayServerFQDN = Read-InputBoxDialog -Message 'Specify a valid FQDN or IP Address for the Mail Relay endpoint' -WindowTitle 'Specify Override Mail Relay Server' -DefaultText $($targetorgprofile.general.MailRelayServerFQDN)
+    }
+    else
+    {
+        $OverrideRelayServerFQDN  = $null
+    }
+    $newAdminUserProfile.General.MailRelayServerFQDN = $OverrideRelayServerFQDN
     #Get Org Profile Defined Systems
     $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
     #Get User's Credentials
