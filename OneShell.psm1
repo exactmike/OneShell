@@ -32,110 +32,122 @@ function Get-DateStamp {
     $Stamp
 }
 #Error Handling Functions and used by other OneShell Functions
-function Get-AvailableExceptionsList {
-    [CmdletBinding()]
-    param()
-    end {
+function Get-AvailableExceptionsList
+{
+[CmdletBinding()]
+param()
+end {
         $irregulars = 'Dispose|OperationAborted|Unhandled|ThreadAbort|ThreadStart|TypeInitialization'
-        [AppDomain]::CurrentDomain.GetAssemblies() | ForEach-Object {
-            $_.GetExportedTypes() -match 'Exception' -notmatch $irregulars |
-            Where-Object {
-                $_.GetConstructors() -and $(
-                    $_exception = New-Object $_.FullName
-                    New-Object Management.Automation.ErrorRecord $_exception, ErrorID, OpenError, Target
-                )
-            } | Select-Object -ExpandProperty FullName
-        } 2> $null
-    }
-
-    <#  .Synopsis      Retrieves all available Exceptions to construct ErrorRecord objects.  .Description      Retrieves all available Exceptions in the current session to construct ErrorRecord objects.  .Example      $availableExceptions = Get-AvailableExceptionsList      Description      ===========      Stores all available Exception objects in the variable 'availableExceptions'.  .Example      Get-AvailableExceptionsList | Set-Content $env:TEMP\AvailableExceptionsList.txt      Description      ===========      Writes all available Exception objects to the 'AvailableExceptionsList.txt' file in the user's Temp directory.  .Inputs     None  .Outputs     System.String  .Link      New-ErrorRecord  .Notes      Name:      Get-AvailableExceptionsList      Author:    Robert Robelo      LastEdit:  08/24/2011 12:35  #>
+        $appDomains = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {-not $_.IsDynamic}
+        $ExportedTypes = $appDomains | ForEach-Object {$_.GetExportedTypes()}
+        $Exceptions = $ExportedTypes | Where-Object {$_.name -like '*exception*' -and $_.name -notmatch $irregulars}
+        $exceptionsWithGetConstructorsMethod = $Exceptions | Where-Object -FilterScript {'GetConstructors' -in @($_ | Get-Member -MemberType Methods | Select-Object -ExpandProperty Name)}
+        $exceptionsWithGetConstructorsMethod | Select-Object -ExpandProperty FullName
+<#  
+.Synopsis      Retrieves all available Exceptions to construct ErrorRecord objects.
+.Description      Retrieves all available Exceptions in the current session to construct ErrorRecord objects.
+.Example      $availableExceptions = Get-AvailableExceptionsList      Description      ===========      Stores all available Exception objects in the variable 'availableExceptions'.
+.Example      Get-AvailableExceptionsList | Set-Content $env:TEMP\AvailableExceptionsList.txt      Description      ===========      Writes all available Exception objects to the 'AvailableExceptionsList.txt' file in the user's Temp directory.
+.Inputs     None
+.Outputs     System.String
+.Link      New-ErrorRecord
+.Notes Name:  Get-AvailableExceptionsList  Original Author: Robert Robelo  ModifiedBy: Mike Campbell
+#>
+}#end
 }
-function New-ErrorRecord {
-    param(
-        [Parameter(Mandatory = $true, Position = 0)]
-        [System.String]
-        $Exception,
-        [Parameter(Mandatory = $true, Position = 1)]
-        [Alias('ID')]
-        [System.String]
-        $ErrorId,
-        [Parameter(Mandatory = $true, Position = 2)]
-        [Alias('Category')]
-        [System.Management.Automation.ErrorCategory]
-        [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
-                'DeadlockDetected', 'InvalidArgument', 'InvalidData', 'InvalidOperation',
-                'InvalidResult', 'InvalidType', 'MetadataError', 'NotImplemented',
-                'NotInstalled', 'ObjectNotFound', 'OperationStopped', 'OperationTimeout',
-                'SyntaxError', 'ParserError', 'PermissionDenied', 'ResourceBusy',
-                'ResourceExists', 'ResourceUnavailable', 'ReadError', 'WriteError',
-        'FromStdErr', 'SecurityError')]
-        $ErrorCategory,
-        [Parameter(Mandatory = $true, Position = 3)]
-        [System.Object]
-        $TargetObject,
-        [Parameter()]
-        [System.String]
-        $Message,
-        [Parameter()]
-        [System.Exception]
-        $InnerException
-    )
-    begin {
-        # check for required function, if not defined...
-        if (-not (Test-Path function:Get-AvailableExceptionsList)) {
-            $message1 = "The required function Get-AvailableExceptionsList is not defined. " +
-            "Please define it in the same scope as this function's and try again."
-            $exception1 = New-Object System.OperationCanceledException $message1
-            $errorID1 = 'RequiredFunctionNotDefined'
-            $errorCategory1 = 'OperationStopped'
-            $targetObject1 = 'Get-AvailableExceptionsList'
-            $errorRecord1 = New-Object Management.Automation.ErrorRecord $exception1, $errorID1,
-            $errorCategory1, $targetObject1
-            # ...report a terminating error to the user
-            $PSCmdlet.ThrowTerminatingError($errorRecord1)
-        }
-        # required function is defined, get "available" exceptions
-        $exceptions = Get-AvailableExceptionsList
-        $exceptionsList = $exceptions -join "`r`n"
+function New-ErrorRecord
+{
+param(
+    [Parameter(Mandatory = $true, Position = 0)]
+    [System.String]
+    $Exception
+    ,
+    [Parameter(Mandatory = $true, Position = 1)]
+    [Alias('ID')]
+    [System.String]
+    $ErrorId
+    ,
+    [Parameter(Mandatory = $true, Position = 2)]
+    [Alias('Category')]
+    [System.Management.Automation.ErrorCategory]
+    [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
+            'DeadlockDetected', 'InvalidArgument', 'InvalidData', 'InvalidOperation',
+            'InvalidResult', 'InvalidType', 'MetadataError', 'NotImplemented',
+            'NotInstalled', 'ObjectNotFound', 'OperationStopped', 'OperationTimeout',
+            'SyntaxError', 'ParserError', 'PermissionDenied', 'ResourceBusy',
+            'ResourceExists', 'ResourceUnavailable', 'ReadError', 'WriteError',
+    'FromStdErr', 'SecurityError')]
+    $ErrorCategory
+    ,
+    [Parameter(Mandatory = $true, Position = 3)]
+    [System.Object]
+    $TargetObject
+    ,
+    [Parameter()]
+    [System.String]
+    $Message
+    ,
+    [Parameter()]
+    [System.Exception]
+    $InnerException
+)
+begin
+{
+    if (-not (Test-Path variable:script:AvailableExceptionsList))
+    {$script:AvailableExceptionsList = Get-AvailableExceptionsList}
+    if (-not $Exception -in $script:AvailableExceptionsList)
+    {
+        $message2 = "Exception '$Exception' is not available."
+        $exception2 = New-Object System.InvalidOperationException $message2
+        $errorID2 = 'BadException'
+        $errorCategory2 = 'InvalidOperation'
+        $targetObject2 = 'Get-AvailableExceptionsList'
+        $errorRecord2 = New-Object Management.Automation.ErrorRecord $exception2, $errorID2,
+        $errorCategory2, $targetObject2
+        $PSCmdlet.ThrowTerminatingError($errorRecord2)
     }
-    process {
-        # trap for any of the "exceptional" Exception objects that made through the filter
-        trap [Microsoft.PowerShell.Commands.NewObjectCommand] {
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
-        # verify input exception is "available". if so...
-        if ($exceptions -match "^(System\.)?$Exception$") {
-            # ...build and save the new Exception depending on present arguments, if it...
-            $_exception = if ($Message -and $InnerException) {
-                # ...includes a custom message and an inner exception
-                New-Object $Exception $Message, $InnerException
-            } elseif ($Message) {
-                # ...includes a custom message only
-                New-Object $Exception $Message
-            } else {
-                # ...is just the exception full name
-                New-Object $Exception
-            }
-            # now build and output the new ErrorRecord
-            New-Object Management.Automation.ErrorRecord $_exception, $ErrorID,
-            $ErrorCategory, $TargetObject
-        } else {
-            # Exception argument is not "available";
-            # warn the user, provide a list of "available" exceptions and...
-            Write-Warning "Available exceptions are:`r`n$exceptionsList" 
-            $message2 = "Exception '$Exception' is not available."
-            $exception2 = New-Object System.InvalidOperationExceptionn $message2
-            $errorID2 = 'BadException'
-            $errorCategory2 = 'InvalidOperation'
-            $targetObject2 = 'Get-AvailableExceptionsList'
-            $errorRecord2 = New-Object Management.Automation.ErrorRecord $exception2, $errorID2,
-            $errorCategory2, $targetObject2
-            # ...report a terminating error to the user
-            $PSCmdlet.ThrowTerminatingError($errorRecord2)
+}
+process
+{
+    # trap for any of the "exceptional" Exception objects that made through the filter
+    trap [Microsoft.PowerShell.Commands.NewObjectCommand] {
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
+    # ...build and save the new Exception depending on present arguments, if it...
+    $newObjectParams1 = @{
+        TypeName = $Exception
+    }
+    if ($PSBoundParameters.ContainsKey('Message'))
+    {
+        $newObjectParams1.ArgumentList = @()
+        $newObjectParams1.ArgumentList += $Message
+        if ($PSBoundParameters.ContainsKey('InnerException'))
+        {
+            $newObjectParams1.ArgumentList += $InnerException
         }
     }
+    $ExceptionObject = New-Object @newObjectParams1
 
-    <#  .Synopsis      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.  .Description      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.  .Parameter Exception      The Exception that will be associated with the ErrorRecord.  .Parameter ErrorID      A scripter-defined identifier of the error.      This identifier must be a non-localized string for a specific error type.  .Parameter ErrorCategory      An ErrorCategory enumeration that defines the category of the error.  .Parameter TargetObject      The object that was being processed when the error took place.  .Parameter Message      Describes the Exception to the user.  .Parameter InnerException      The Exception instance that caused the Exception association with the ErrorRecord.  .Example      # advanced functions for testing function Test-1 {  [CmdletBinding()]  param(  [Parameter(Mandatory = $true, ValueFromPipeline = $true)]  [String]  $Path  )  process {   foreach ($_path in $Path) {    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue    if (-not $content) {     $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmpty InvalidOperation $_path -Message "File '$_path' is empty."     $PSCmdlet.ThrowTerminatingError($errorRecord)    }   }  } } function Test-2 {  [CmdletBinding()]  param(  [Parameter(Mandatory = $true, ValueFromPipeline = $true)]  [String]  $Path  )  process {   foreach ($_path in $Path) {    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue    if (-not $content) {     $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmptyAgain InvalidOperation $_path -Message "File '$_path' is empty again." -InnerException $Error[0].Exception     $PSCmdlet.ThrowTerminatingError($errorRecord)    }   }  } } # code to test the custom terminating error reports Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green $Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green $Error[0].Exception | Format-List * -Force Remove-Item .\MyEmptyFile.bak -Verbose      Description      ===========      Both advanced functions throw a custom terminating error when an empty file is being processed.          -Function Test-2's custom ErrorRecord includes an inner exception, which is the ErrorRecord reported by function Test-1.      The test code demonstrates this by creating an empty file in the curent directory -which is deleted at the end- and passing its path to both test functions.      The custom ErrorRecord is reported and execution stops for function Test-1, then the ErrorRecord and its Exception are displayed for quick analysis.      Same process with function Test-2; after analyzing the information, compare both ErrorRecord objects and their corresponding Exception objects.          -In the ErrorRecord note the different Exception, CategoryInfo and FullyQualifiedErrorId data.          -In the Exception note the different Message and InnerException data.  .Example      $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty." $PSCmdlet.ThrowTerminatingError($errorRecord)      Description      ===========      A custom terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through $PSCmdlet's ThrowTerminatingError method.      The $PSCmdlet object is only available within advanced functions.  .Example      $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty." Write-Error -ErrorRecord $errorRecord      Description      ===========      A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through the Write-Error Cmdlet's ErrorRecord parameter.  .Inputs      System.String  .Outputs      System.Management.Automation.ErrorRecord  .Link      Write-Error      Get-AvailableExceptionsList  .Notes      Name:      New-ErrorRecord      Author:    Robert Robelo      LastEdit:  08/24/2011 12:35  #>
+    # now build and output the new ErrorRecord
+    New-Object Management.Automation.ErrorRecord $ExceptionObject, $ErrorID, $ErrorCategory, $TargetObject
+}#Process
+<#  
+.Synopsis      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
+.Description      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
+.Parameter Exception      The Exception that will be associated with the ErrorRecord.
+.Parameter ErrorID      A scripter-defined identifier of the error.      This identifier must be a non-localized string for a specific error type.
+.Parameter ErrorCategory      An ErrorCategory enumeration that defines the category of the error.
+.Parameter TargetObject      The object that was being processed when the error took place.
+.Parameter Message      Describes the Exception to the user.
+.Parameter InnerException      The Exception instance that caused the Exception association with the ErrorRecord.
+.Example      # advanced functions for testing function Test-1 {  [CmdletBinding()]  param(  [Parameter(Mandatory = $true, ValueFromPipeline = $true)]  [String]  $Path  )  process {   foreach ($_path in $Path) {    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue    if (-not $content) {     $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmpty InvalidOperation $_path -Message "File '$_path' is empty."     $PSCmdlet.ThrowTerminatingError($errorRecord)    }   }  } } function Test-2 {  [CmdletBinding()]  param(  [Parameter(Mandatory = $true, ValueFromPipeline = $true)]  [String]  $Path  )  process {   foreach ($_path in $Path) {    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue    if (-not $content) {     $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmptyAgain InvalidOperation $_path -Message "File '$_path' is empty again." -InnerException $Error[0].Exception     $PSCmdlet.ThrowTerminatingError($errorRecord)    }   }  } } # code to test the custom terminating error reports Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green $Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green $Error[0].Exception | Format-List * -Force Remove-Item .\MyEmptyFile.bak -Verbose      Description      ===========      Both advanced functions throw a custom terminating error when an empty file is being processed.          -Function Test-2's custom ErrorRecord includes an inner exception, which is the ErrorRecord reported by function Test-1.      The test code demonstrates this by creating an empty file in the curent directory -which is deleted at the end- and passing its path to both test functions.      The custom ErrorRecord is reported and execution stops for function Test-1, then the ErrorRecord and its Exception are displayed for quick analysis.      Same process with function Test-2; after analyzing the information, compare both ErrorRecord objects and their corresponding Exception objects.          -In the ErrorRecord note the different Exception, CategoryInfo and FullyQualifiedErrorId data.          -In the Exception note the different Message and InnerException data.
+.Example      $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty." $PSCmdlet.ThrowTerminatingError($errorRecord)      Description      ===========      A custom terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through $PSCmdlet's ThrowTerminatingError method.      The $PSCmdlet object is only available within advanced functions.
+.Example      $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty." Write-Error -ErrorRecord $errorRecord      Description      ===========      A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through the Write-Error Cmdlet's ErrorRecord parameter.
+.Inputs      System.String
+.Outputs      System.Management.Automation.ErrorRecord
+.Link      Write-Error      Get-AvailableExceptionsList
+.Notes      Name:      New-ErrorRecord      OriginalAuthor:    Robert Robelo   ModifiedBy: Mike Campbell
+#>
 }
 #Useful Functions
 function Get-CustomRange {
@@ -1284,68 +1296,79 @@ function Export-Credential {
     }
     return $exportCredential
 }
-Function Remove-AgedFiles {
+Function Remove-AgedFiles
+{
 [cmdletbinding(SupportsShouldProcess,ConfirmImpact = 'Medium')]
-    param(
-        [int]$Days
-        ,
-        [parameter()]
-        [validatescript({if ((Test-Path $_) -and (Get-Item -Path $_).PSIsContainer) {$true} else {$false}})]
-        [string[]]$Directory
-    )
+param(
+    [int]$Days
+    ,
+    [parameter()]
+    [validatescript({if ((Test-Path $_) -and (Get-Item -Path $_).PSIsContainer) {$true} else {$false}})]
+    [string[]]$Directory
+)
     $now = Get-Date
     $daysAgo = $now.AddDays(-$days)
-    foreach ($d in $Directory) {
+    foreach ($d in $Directory)
+    {
         $files = Get-ChildItem -Path $d
         $filestodelete = $files | Where-Object {$_.CreationTime -lt $daysAgo -and $_.LastWriteTime -lt $daysAgo}
         $filestodelete | Remove-Item
     }
 } 
-Function Send-OneShellMailMessage {
-    [cmdletbinding()]
-    param(
-        [switch]$Test
-        ,
-        [string]$Body
-        ,
-        [switch]$BodyAsHtml
-        ,
-        [parameter(Mandatory=$true)]
-        [string]$Subject
-        ,
-        [string[]]$Attachments
-        ,
-        [parameter(Mandatory=$true)]
-        [validatescript({Test-EmailAddress -EmailAddress $_})]
-        [string[]]$To
-        ,
-        [parameter()]
-        [validatescript({Test-EmailAddress -EmailAddress $_})]
-        [string[]]$CC
-        ,
-        [parameter()]
-        [validatescript({Test-EmailAddress -EmailAddress $_})]
-        [string[]]$BCC
-    )
-    if ($test) {$To = $Script:CurrentAdminUserProfile.General.MailFrom}
-    $SMTPServer=
-    switch ($Script:CurrentAdminUserProfile.General.MailRelayServerFQDN)
+Function Send-OneShellMailMessage
+{
+[cmdletbinding()]
+param(
+    [switch]$Test
+    ,
+    [string]$Body
+    ,
+    [switch]$BodyAsHtml
+    ,
+    [parameter(Mandatory=$true)]
+    [string]$Subject
+    ,
+    [string[]]$Attachments
+    ,
+    [parameter(Mandatory=$true)]
+    [validatescript({Test-EmailAddress -EmailAddress $_})]
+    [string[]]$To
+    ,
+    [parameter()]
+    [validatescript({Test-EmailAddress -EmailAddress $_})]
+    [string[]]$CC
+    ,
+    [parameter()]
+    [validatescript({Test-EmailAddress -EmailAddress $_})]
+    [string[]]$BCC
+)
+    $MailRelayEndpoint = @($script:currentOrgAdminProfileSystems | Where-Object -FilterScript{$_.Identity -eq $script:CurrentAdminUserProfile.General.MailRelayEndpointToUse})
+    switch ($MailRelayEndpoint.Count)
     {
-        $null
+        0
         {
-            $($Script:CurrentOrgProfile.General.MailRelayServerFQDN)
+            $errorRecord = New-ErrorRecord -Exception 'system.exception' -ErrorId '0' -ErrorCategory InvalidOperation -Message 'Mail Relay Endpoint Missing from OneShell profile configuration' -TargetObject $Script:CurrentAdminUserProfile
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+        1
+        {
+            $SMTPServer=$MailRelayEndpoint.ServiceAddress
         }
         Default
         {
-            $($Script:CurrentAdminUserProfile.General.MailRelayServerFQDN)
+            $errorRecord = New-ErrorRecord -Exception 'system.exception' -ErrorId '0' -ErrorCategory InvalidOperation -Message 'Mail Relay Endpoint is ambiguous from OneShell profile configuration' -TargetObject $Script:CurrentAdminUserProfile
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
     }
+    if ($test) {$To = $Script:CurrentAdminUserProfile.General.MailFrom}
     $SendMailParams = @{
         SmtpServer = $SMTPServer
         From = $($Script:CurrentAdminUserProfile.General.MailFrom) #need to add this to the admin user profile creations
         To = $To
         Subject = $Subject
     }
+    if ($MailRelayEndpoint.AuthenticationRequired) {$SendMailParams.Credential = $MailRelayEndpoint.Credential}
+    if ($MailRelayEndpoint.UseTLS) {$SendMailParams.UseSSL = $true}
     if ($BodyAsHtml) {$SendMailParams.BodyAsHtml = $true}
     if ($PSBoundParameters.ContainsKey('CC')) {$SendMailParams.CC = $CC}
     if ($PSBoundParameters.ContainsKey('BCC')) {$SendMailParams.BCC = $BCC}
@@ -3203,7 +3226,7 @@ function Find-ADUser {
         catch {
             Write-Log -Message "Failed: Set Location to AD Drive $("$ADInstance`:")" -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
-            $ErrorRecord = New-ErrorRecord -Exception "AD Drive Not Available" -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
+            $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
             $PSCmdlet.ThrowTerminatingError($ErrorRecord)
         }
         #Setup GetADUserParams
@@ -3392,7 +3415,7 @@ function Find-ADContact {
         catch {
             Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
-            $ErrorRecord = New-ErrorRecord -Exception "AD Drive Not Available" -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
+            $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
             $PSCmdlet.ThrowTerminatingError($ErrorRecord)
         }
         $GetADObjectParams = @{ErrorAction = 'Stop'}
@@ -4180,14 +4203,16 @@ Function Select-AdminUserProfile {
 function New-AdminUserProfile
 {
 [cmdletbinding()]
-param(
+param
+(
     [parameter(Mandatory)]
     [string]$OrganizationIdentity
     ,
     [string]$name
 )
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
-    switch ($targetOrgProfile.Count) {
+    switch ($targetOrgProfile.Count)
+    {
         1 {}
         0
         {
@@ -4200,6 +4225,8 @@ param(
             $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
     }
+    Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
+    #Build the basic Admin profile object
     $newAdminUserProfile = [ordered]@{
         Identity = [guid]::NewGuid()
         ProfileType = 'OneShellAdminUserProfile'
@@ -4213,29 +4240,49 @@ param(
         Systems = @()
         Credentials = @()
     }
-    do {$address = Read-InputBoxDialog -Message 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.' -WindowTitle 'OneShell Admin Profile E-mail Address'}
-    until (Test-EmailAddress -EmailAddress $address)
-    $newAdminUserProfile.General.MailFrom = $address
-    if ((Read-Choice -Message "Would you like to override the Organization Mail Relay Server FQDN: $($targetorgprofile.general.MailRelayServerFQDN)?" -Choices 'Yes','No' -DefaultChoice 1 -Title 'Override Mail Relay Server?') -eq 0)
+    #Get the Admin user's email address
+    do
     {
-        $OverrideRelayServerFQDN = Read-InputBoxDialog -Message 'Specify a valid FQDN or IP Address for the Mail Relay endpoint' -WindowTitle 'Specify Override Mail Relay Server' -DefaultText $($targetorgprofile.general.MailRelayServerFQDN)
+        $message = 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.'
+        $windowtitle = 'OneShell Admin Profile E-mail Address'
+        $address = Read-InputBoxDialog -Message $message -WindowTitle $windowtitle
+    }
+    until
+    (Test-EmailAddress -EmailAddress $address)
+    $newAdminUserProfile.General.MailFrom = $address
+    #Get Org Profile Defined Systems
+    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+    #Select the mail relay endpoint for the profile to use
+    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
+    if ($MailRelayEndpoints.Count -gt 1)
+    {
+        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
+        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}}
+        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
+        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
     }
     else
     {
-        $OverrideRelayServerFQDN  = $null
+        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
     }
-    $newAdminUserProfile.General.MailRelayServerFQDN = $OverrideRelayServerFQDN
-    #Get Org Profile Defined Systems
-    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-    #Get User's Credentials
+    $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+    #Get the admin User's Credentials
     $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
     #Prepare Stored Credentials to associate with one or more systems
-    #$exportcredentials | foreach {$_.systems=@()}
-
-    foreach ($sys in $systems) {
-        $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
-        $prompt = "Do you want to Auto Connect to this system with this admin profile: `n`n$label"
-        $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice 0 -Title 'Auto Connect?'
+    :SysCredAssociation foreach ($sys in $systems) #using the label just to make the use of Continue explicit in the code below
+    {
+        if ($sys.AuthenticationRequired -eq $false) {Continue SysCredAssociation}
+        if ($sys.SystemType -eq 'MailRelayEndpoints')
+        {
+            if ($sys.Identity -eq $MailRelayEndpointToUse) {$autoConnectChoice = 1}
+            else {Continue SysCredAssociation}
+        }
+        else
+        {
+            $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
+            $prompt = "Do you want to Auto Connect to this system with this admin profile: `n`n$label"
+            $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice 0 -Title 'Auto Connect?'
+        }
         switch ($autoConnectChoice) {
             0 {
                 $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $true}
@@ -4268,22 +4315,29 @@ param(
         }
         Remove-Variable -Name SystemEntry
     }
+    #add the stored and system associated credentials to the profile
     $newAdminUserProfile.Credentials = @($exportcredentials)
-    try {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -location $newAdminUserProfile.General.profileFolder -ErrorAction Stop) {
-            if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop) {
-                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop) {
-                    Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue
-                    Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
+    #if necessary, create the Admin Profile File System Folders and export the JSON profile file
+    try
+    {
+        if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -location $newAdminUserProfile.General.profileFolder -ErrorAction Stop)
+        {
+            if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop)
+            {
+                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop)
+                {
+                    Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                    Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
                 }
             }
         }
-    
     }
-    catch {
+    catch
+    {
         Write-Log -Message "FAILED: An Admin User Profile operation failed for $($newAdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
         Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
     }
+    #return the admin profile raw object to the pipeline
     Return $newAdminUserProfile
 }
 function Set-AdminUserProfile
@@ -4450,21 +4504,20 @@ function Set-AdminUserProfileCredentials {
         }
         'New' {$editableCredentials = @()}
     }
-    #not sure that the following line would work since $OrganizationIdentity is not defined in this function
-    #if (! $systems) {$systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)}
-    $labels = $systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}}     
+    $systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
+    $labels = $systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}}
     do {
         $prompt = @"
-You may associate a credential with each of the following systems for AutoConnect: 
+You may associate a credential with each of the following systems for auto connection or on demand connections/usage:
 
 $($labels.name -join "`n")
 
-You have created the following credentials so far: 
-$($editableCredentials.UserName -join "`n") 
+You have created the following credentials so far:
+$($editableCredentials.UserName -join "`n")
 
-In the next step, you can modify the association of these credentials with the systems above. 
+In the next step, you may modify the association of these credentials with the systems above.
 
-Would you like to add, edit, or remove a credential?"        
+Would you like to add, edit, or remove a credential?"
 "@
         $response = Read-Choice -Message $prompt -Choices 'Add','Edit','Remove','Done' -DefaultChoice 0 -Title 'Add/Remove Credential?'
         switch ($response) {
@@ -4685,8 +4738,9 @@ param
     Remove-Variable -Scope Script -Name $name
 }
 #Global Variabls to be replaced with Module/Script Level Variables in a coming release
-function Set-OneShellVariables {
-    Write-Log -message 'Setting OneShell Global Variables' -Verbose
+function Set-OneShellVariables
+{
+    Write-Log -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $Script:PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
     [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
@@ -4805,14 +4859,14 @@ function Set-OneShellVariables {
     }
     Add-MenuDefinition -MenuDefinition $menudefinition
 }
-Set-OneShellVariables
 ##########################################################################################################
 #Initialization
 ##########################################################################################################
+Set-OneShellVariables
 #Do one of the following in your profile or run script:
 #Initialize-AdminEnvironment
 # OR
-#Get-OrgProfile 
+#Get-OrgProfile
 #Select-OrgProfile -purpose Use
 #Get-AdminUserProfile -OrgIdentity CurrentOrg
-#Use-AdminUserProfile -Identity [GUID] 
+#Use-AdminUserProfile -Identity [GUID]
