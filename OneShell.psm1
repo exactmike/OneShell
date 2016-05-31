@@ -150,132 +150,136 @@ process
 #>
 }
 #Useful Functions
-function Get-CustomRange {
-    #Start http://www.vistax64.com/powershell/15525-range-operator.html
-    param([string] $first, [string] $second, [string] $type)
-
+function Get-CustomRange
+{
+#Start http://www.vistax64.com/powershell/15525-range-operator.html
+param(
+    [string] $first
+    ,
+    [string] $second
+    ,
+    [string] $type
+)
     $rangeStart = [int] ($first -as $type)
     $rangeEnd = [int] ($second -as $type)
-
     $rangeStart..$rangeEnd | ForEach-Object { $_ -as $type }
 }
-function Compare-ComplexObject {
-    [cmdletbinding()]
-    param(
-        $ReferenceObject
-        ,
-        $DifferenceObject
-        ,
-        [string[]]$SuppressedProperties
-        ,
-        [parameter()]
-        [validateset('All','EqualOnly','DifferentOnly')]
-        [string]$Show = 'All'
-    )#param
-    #setup properties to compare
-    #get properties from the Reference Object
-    $RefProperties = @($ReferenceObject | get-member -MemberType Properties | Select-Object -ExpandProperty Name)
-    #get properties from the Difference Object
-    $DifProperties = @($DifferenceObject | get-member -MemberType Properties | Select-Object -ExpandProperty Name)
-    #Get unique properties from the resulting list, eliminating duplicate entries and sorting by name
-    $ComparisonProperties = @(($RefProperties + $DifProperties) | Select-Object -Unique | Sort-Object)
-    #remove properties where they are entries in the $suppressedProperties parameter
-    $ComparisonProperties = $ComparisonProperties | where-object {$SuppressedProperties -notcontains $_}
-    $results = @()
-    foreach ($prop in $ComparisonProperties) {
-        $property = $prop.ToString()
-        $ReferenceObjectValue = @($ReferenceObject.$($property))
-        $DifferenceObjectValue = @($DifferenceObject.$($property))
-        switch ($ReferenceObjectValue.Count) {
-            1 {
-                if ($DifferenceObjectValue.Count -eq 1) {
-                    $ComparisonType = 'Scalar'
-                    If ($ReferenceObjectValue[0] -eq $DifferenceObjectValue[0]) {$CompareResult = $true}
-                    If ($ReferenceObjectValue[0] -ne $DifferenceObjectValue[0]) {$CompareResult = $false}
-                }#if
-                else {
-                    $ComparisonType = 'ScalarToArray'
-                    $CompareResult = $false
-                }
-            }#1
-            0 {
-                $ComparisonType = 'ZeroCountArray'
-                $ComparisonResults = @(Compare-Object -ReferenceObject $ReferenceObjectValue -DifferenceObject $DifferenceObjectValue -PassThru)
-                if ($ComparisonResults.Count -eq 0) {$CompareResult = $true}
-                elseif ($ComparisonResults.Count -ge 1) {$CompareResult = $false}
-            }#0
-            Default {
-                $ComparisonType = 'Array'
-                $ComparisonResults = @(Compare-Object -ReferenceObject $ReferenceObjectValue -DifferenceObject $DifferenceObjectValue -PassThru)
-                if ($ComparisonResults.Count -eq 0) {$CompareResult = $true}
-                elseif ($ComparisonResults.Count -ge 1) {$CompareResult = $false}
-            }#Default
-        }#switch
-        $ComparisonObject = New-Object -TypeName PSObject -Property @{Property = $property; CompareResult = $CompareResult; ReferenceObjectValue = $ReferenceObjectValue; DifferenceObjectValue = $DifferenceObjectValue; ComparisonType = $comparisontype}
-        $results += $ComparisonObject | Select-Object -Property Property,CompareResult,ReferenceObjectValue,DifferenceObjectValue #,ComparisonType
-    }#foreach
-    switch ($show) {
-        'All' {$results}#All
-        'EqualOnly' {$results | Where-Object {$_.CompareResult}}#EqualOnly
-        'DifferentOnly' {$results |Where-Object {-not $_.CompareResult}}#DifferentOnly
-    }#switch $show
-}#function Compare-ComplexObject
-function Start-ComplexJob {
-    <#.SYNOPSIS
-        Helps Start Complex Background Jobs with many arguments and functions using Start-Job.
-
-        .DESCRIPTION
-        Helps Start Complex Background Jobs with many arguments and functions using Start-Job. 
-        The primary utility is to bring custom functions from the current session into the background job. 
-        A secondary utility is to formalize the input for creation complex background jobs by using a hashtable template and splatting. 
-
-        .PARAMETER  Name
-        The name of the background job which will be created.  A string.
-
-        .PARAMETER  JobFunctions
-        The name[s] of any local functions which you wish to export to the background job for use in the background job script.  
-        
-        The definition of any function listed here is exported as part of the script block to the background job. 
-        
-        .EXAMPLE
-        $StartComplexJobParams = @{
-            jobfunctions = @(
-                    'Connect-WAAD'
-                ,'Get-TimeStamp'
-                ,'Write-Log'
-                ,'Write-EndFunctionStatus'
-                ,'Write-StartFunctionStatus'
-                ,'Export-Data'
-                ,'Get-MatchingAzureADUsersAndExport'
-            )
-            name = "MatchingAzureADUsersAndExport"
-            arguments = @($SourceData,$SourceDataFolder,$LogPath,$ErrorLogPath,$OnlineCred)
-            script = [scriptblock]{
-                $PSModuleAutoloadingPreference = "None"
-                $sourcedata = $args[0]
-                $sourcedatafolder = $args[1]
-                $logpath = $args[2]
-                $errorlogpath = $args[3]
-                $credential = $args[4]
-                Connect-WAAD -MSOnlineCred $credential 
-                Get-MatchingAzureADUsersAndExport
+function Compare-ComplexObject #MC
+{
+[cmdletbinding()]
+param(
+    $ReferenceObject
+    ,
+    $DifferenceObject
+    ,
+    [string[]]$SuppressedProperties
+    ,
+    [parameter()]
+    [validateset('All','EqualOnly','DifferentOnly')]
+    [string]$Show = 'All'
+)#param
+#setup properties to compare
+#get properties from the Reference Object
+$RefProperties = @($ReferenceObject | get-member -MemberType Properties | Select-Object -ExpandProperty Name)
+#get properties from the Difference Object
+$DifProperties = @($DifferenceObject | get-member -MemberType Properties | Select-Object -ExpandProperty Name)
+#Get unique properties from the resulting list, eliminating duplicate entries and sorting by name
+$ComparisonProperties = @(($RefProperties + $DifProperties) | Select-Object -Unique | Sort-Object)
+#remove properties where they are entries in the $suppressedProperties parameter
+$ComparisonProperties = $ComparisonProperties | where-object {$SuppressedProperties -notcontains $_}
+$results = @()
+foreach ($prop in $ComparisonProperties)
+{
+    $property = $prop.ToString()
+    $ReferenceObjectValue = @($ReferenceObject.$($property))
+    $DifferenceObjectValue = @($DifferenceObject.$($property))
+    switch ($ReferenceObjectValue.Count) {
+        1 {
+            if ($DifferenceObjectValue.Count -eq 1) {
+                $ComparisonType = 'Scalar'
+                If ($ReferenceObjectValue[0] -eq $DifferenceObjectValue[0]) {$CompareResult = $true}
+                If ($ReferenceObjectValue[0] -ne $DifferenceObjectValue[0]) {$CompareResult = $false}
+            }#if
+            else {
+                $ComparisonType = 'ScalarToArray'
+                $CompareResult = $false
             }
-        }
-
-        Start-ComplexJob @StartComplexJobParams
-    #>
-    [cmdletbinding()]
-    param(
-        [string]$Name
-        ,
-        [string[]]$JobFunctions
-        ,
-
-        [psobject[]]$Arguments
-        ,
-        [string]$Script
+        }#1
+        0 {
+            $ComparisonType = 'ZeroCountArray'
+            $ComparisonResults = @(Compare-Object -ReferenceObject $ReferenceObjectValue -DifferenceObject $DifferenceObjectValue -PassThru)
+            if ($ComparisonResults.Count -eq 0) {$CompareResult = $true}
+            elseif ($ComparisonResults.Count -ge 1) {$CompareResult = $false}
+        }#0
+        Default {
+            $ComparisonType = 'Array'
+            $ComparisonResults = @(Compare-Object -ReferenceObject $ReferenceObjectValue -DifferenceObject $DifferenceObjectValue -PassThru)
+            if ($ComparisonResults.Count -eq 0) {$CompareResult = $true}
+            elseif ($ComparisonResults.Count -ge 1) {$CompareResult = $false}
+        }#Default
+    }#switch
+    $ComparisonObject = New-Object -TypeName PSObject -Property @{Property = $property; CompareResult = $CompareResult; ReferenceObjectValue = $ReferenceObjectValue; DifferenceObjectValue = $DifferenceObjectValue; ComparisonType = $comparisontype}
+    $results += 
+$ComparisonObject | Select-Object -Property Property,CompareResult,ReferenceObjectValue,DifferenceObjectValue #,ComparisonType
+}#foreach
+switch ($show)
+{
+    'All' {$results}#All
+    'EqualOnly' {$results | Where-Object {$_.CompareResult}}#EqualOnly
+    'DifferentOnly' {$results |Where-Object {-not $_.CompareResult}}#DifferentOnly
+}#switch $show
+}#function Compare-ComplexObject
+function Start-ComplexJob
+{
+<#
+.SYNOPSIS
+Helps Start Complex Background Jobs with many arguments and functions using Start-Job.
+.DESCRIPTION
+Helps Start Complex Background Jobs with many arguments and functions using Start-Job. 
+The primary utility is to bring custom functions from the current session into the background job. 
+A secondary utility is to formalize the input for creation complex background jobs by using a hashtable template and splatting. 
+.PARAMETER  Name
+The name of the background job which will be created.  A string.
+.PARAMETER  JobFunctions
+The name[s] of any local functions which you wish to export to the background job for use in the background job script.  
+The definition of any function listed here is exported as part of the script block to the background job. 
+.EXAMPLE
+$StartComplexJobParams = @{
+    jobfunctions = @(
+            'Connect-WAAD'
+        ,'Get-TimeStamp'
+        ,'Write-Log'
+        ,'Write-EndFunctionStatus'
+        ,'Write-StartFunctionStatus'
+        ,'Export-Data'
+        ,'Get-MatchingAzureADUsersAndExport'
     )
-
+    name = "MatchingAzureADUsersAndExport"
+    arguments = @($SourceData,$SourceDataFolder,$LogPath,$ErrorLogPath,$OnlineCred)
+    script = [scriptblock]{
+        $PSModuleAutoloadingPreference = "None"
+        $sourcedata = $args[0]
+        $sourcedatafolder = $args[1]
+        $logpath = $args[2]
+        $errorlogpath = $args[3]
+        $credential = $args[4]
+        Connect-WAAD -MSOnlineCred $credential 
+        Get-MatchingAzureADUsersAndExport
+    }
+}
+Start-ComplexJob @StartComplexJobParams
+#>
+[cmdletbinding()]
+param
+(
+[string]$Name
+,
+[string[]]$JobFunctions
+,
+[psobject[]]$Arguments
+,
+[string]$Script
+)
     #build functions to initialize in job 
     $JobFunctionsText = ''
     foreach ($Function in $JobFunctions) {
@@ -285,16 +289,16 @@ function Start-ComplexJob {
     $ExecutionScript = $JobFunctionsText + $Script
     #$initializationscript = [scriptblock]::Create($script)
     $ScriptBlock = [scriptblock]::Create($ExecutionScript)
-
-    $StartJobParams = @{}
-    $StartJobParams.Name = $name
+    $StartJobParams = @{
+        Name = $Name
+        ArgumentList = $Arguments
+        ScriptBlock = $ScriptBlock
+    }
     #$startjobparams.initializationscript = $initializationscript
-    $StartJobParams.ArgumentList = $Arguments
-    $StartJobParams.ScriptBlock = $ScriptBlock
-
     Start-Job @StartJobParams
 }#Function Start-ComplexJob
-function Get-CSVExportPropertySet {
+function Get-CSVExportPropertySet
+{
     <#
         .SYNOPSIS
         Creates an array of property definitions to be used with Select-Object to prepare data with multi-valued attributes for export to a flat file such as csv.
@@ -329,35 +333,33 @@ function Get-CSVExportPropertySet {
         [array]
 
     #>
-    param(
-        $Delimiter = '|'
-        ,
-        [string[]]$MultiValuedAttributes
-        ,
-        [string[]]$ScalarAttributes
-        ,
-        [switch]$SuppressCommonADProperties
-    )
-    $ADUserPropertiesToSuppress = @('CanonicalName','DistinguishedName')
-    $CSVExportPropertySet = @()
-
-    foreach ($mv in $MultiValuedAttributes) {
-        $ExpressionString = "`$_." + $mv + " -join '$Delimiter'"
-        $CSVExportPropertySet += 
-        @{
-            n=$mv
-            e=[scriptblock]::Create($ExpressionString)
-        }
-    }#foreach
- 
-    if ($SuppressCommonADProperties) {$CSVExportPropertySet += ($ScalarAttributes | Where-Object {$ADUserPropertiesToSuppress -notcontains $_})}
-    else {$CSVExportPropertySet += $ScalarAttributes}
-
-    $CSVExportPropertySet
-
+param
+(
+    $Delimiter = '|'
+    ,
+    [string[]]$MultiValuedAttributes
+    ,
+    [string[]]$ScalarAttributes
+    ,
+    [switch]$SuppressCommonADProperties
+)
+$ADUserPropertiesToSuppress = @('CanonicalName','DistinguishedName')
+$CSVExportPropertySet = @()
+foreach ($mv in $MultiValuedAttributes) {
+    $ExpressionString = "`$_." + $mv + " -join '$Delimiter'"
+    $CSVExportPropertySet += 
+    @{
+        n=$mv
+        e=[scriptblock]::Create($ExpressionString)
+    }
+}#foreach
+if ($SuppressCommonADProperties) {$CSVExportPropertySet += ($ScalarAttributes | Where-Object {$ADUserPropertiesToSuppress -notcontains $_})}
+else {$CSVExportPropertySet += $ScalarAttributes}
+$CSVExportPropertySet
 }#get-CSVExportPropertySet
 function Get-ADdrive {get-psdrive -PSProvider ActiveDirectory}
-function Start-WindowsSecurity {
+function Start-WindowsSecurity
+{
 #useful in RDP sessions especially on Windows 2012
 (New-Object -COM Shell.Application).WindowsSecurity()
 }
@@ -666,12 +668,15 @@ function Get-GUIDFromImmutableID
 function Get-Checksum
 {
     Param (
-        [string]$File=$(throw("You must specify a filename to get the checksum of."))
+        [parameter(Mandatory=$True)]
+        [ValidateScript({Test-FilePath -path $_})]
+        [string]$File
         ,
         [ValidateSet("sha1","md5")]
         [string]$Algorithm="sha1"
     )
-    $fs = new-object System.IO.FileStream $File, "Open"
+    $FileObject = Get-Item -Path $File
+    $fs = new-object System.IO.FileStream $($FileObject.FullName), "Open"
     $algo = [type]"System.Security.Cryptography.$Algorithm"
     $crypto = $algo::Create()
     $hash = [BitConverter]::ToString($crypto.ComputeHash($fs)).Replace("-", "")
@@ -751,6 +756,24 @@ function Test-IP
         [String]$ip    
     )
     $ip
+}
+Function Test-FilePath
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory = $true)]
+[string]$path
+)
+if (Test-Path -Path $path)
+{
+    $item = Get-Item -Path $path
+    if ($item.GetType().fullname -eq 'System.IO.FileInfo')
+    {Write-Output $true}
+    else
+    {Write-Output $false}
+}
+else
+{Write-Output $false}
 }
 function Test-CurrentPrincipalIsAdmin
 {
@@ -1098,7 +1121,8 @@ Process {
 End {}
 }
 #Logging and Data Export Functions
-function Get-FirstNonNullEmptyStringVariableValueFromScopeHierarchy {
+function Get-FirstNonNullEmptyStringVariableValueFromScopeHierarchy
+{
 Param(
 [string]$VariableName
 ,
@@ -1119,7 +1143,8 @@ do {
 until (-not [string]::IsNullOrWhiteSpace($value) -or $stopwatch.ElapsedMilliseconds -ge $timeout -or $scope -ge $ScopeLevels)
 Return $value
 }
-Function Write-Log {
+Function Write-Log
+{
     [cmdletbinding()]
     Param(
         [Parameter(Mandatory=$true,Position=0)]
@@ -1208,37 +1233,41 @@ Function Write-StartFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction starting."}
 Function Export-Data {
-    [cmdletbinding(DefaultParameterSetName='delimited')]
-    param(
-        $ExportFolderPath = $script:ExportDataPath
-        ,
-        [string]$DataToExportTitle
-        ,
-        $DataToExport
-        ,
-        [parameter(ParameterSetName='xml/json')]
-        [int]$Depth = 2
-        ,
-        [parameter(ParameterSetName='delimited')]
-        [parameter(ParameterSetName='xml/json')]
-        [ValidateSet('xml','csv','json')]
-        [string]$DataType
-        ,
-        [parameter(ParameterSetName='delimited')]
-        [switch]$Append
-        ,
-        [switch]$ReturnExportFilePath
-    )
-    #Determine Export File Path
-    $stamp = Get-TimeStamp
-    switch ($DataType) {
-        'xml' {
+[cmdletbinding(DefaultParameterSetName='delimited')]
+param(
+    $ExportFolderPath = $script:ExportDataPath
+    ,
+    [string]$DataToExportTitle
+    ,
+    $DataToExport
+    ,
+    [parameter(ParameterSetName='xml/json')]
+    [int]$Depth = 2
+    ,
+    [parameter(ParameterSetName='delimited')]
+    [parameter(ParameterSetName='xml/json')]
+    [ValidateSet('xml','csv','json')]
+    [string]$DataType
+    ,
+    [parameter(ParameterSetName='delimited')]
+    [switch]$Append
+    ,
+    [switch]$ReturnExportFilePath
+)
+#Determine Export File Path
+$stamp = Get-TimeStamp
+    switch ($DataType)
+    {
+        'xml'
+        {
             $ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.xml'
         }#xml
-        'json' {
+        'json'
+        {
             $ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.json'
         }#json
-        'csv' {
+        'csv'
+        {
             if ($Append) {
                 $mostrecent = @(get-childitem -Path $ExportFolderPath -Filter "*$DataToExportTitle.csv" | Sort-Object -Property CreationTime -Descending | Select-Object -First 1)
                 if ($mostrecent.count -eq 1) {
@@ -1251,15 +1280,20 @@ Function Export-Data {
     }#switch $dataType
     #Attempt Export of Data to File
     Write-Log -Message "Attempting: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose
-    Try {
-        switch ($DataType) {
-            'xml' {
+    Try
+    {
+        switch ($DataType)
+        {
+            'xml'
+            {
                 $DataToExport | Export-Clixml -Depth $Depth -Path $ExportFilePath -ErrorAction Stop -Encoding Unicode
             }#xml
-            'json' {
+            'json'
+            {
                 $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop  | Out-File -FilePath $ExportFilePath -Encoding unicode -ErrorAction Stop
             }#json
-            'csv' {
+            'csv'
+            {
                 if ($append) {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop -Append}#if
                 else {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop}#else
             }#csv
@@ -1267,12 +1301,14 @@ Function Export-Data {
         if ($ReturnExportFilePath) {Write-Output $ExportFilePath}
         Write-Log -Message "Succeeded: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose
     }#try
-    Catch {
+    Catch
+    {
         Write-Log -Message "FAILED: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose -ErrorLog
         Write-Log -Message $_.tostring() -ErrorLog
     }#catch
 }#Export-Data
-function Export-Credential {
+function Export-Credential
+{
     param(
         [string]$message
         ,
