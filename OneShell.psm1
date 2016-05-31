@@ -775,6 +775,24 @@ if (Test-Path -Path $path)
 else
 {Write-Output $false}
 }
+Function Test-DirectoryPath
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory = $true)]
+[string]$path
+)
+if (Test-Path -Path $path)
+{
+    $item = Get-Item -Path $path
+    if ($item.GetType().fullname -eq 'System.IO.DirectoryInfo')
+    {Write-Output $true}
+    else
+    {Write-Output $false}
+}
+else
+{Write-Output $false}
+}
 function Test-CurrentPrincipalIsAdmin
 {
     $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
@@ -4375,16 +4393,16 @@ param
     }
     #return the admin profile raw object to the pipeline
     Return $newAdminUserProfile
-}
+}# New-AdminUserProfile
 function Set-AdminUserProfile
 {
     [cmdletbinding()]
     param(
         [parameter(ParameterSetName = 'Object')]
-        $profile 
+        [psobject]$profile 
         ,
         [parameter(ParameterSetName = 'Identity')]
-        $Identity
+        [string]$Identity
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Object' {$editAdminUserProfile = $profile}
@@ -4392,13 +4410,21 @@ function Set-AdminUserProfile
     }
     $OrganizationIdentity = $editAdminUserProfile.General.OrganizationIdentity
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
-    switch ($targetOrgProfile.Count) {
+    switch ($targetOrgProfile.Count)
+    {
         1 {}
-        0 {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
-        Default {throw "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"}
+        0
+        {
+            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+        Default
+        {
+            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
     }
-    #Get Org Profile Defined Systems
-    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+    Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
     #Set Admin Profile to Default or Not Default
     if ($editAdminUserProfile.General.Default) {
         $prompt = "This admin profile is currently the Default Admin Profile.`n`nShould this be the default profile for Organization Profile $($targetorgprofile.general.name)?"
@@ -4409,31 +4435,76 @@ function Set-AdminUserProfile
         $defaultChoiceDefault = 1
     }
     $editAdminUserProfile.General.Default = if ((Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice $defaultChoiceDefault -Title 'Default Profile?') -eq 0) {$true} else {$false}
+    #Get the Admin user's email address
+    if (Test-Member -InputObject $editAdminUserProfile.General -Name MailFrom -MemberType NoteProperty)
+    {
+        $currentEmailAddress = $editAdminUserProfile.General.MailFrom
+    }
+    else
+    {
+        $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
+    }
+    do
+    {
+        $message = 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.'
+        $windowtitle = 'OneShell Admin Profile E-mail Address'
+        $address = Read-InputBoxDialog -Message $message -WindowTitle $windowtitle -DefaultText $currentEmailAddress
+    }
+    until
+    (Test-EmailAddress -EmailAddress $address)
+    $editAdminUserProfile.General.MailFrom = $address
+    #Get Org Profile Defined Systems
+    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
+    if ($MailRelayEndpoints.Count -gt 1)
+    {
+        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
+        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}}
+        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
+        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
+    }
+    else
+    {
+        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
+    }
+    if (-not (Test-Member -InputObject $editAdminUserProfile.General -Name MailRelayEndpointToUse -MemberType NoteProperty))
+    {
+        $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
+    }
+    $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
     #Get User's Credentials
     $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -credentials $editAdminUserProfile.Credentials -edit)
     #Prepare Stored Credentials to associate with one or more systems
     $exportcredentials | foreach {$_.systems=@()}
     #Prepare Edited System Entries variable:
     $EditedSystemEntries = @()
-    foreach ($sys in $systems) {
-        $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
-        $currentAutoConnect = $editAdminUserProfile.Systems | Where-Object -FilterScript {$_.Identity -eq $Sys.Identity} | Foreach-Object {$_.Autoconnect}
-        [string]$currentCredential = $editAdminUserProfile.Credentials | Where-Object -FilterScript {$_.systems-contains $sys.Identity} | Foreach-Object {$_.UserName}
-        switch ($currentAutoConnect) {
-            $true {
-                $prompt = "This system currently is set to Auto Connect in this profile.`n`nDo you want to Auto Connect to this system with this admin profile? `n`n$label"
-                $DefaultChoiceAC = 0
-            }
-            $false {
-                $prompt = "This system currently is NOT set to Auto Connect in this profile.`n`nDo you want to Auto Connect to this system with this admin profile? `n`n$label"
-                $DefaultChoiceAC = 1
-            }
-            Default {
-                $prompt = "Do you want to Auto Connect to this system with this admin profile? `n`n$label"
-                $DefaultChoiceAC = -1
-            }
+    :SysCredAssociation foreach ($sys in $systems) {
+        if ($sys.AuthenticationRequired -eq $false) {Continue SysCredAssociation}
+        if ($sys.SystemType -eq 'MailRelayEndpoints')
+        {
+            if ($sys.Identity -eq $MailRelayEndpointToUse) {$autoConnectChoice = 1}
         }
-        $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice $DefaultChoiceAC -Title 'Auto Connect?'
+        else
+        {
+            $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
+            $currentAutoConnect = $editAdminUserProfile.Systems | Where-Object -FilterScript {$_.Identity -eq $Sys.Identity} | Foreach-Object {$_.Autoconnect}
+            [string]$currentCredential = $editAdminUserProfile.Credentials | Where-Object -FilterScript {$_.systems-contains $sys.Identity} | Foreach-Object {$_.UserName}
+            switch ($currentAutoConnect) {
+                $true {
+                    $prompt = "This system currently is set to Auto Connect in this profile.`n`nDo you want to Auto Connect to this system with this admin profile? `n`n$label"
+                    $DefaultChoiceAC = 0
+                }
+                $false {
+                    $prompt = "This system currently is NOT set to Auto Connect in this profile.`n`nDo you want to Auto Connect to this system with this admin profile? `n`n$label"
+                    $DefaultChoiceAC = 1
+                }
+                Default {
+                    $prompt = "Do you want to Auto Connect to this system with this admin profile? `n`n$label"
+                    $DefaultChoiceAC = -1
+                }
+            }
+            $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice $DefaultChoiceAC -Title 'Auto Connect?'
+        }
         switch ($autoConnectChoice) {
             0 {
                 $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $true}
@@ -4500,7 +4571,7 @@ function Set-AdminUserProfile
     }
     ##>
     Return $editAdminUserProfile
-}
+}# Set-AdminUserProfile
 function Add-AdminUserProfileFolders {
     [cmdletbinding()]
     param(
