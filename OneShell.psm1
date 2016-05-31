@@ -4467,9 +4467,9 @@ function Set-AdminUserProfile
     {
         $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
     }
-    if (-not (Test-Member -InputObject $editAdminUserProfile.General -Name MailRelayEndpointToUse -MemberType NoteProperty))
+    if (-not (Test-Member -InputObject $editAdminUserProfile.General -Name MailRelayEndpointToUse))
     {
-        $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
+        $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $MailRelayEndpointToUse
     }
     $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
     #Get User's Credentials
