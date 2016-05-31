@@ -1371,20 +1371,23 @@ param(
 } 
 Function Send-OneShellMailMessage
 {
-[cmdletbinding()]
+[cmdletbinding(DefaultParameterSetName = 'Normal')]
 param(
+    [parameter(ParameterSetName = 'Test')]
     [switch]$Test
     ,
     [string]$Body
     ,
     [switch]$BodyAsHtml
     ,
-    [parameter(Mandatory=$true)]
+    [parameter(ParameterSetName = 'Test')]
+    [parameter(ParameterSetName = 'Normal',Mandatory=$true)]
     [string]$Subject
     ,
     [string[]]$Attachments
     ,
-    [parameter(Mandatory=$true)]
+    [parameter(ParameterSetName = 'Test')]
+    [parameter(ParameterSetName = 'Normal',Mandatory=$true)]
     [validatescript({Test-EmailAddress -EmailAddress $_})]
     [string[]]$To
     ,
@@ -1414,7 +1417,12 @@ param(
             $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
     }
-    if ($test) {$To = $Script:CurrentAdminUserProfile.General.MailFrom}
+    if ($test)
+    {
+        $To = $Script:CurrentAdminUserProfile.General.MailFrom
+        $Subject = "Test message from OneShell at $(Get-TimeStamp)"
+        $Body = $Subject
+    }
     $SendMailParams = @{
         SmtpServer = $SMTPServer
         From = $($Script:CurrentAdminUserProfile.General.MailFrom) #need to add this to the admin user profile creations
@@ -4471,7 +4479,7 @@ function Set-AdminUserProfile
     {
         $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $MailRelayEndpointToUse
     }
-    $editAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+    $editAdminUserProfilewwwwwwwwwwww.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
     #Get User's Credentials
     $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -credentials $editAdminUserProfile.Credentials -edit)
     #Prepare Stored Credentials to associate with one or more systems
