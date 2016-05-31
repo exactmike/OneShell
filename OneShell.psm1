@@ -4311,7 +4311,7 @@ param
     if ($MailRelayEndpoints.Count -gt 1)
     {
         $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}}
+        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
         $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
         $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
     }
@@ -4436,7 +4436,7 @@ function Set-AdminUserProfile
     }
     $editAdminUserProfile.General.Default = if ((Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice $defaultChoiceDefault -Title 'Default Profile?') -eq 0) {$true} else {$false}
     #Get the Admin user's email address
-    if (Test-Member -InputObject $editAdminUserProfile.General -Name MailFrom -MemberType NoteProperty)
+    if (Test-Member -InputObject $editAdminUserProfile.General -Name MailFrom)
     {
         $currentEmailAddress = $editAdminUserProfile.General.MailFrom
     }
@@ -4459,7 +4459,7 @@ function Set-AdminUserProfile
     if ($MailRelayEndpoints.Count -gt 1)
     {
         $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}}
+        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
         $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
         $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
     }
