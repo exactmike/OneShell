@@ -4471,7 +4471,7 @@ function Set-AdminUserProfile
     {
         $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $MailRelayEndpointToUse
     }
-    $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+    $editAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
     #Get User's Credentials
     $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -credentials $editAdminUserProfile.Credentials -edit)
     #Prepare Stored Credentials to associate with one or more systems
