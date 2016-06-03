@@ -4855,7 +4855,7 @@ param
 #Global Variabls to be replaced with Module/Script Level Variables in a coming release
 function Set-OneShellVariables
 {
-    Write-Log -message 'Setting OneShell Module Variables'
+    #Write-Log -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $Script:PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
     [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
