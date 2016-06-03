@@ -1170,14 +1170,12 @@ Function Write-Log
         [string]$Message
         ,
         [Parameter(Mandatory=$false,Position=1)]
-        [ValidateScript({if (-not [string]::IsNullOrWhiteSpace($Script:LogPath)) {if ([string]::IsNullOrWhiteSpace($_)){$false} else {$true}}})]
         [string]$LogPath
         ,
         [Parameter(Position=2)]
         [switch]$ErrorLog
         ,
         [Parameter(Mandatory=$false,Position=3)]
-        [ValidateScript({if (-not [string]::IsNullOrWhiteSpace($Script:ErrorLogPath)) {if ([string]::IsNullOrWhiteSpace($_)){$false} else {$true}}})]
         [string]$ErrorLogPath
         ,
         [Parameter(Mandatory=$false,Position=4)]
