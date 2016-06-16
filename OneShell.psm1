@@ -4082,12 +4082,17 @@ $systems
 }
 Function Use-AdminUserProfile
 {
+[cmdletbinding()]
 param(
     [parameter(ParameterSetName = 'Object',ValueFromPipeline=$true)]
     $profile 
     ,
-    [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyname = $true)]
+    [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyname = $true, Mandatory = $true)]
     [string]$Identity
+    ,
+    [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyname = $true)]
+    [ValidateScript({Test-DirectoryPath -Path $_})]
+    [string[]]$Path
 )
 begin
 {
@@ -4097,7 +4102,15 @@ begin
         {}
         'Identity'
         {
-            $profile = $(Get-AdminUserProfile -Identity $Identity -OrgIdentity CurrentOrg -raw)
+            $GetAdminUserProfileParams = @{
+                Identity = $Identity
+                Raw = $true
+            }
+            if ($PSBoundParameters.ContainsKey('Path'))
+            {
+                $GetAdminUserProfileParams.Path = $Path
+            }
+            $profile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
         }
     }
 }#begin
@@ -4152,7 +4165,8 @@ param(
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
-    [string[]]$Location = "$env:UserProfile\OneShell\" #should rename this paramter to path
+    [ValidateScript({Test-DirectoryPath -Path $_})]
+    [string[]]$Path = "$env:UserProfile\OneShell\"
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
@@ -4183,7 +4197,7 @@ if ($PSCmdlet.ParameterSetName -eq 'Imported')
 else
 {
 $outputprofiles = @(
-    foreach ($loc in $Location)
+    foreach ($loc in $Path)
     {
         $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
         if ($JSONProfiles.Count -ge 1) {
@@ -4231,7 +4245,9 @@ Function Import-AdminUserProfile
 [cmdletbinding()]
 param
 (
-$Location #should rename this parameter to path
+[parameter()]
+[ValidateScript({Test-DirectoryPath -Path $_})]
+[string[]]$Path
 ,
 $ProfileType
 ,
@@ -4246,9 +4262,9 @@ $getAdminUserProfileParams=
     raw = $true
     ErrorAction = 'stop'
 }
-if ($PSBoundParameters.ContainsKey('Location'))
+if ($PSBoundParameters.ContainsKey('Path'))
 {
-    $getAdminUserProfileParams.Location = $Location
+    $getAdminUserProfileParams.Location = $Path
 }
 if ($PSBoundParameters.ContainsKey('ProfileType'))
 {
@@ -4426,7 +4442,7 @@ param
         {
             if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop -path $newAdminUserProfile.General.profileFolder)
             {
-                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop -Location $newAdminUserProfile.General.profileFolder)
+                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $newAdminUserProfile.General.profileFolder)
                 {
                     Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
                     Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
@@ -4449,12 +4465,27 @@ function Set-AdminUserProfile
         [parameter(ParameterSetName = 'Object')]
         [psobject]$profile 
         ,
-        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'Identity',Mandatory = $true)]
         [string]$Identity
+        ,
+        [parameter(ParameterSetName = 'Identity')]
+        [ValidateScript({Test-DirectoryPath -Path $_})]
+        [string[]]$Path 
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Object' {$editAdminUserProfile = $profile}
-        'Identity' {$editAdminUserProfile = $(Get-AdminUserProfile -Identity $Identity -raw)}
+        'Identity'
+        {
+            $GetAdminUserProfileParams = @{
+                Identity = $Identity
+                Raw = $true
+            }
+            if ($PSBoundParameters.ContainsKey('Path'))
+            {
+                $GetAdminUserProfileParams.Path = $Path
+            }
+            $editAdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+        }
     }
     $OrganizationIdentity = $editAdminUserProfile.General.OrganizationIdentity
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
@@ -4605,7 +4636,7 @@ function Set-AdminUserProfile
     try {
         if (Add-AdminUserProfileFolders -AdminUserProfile $editAdminUserProfile -ErrorAction Stop -path $editAdminUserProfile.General.ProfileFolder) {
             if (Export-AdminUserProfile -profile $editAdminUserProfile -ErrorAction Stop -path $editAdminUserProfile.General.ProfileFolder) {
-                if (Get-AdminUserProfile -Identity $editAdminUserProfile.Identity.tostring() -ErrorAction Stop -Location $editAdminUserProfile.General.ProfileFolder) {
+                if (Get-AdminUserProfile -Identity $editAdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $editAdminUserProfile.General.ProfileFolder) {
                     Write-Log -Message "Edited Admin Profile with Name: $($editAdminUserProfile.General.Name) and Identity: $($editAdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
                     Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($editAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
                 }
