@@ -1755,9 +1755,12 @@ function Read-Choice {
         [System.Int32]$DefaultChoice = 1
         ,         
         [System.String]$Title = [string]::Empty 
-    )        
-    [System.Management.Automation.Host.ChoiceDescription[]]$Poss = $Choices | ForEach-Object {            
-        New-Object System.Management.Automation.Host.ChoiceDescription "&$($_)", "Sets $_ as an answer."      
+    )   
+    $choiceCount = -1     
+    [System.Management.Automation.Host.ChoiceDescription[]]$Poss = 
+    $Choices | ForEach-Object {
+        $choiceCount++
+        New-Object System.Management.Automation.Host.ChoiceDescription "&$choiceCount $($_)", "Sets $_ as an answer."      
     }       
     $Host.UI.PromptForChoice( $Title, $Message, $Poss, $DefaultChoice )     
 }
