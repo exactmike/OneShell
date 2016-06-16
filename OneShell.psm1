@@ -795,6 +795,9 @@ else
 }
 function Test-IsWriteableDirectory
 {
+#Credits to the following:
+#http://poshcode.org/2236
+#http://stackoverflow.com/questions/9735449/how-to-verify-whether-the-share-has-write-access
     [CmdletBinding()]
     param (
         [parameter()]
