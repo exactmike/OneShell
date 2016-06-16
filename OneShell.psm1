@@ -793,6 +793,42 @@ if (Test-Path -Path $path)
 else
 {Write-Output $false}
 }
+function Test-IsWriteableDirectory
+{
+    [CmdletBinding()]
+    param (
+        [parameter()]
+        [ValidateScript({
+            $IsContainer = Test-Path -Path ($_) -PathType Container
+            if ($IsContainer) 
+            {
+                $Item = Get-Item -Path $_ 
+                if ($item.PsProvider.Name -eq 'FileSystem')
+                {
+                    $true
+                }
+                else
+                {
+                    $false
+                }
+            }
+            else
+            {
+                $false
+            }
+        })]
+        [string]$Path
+    )
+    try {
+        $testPath = Join-Path $Path ([IO.Path]::GetRandomFileName())
+            New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
+        $true
+    } catch {
+        $false
+    } finally {
+        Remove-Item $testPath -ErrorAction SilentlyContinue
+    }
+}
 function Test-CurrentPrincipalIsAdmin
 {
     $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
@@ -4110,7 +4146,7 @@ param(
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
-    [string[]]$Location = "$env:UserProfile\OneShell\"
+    [string[]]$Location = "$env:UserProfile\OneShell\" #should rename this paramter to path
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
@@ -4189,7 +4225,7 @@ Function Import-AdminUserProfile
 [cmdletbinding()]
 param
 (
-$Location
+$Location #should rename this parameter to path
 ,
 $ProfileType
 ,
@@ -4294,7 +4330,7 @@ param
             Name = if ($name) {"$name-" + $targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME} else {$targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME}
             Host = $env:COMPUTERNAME
             OrganizationIdentity = $targetOrgProfile.identity
-            ProfileFolder = $(Read-FolderBrowserDialog -Message 'Select a location for your profile folder. A folder named "OneShell" will be created here if one does not already exist.  Additionally, subfolders for Logs, Input, and Export files will be created under the OneShell folder.' -InitialDirectory $env:UserProfile ) + '\OneShell'
+            ProfileFolder = GetAdminUserProfileFolder
             Default = if ((Read-Choice -Message "Should this be the default profile for Organization Profile $($targetorgprofile.general.name)?" -Choices 'Yes','No' -DefaultChoice 1 -Title 'Default Profile?') -eq 0) {$true} else {$false}
         }
         Systems = @()
@@ -4380,11 +4416,11 @@ param
     #if necessary, create the Admin Profile File System Folders and export the JSON profile file
     try
     {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -location $newAdminUserProfile.General.profileFolder -ErrorAction Stop)
+        if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -path $newAdminUserProfile.General.profileFolder -ErrorAction Stop)
         {
-            if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop)
+            if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop -path $newAdminUserProfile.General.profileFolder)
             {
-                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop)
+                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop -Location $newAdminUserProfile.General.profileFolder)
                 {
                     Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
                     Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
@@ -4561,9 +4597,9 @@ function Set-AdminUserProfile
     $editAdminUserProfile.Systems = $EditedSystemEntries
     #<#
     try {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $editAdminUserProfile -ErrorAction Stop) {
-            if (Export-AdminUserProfile -profile $editAdminUserProfile -ErrorAction Stop) {
-                if (Get-AdminUserProfile -Identity $editAdminUserProfile.Identity.tostring() -ErrorAction Stop) {
+        if (Add-AdminUserProfileFolders -AdminUserProfile $editAdminUserProfile -ErrorAction Stop -path $editAdminUserProfile.General.ProfileFolder) {
+            if (Export-AdminUserProfile -profile $editAdminUserProfile -ErrorAction Stop -path $editAdminUserProfile.General.ProfileFolder) {
+                if (Get-AdminUserProfile -Identity $editAdminUserProfile.Identity.tostring() -ErrorAction Stop -Location $editAdminUserProfile.General.ProfileFolder) {
                     Write-Log -Message "Edited Admin Profile with Name: $($editAdminUserProfile.General.Name) and Identity: $($editAdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
                     Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($editAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
                 }
@@ -4578,14 +4614,33 @@ function Set-AdminUserProfile
     ##>
     Return $editAdminUserProfile
 }# Set-AdminUserProfile
+#supporting functions for AdminUserProfile Editing
+function GetAdminUserProfileFolder
+{
+    $message = "Select a location for your admin user profile directory. A sub-directory named 'OneShell' will be created in the selected directory if one does not already exist. The user profile $($env:UserProfile) is the recommended location.  Additionally, under the OneShell directory, sub-directories for Logs, Input, and Export files will be created."
+    Do
+    {
+        $UserChosenPath = Read-FolderBrowserDialog -Message $message  -InitialDirectory 'MyComputer' 
+        if (Test-IsWriteableDirectory -Path $UserChosenPath)
+        {
+            $ProfileFolderToCreate = Join-Path $UserChosenPath 'OneShell'
+            $IsWriteableFilesystemDirectory = $true
+        }
+    }
+    Until
+    (
+        $IsWriteableFilesystemDirectory
+    )
+    $ProfileFolderToCreate
+}
 function Add-AdminUserProfileFolders {
     [cmdletbinding()]
     param(
         $AdminUserProfile
         ,
-        $location = $env:USERPROFILE + '\OneShell'
+        $path = $env:USERPROFILE + '\OneShell'
     )
-    $AdminUserJSONProfileFolder = $location
+    $AdminUserJSONProfileFolder = $path
     if (-not (Test-Path -Path $AdminUserJSONProfileFolder)) {
         New-Item -Path $AdminUserJSONProfileFolder -ItemType Directory -ErrorAction Stop
     }
