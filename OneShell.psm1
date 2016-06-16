@@ -4359,15 +4359,7 @@ param
         Credentials = @()
     }
     #Get the Admin user's email address
-    do
-    {
-        $message = 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.'
-        $windowtitle = 'OneShell Admin Profile E-mail Address'
-        $address = Read-InputBoxDialog -Message $message -WindowTitle $windowtitle
-    }
-    until
-    (Test-EmailAddress -EmailAddress $address)
-    $newAdminUserProfile.General.MailFrom = $address
+    $newAdminUserProfile.General.MailFrom = GetAdminUserProfileEmailAddress
     #Get Org Profile Defined Systems
     $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
     #Select the mail relay endpoint for the profile to use
@@ -4523,15 +4515,7 @@ function Set-AdminUserProfile
     {
         $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
     }
-    do
-    {
-        $message = 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.'
-        $windowtitle = 'OneShell Admin Profile E-mail Address'
-        $address = Read-InputBoxDialog -Message $message -WindowTitle $windowtitle -DefaultText $currentEmailAddress
-    }
-    until
-    (Test-EmailAddress -EmailAddress $address)
-    $editAdminUserProfile.General.MailFrom = $address
+    $editAdminUserProfile.General.MailFrom = GetAdminUserProfileEmailAddress -CurrentEmailAddress $currentEmailAddress
     #Get Org Profile Defined Systems
     $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
     $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
@@ -4550,7 +4534,7 @@ function Set-AdminUserProfile
     {
         $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $MailRelayEndpointToUse
     }
-    $editAdminUserProfilewwwwwwwwwwww.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+    $editAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
     #Get User's Credentials
     $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -credentials $editAdminUserProfile.Credentials -edit)
     #Prepare Stored Credentials to associate with one or more systems
@@ -4642,14 +4626,13 @@ function Set-AdminUserProfile
                 }
             }
         }
-    
+        $editAdminUserProfile    
     }
     catch {
         Write-Log -Message "FAILED: An Admin User Profile operation failed for $($editAdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
         Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
     }
     ##>
-    Return $editAdminUserProfile
 }# Set-AdminUserProfile
 #supporting functions for AdminUserProfile Editing
 function GetAdminUserProfileFolder
@@ -4669,6 +4652,28 @@ function GetAdminUserProfileFolder
         $IsWriteableFilesystemDirectory
     )
     $ProfileFolderToCreate
+}#function GetAdminUserProfileFolder
+function GetAdminUserProfileEmailAddress
+{
+[cmdletbinding()]
+param(
+    $CurrentEmailAddress
+)
+$ReadInputBoxDialogParams = @{
+    Message = 'Specify a valid E-mail address to be associated with this Admin profile for the sending/receiving of email messages.'
+    WindowTitle =  'OneShell Admin Profile E-mail Address'
+}
+if ($PSBoundParameters.ContainsKey('CurrentEmailAddress'))
+{
+    $ReadInputBoxDialogParams.DefaultText = $CurrentEmailAddress
+} 
+do
+{
+    $address = Read-InputBoxDialog @ReadInputBoxDialogParams
+}
+until
+(Test-EmailAddress -EmailAddress $address)
+$address
 }
 function Add-AdminUserProfileFolders {
     [cmdletbinding()]
@@ -4688,7 +4693,7 @@ function Add-AdminUserProfileFolders {
             New-Item -Path $folder -ItemType Directory -ErrorAction Stop
         }
     }
-    Return $true
+    $true
 }
 function Set-AdminUserProfileCredentials {
     [cmdletbinding(DefaultParameterSetName='New')]
@@ -4763,17 +4768,19 @@ param(
     ,
     $path = "$($Env:USERPROFILE)\OneShell\"
 )
-    $GUID = if ($profile.Identity -is 'GUID') {$name = $($profile.Identity.Guid) + '.JSON'} else {$name = $($profile.Identity) + '.JSON'}
-
-    $fullpath = $path + $name
-    $params =@{
+    if ($profile.Identity -is 'GUID')
+    {$name = $($profile.Identity.Guid) + '.JSON'} 
+    else
+    {$name = $($profile.Identity) + '.JSON'}
+    $fullpath = Join-Path $path $name
+    $ConvertToJsonParams =@{
         InputObject = $profile
         ErrorAction = 'Stop'
         Depth = 4
     }
     try
     {
-        ConvertTo-Json @params | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
+        ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
         Return $true
     }#try
     catch
