@@ -610,7 +610,7 @@ Function Convert-ObjectToHashTable
     }#close process
 
 }
-function ConvertTo-String
+function Convert-SecureStringToString
 {
     <#
         .SYNOPSIS
@@ -1818,9 +1818,10 @@ Function Import-RequiredModule {
         }#try
         catch 
         {
+            $myerror = $Error[0]
             Write-Log -message $message -Verbose -ErrorLog -EntryType Failed 
-            Write-Log -message $_.tostring() -ErrorLog
-            Return $false
+            Write-Log -message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror)
         }#catch
     }#if
     else 
@@ -2730,6 +2731,106 @@ Function Connect-AADRM {
         }
     }#process
 }#function Connect-AADRM 
+Function Connect-SQLDatabase {
+    [cmdletbinding(DefaultParameterSetName = 'SQLDatabase')]
+    Param(
+        [parameter(ParameterSetName='Manual')]
+        $Credential
+    )#param
+    DynamicParam {
+        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
+        # Set the dynamic parameters' name
+        $ParameterName = 'SQLDatabase'
+            
+        # Create the dictionary 
+        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+
+        # Create the collection of attributes
+        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            
+        # Create and set the parameters' attributes
+        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
+        $ParameterAttribute.Mandatory = $true
+        $ParameterAttribute.Position = 2
+        $ParameterAttribute.ParameterSetName = 'SQLDatabase'
+
+        # Add the attributes to the attributes collection
+        $AttributeCollection.Add($ParameterAttribute)
+
+        # Generate and set the ValidateSet 
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Select-Object -ExpandProperty Name)
+        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
+
+        # Add the ValidateSet to the attributes collection
+        $AttributeCollection.Add($ValidateSetAttribute)
+
+        # Add an Alias 
+        #$AliasSet = @('Org','ExchangeOrg')
+        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
+        #$AttributeCollection.Add($AliasAttribute)
+
+        # Create and return the dynamic parameter
+        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
+        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
+        return $RuntimeParameterDictionary
+    }#DynamicParam
+    #Connect to Windows Azure Active Directory Rights Management
+    begin{
+        $ProcessStatus = @{
+            Command = $MyInvocation.MyCommand.Name
+            BoundParameters = $MyInvocation.BoundParameters
+            Outcome = $null
+        }
+        switch ($PSCmdlet.ParameterSetName) {
+            'SQLDatabase' {
+                $Identity = $PSBoundParameters[$ParameterName]
+                $SQLDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Where-Object {$_.name -eq $Identity}
+                $name = $SQLDatabaseObj.Name
+                $SQLServer = $SQLDatabaseObj.Server
+                $Instance = $SQLDatabaseObj.Instance
+                $Database = $SQLDatabaseObj.Database
+                $Credential = $SQLDatabaseObj.credential
+                $Description = $SQLDatabaseObj.description
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
+            }#tenant
+            'Manual' {
+            }#manual
+        }#switch
+    }#begin
+    process 
+    {
+        try 
+        {
+            $message = "Import required module POSH_ADO_SQLServer"
+            Write-Log -Message $message -EntryType Attempting
+            Import-RequiredModule -ModuleName POSH_ADO_SQLServer -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myerror = $Error[0]
+            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
+            Write-Log -Message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror)
+        }
+        try
+        {
+            $message = "Connect to $Description on $SQLServer as User $($Credential.username)."
+            Write-Log -Message $message -EntryType Attempting
+            $SQLConnection = New-SQLServerConnection -server $SQLServer -database $Database -user $credential.username -password $($Credential.password | Convert-SecureStringToString)
+            Write-Log -Message $message -EntryType Succeeded
+            Update-SessionManagementGroups -ManagementGroups $ManagementGroups -Session $SessionName -ErrorAction Stop
+            $true
+        }
+        catch 
+        {
+            $myerror = $Error[0]
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror) 
+        }
+    }#process
+}#function Connect-SQLDatabase 
 Function Connect-PowerShellSystem {
     [cmdletbinding(DefaultParameterSetName = 'Profile')]
     Param(
@@ -2828,12 +2929,12 @@ Function Connect-PowerShellSystem {
                 $Session = New-PsSession -ComputerName $System -Verbose -Credential $Credential -Name $SessionName -ErrorAction Stop
                 Write-Log -Verbose -Message $message -EntryType Succeeded
                 Update-SessionManagementGroups -ManagementGroups $ManagementGroups -Session $SessionName -ErrorAction Stop
-                Return $true
+                $true
             }#Try
             Catch {
                 Write-Log -Verbose -Message $message -ErrorLog -EntryType Failed
                 Write-Log -Verbose -Message $_.tostring() -ErrorLog
-                Return $false
+                $false
             }#catch
         }#if
     }#process 
