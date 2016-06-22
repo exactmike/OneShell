@@ -3364,7 +3364,7 @@ function Find-ADUser {
         [string]$Identity
         ,
         [parameter(Mandatory = $true)]
-        [validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','mailNickname','employeeNumber','extensionattribute5','extensionattribute11','extensionattribute13','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','GivenNameSurname')]
+        [validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','mailNickname','employeeNumber','employeeID','extensionattribute5','extensionattribute11','extensionattribute13','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','GivenNameSurname')]
         $IdentityType
         ,
         [switch]$DoNotPreserveLocation #use this switch when you are already running the commands from the correct AD Drive
@@ -3507,6 +3507,9 @@ function Find-ADUser {
                     }
                     'employeeNumber' {
                         $AdUser = @(Get-ADUser -filter {employeeNumber -eq $ID}  @GetADUserParams)
+                    }
+                    'employeeID'{
+                        $AdUser = @(Get-ADUser -filter {employeeID -eq $ID}  @GetADUserParams)
                     }
                 }#switch
                 Write-Log -Message "Succeeded: Get-ADUser with identifier $ID for Attribute $IdentityType" 
