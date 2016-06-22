@@ -1095,7 +1095,7 @@ if ($ProxyAddress -notlike "{$proxyaddresstype}:*")
     $ProxyAddress = "${$proxyaddresstype}:$ProxyAddress"
 }
 #Test the Proxy Address
-if ($Global:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
+if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
 {
     Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
     Return $false
@@ -5080,6 +5080,7 @@ function Set-OneShellVariables
         'mS-DS-ConsistencyGuid'
         'displayName'
         'employeeNumber'
+        'employeeID'
         'Mail'
         'mailNickname'
         'homeMDB'
@@ -5134,7 +5135,7 @@ function Set-OneShellVariables
         'msExchPoliciesExcluded'
     )#MultiValuedADAttributesToRetrieve
     $Script:AllADAttributesToRetrieve = @($ScalarADAttributesToRetrieve + $MultiValuedADAttributesToRetrieve)
-    $Script:AllADContactAttributesToRetrieve = $Global:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServer')}
+    $Script:AllADContactAttributesToRetrieve = $script:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServer')}
     $Script:Stamp = Get-TimeStamp
     #Module Menu Definitions
     $menudefinition = [pscustomobject]@{
