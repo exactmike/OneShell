@@ -140,13 +140,87 @@ process
 .Parameter TargetObject      The object that was being processed when the error took place.
 .Parameter Message      Describes the Exception to the user.
 .Parameter InnerException      The Exception instance that caused the Exception association with the ErrorRecord.
-.Example      # advanced functions for testing function Test-1 {  [CmdletBinding()]  param(  [Parameter(Mandatory = $true, ValueFromPipeline = $true)]  [String]  $Path  )  process {   foreach ($_path in $Path) {    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue    if (-not $content) {     $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmpty InvalidOperation $_path -Message "File '$_path' is empty."     $PSCmdlet.ThrowTerminatingError($errorRecord)    }   }  } } function Test-2 {  [CmdletBinding()]  param(  [Parameter(Mandatory = $true, ValueFromPipeline = $true)]  [String]  $Path  )  process {   foreach ($_path in $Path) {    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue    if (-not $content) {     $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmptyAgain InvalidOperation $_path -Message "File '$_path' is empty again." -InnerException $Error[0].Exception     $PSCmdlet.ThrowTerminatingError($errorRecord)    }   }  } } # code to test the custom terminating error reports Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green $Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green $Error[0].Exception | Format-List * -Force Remove-Item .\MyEmptyFile.bak -Verbose      Description      ===========      Both advanced functions throw a custom terminating error when an empty file is being processed.          -Function Test-2's custom ErrorRecord includes an inner exception, which is the ErrorRecord reported by function Test-1.      The test code demonstrates this by creating an empty file in the curent directory -which is deleted at the end- and passing its path to both test functions.      The custom ErrorRecord is reported and execution stops for function Test-1, then the ErrorRecord and its Exception are displayed for quick analysis.      Same process with function Test-2; after analyzing the information, compare both ErrorRecord objects and their corresponding Exception objects.          -In the ErrorRecord note the different Exception, CategoryInfo and FullyQualifiedErrorId data.          -In the Exception note the different Message and InnerException data.
-.Example      $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty." $PSCmdlet.ThrowTerminatingError($errorRecord)      Description      ===========      A custom terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through $PSCmdlet's ThrowTerminatingError method.      The $PSCmdlet object is only available within advanced functions.
-.Example      $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty." Write-Error -ErrorRecord $errorRecord      Description      ===========      A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through the Write-Error Cmdlet's ErrorRecord parameter.
-.Inputs      System.String
-.Outputs      System.Management.Automation.ErrorRecord
-.Link      Write-Error      Get-AvailableExceptionsList
-.Notes      Name:      New-ErrorRecord      OriginalAuthor:    Robert Robelo   ModifiedBy: Mike Campbell
+.Example
+# advanced functions for testing
+function Test-1
+{
+[CmdletBinding()] 
+param
+(
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+    [String]$Path
+)
+process
+{
+foreach ($_path in $Path)
+{
+    $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue
+    if (-not $content)
+    {
+        $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmpty InvalidOperation $_path -Message "File '$_path' is empty."
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+}  
+}
+} 
+function Test-2
+{
+[CmdletBinding()]
+param(
+[Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+[String]$Path
+)
+process
+{
+    foreach ($_path in $Path)
+    {
+        $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue
+        if (-not $content)
+        {
+            $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmptyAgain InvalidOperation $_path -Message "File '$_path' is empty again." -InnerException $Error[0].Exception
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+    }
+}
+} 
+# code to test the custom terminating error reports 
+Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose 
+Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green 
+$Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green 
+$Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green 
+$Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green 
+$Error[0].Exception | Format-List * -Force 
+Remove-Item .\MyEmptyFile.bak -Verbose
+Description
+===========
+Both advanced functions throw a custom terminating error when an empty file is being processed.
+Function Test-2's custom ErrorRecord includes an inner exception, which is the ErrorRecord reported by function Test-1.
+The test code demonstrates this by creating an empty file in the curent directory -which is deleted at the end- and passing its path to both test functions.
+The custom ErrorRecord is reported and execution stops for function Test-1, then the ErrorRecord and its Exception are displayed for quick analysis.
+Same process with function Test-2; after analyzing the information, compare both ErrorRecord objects and their corresponding Exception objects.
+    -In the ErrorRecord note the different Exception, CategoryInfo and FullyQualifiedErrorId data.
+    -In the Exception note the different Message and InnerException data.
+.Example
+$errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation
+$Path -Message "File '$Path' is empty."
+$PSCmdlet.ThrowTerminatingError($errorRecord)
+Description
+===========
+A custom terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through $PSCmdlet's ThrowTerminatingError method.
+The $PSCmdlet object is only available within advanced functions.
+.Example
+$errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty."
+Write-Error -ErrorRecord $errorRecord
+Description
+===========
+A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through the Write-Error Cmdlet's ErrorRecord parameter.
+.Inputs System.String
+.Outputs System.Management.Automation.ErrorRecord
+.Link Write-Error Get-AvailableExceptionsList
+.Notes
+    Name:      New-ErrorRecord
+    OriginalAuthor:    Robert Robelo
+    ModifiedBy: Mike Campbell
 #>
 }
 #Useful Functions
@@ -933,13 +1007,13 @@ if (Test-Path -Path variable:Script:TestExchangeAlias)
 {
     if ($RefreshAliasData) 
     {
-        Write-Log -message "New-TestExchangeAlias to run" -Verbose
+        Write-Log -message "Running New-TestExchangeAlias"
         New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
     }
 }
 else 
 {
-    Write-Log -message "New-TestExchangeAlias to run" -Verbose
+    Write-Log -message "Running New-TestExchangeAlias"
     New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
 }
 #Test the Alias
@@ -951,15 +1025,15 @@ if ($Script:TestExchangeAlias.ContainsKey($Alias))
             Return $ConflictingGUIDs
         }
         else {
-            Return $false
+            Write-Output $false
         }
     }
     else {
-        Return $true
+        Write-Output $true
     }
 }
 else {
-    Return $true
+    Write-Output $true
 }
 }
 Function Add-ExchangeAliasToTestExchangeAlias 
@@ -973,7 +1047,7 @@ param(
     if ($Script:TestExchangeAlias.ContainsKey($alias))
     {
         Write-Log -Message "Alias already exists in the TestExchangeAlias Table" -EntryType Failed
-        Return $false
+        Write-Output $false
     }
     else
     {
@@ -1040,13 +1114,13 @@ if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
 {
     if ($RefreshProxyAddressData)
     {
-        Write-Log -message "New-TestExchangeProxyAddress to run" -Verbose
+        Write-Log -message "Running New-TestExchangeProxyAddress"
         New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
     }
 }
 else
 {
-    Write-Log -message "New-TestExchangeProxyAddress to run" -Verbose
+    Write-Log -message "Running New-TestExchangeProxyAddress"
     New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
 }
 #Fix the ProxyAddress if needed
@@ -1065,15 +1139,15 @@ if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
             Return $ConflictingGUIDs
         }
         else {
-            Return $false
+            Write-Output $false
         }
     }
     else {
-        Return $true
+        Write-Output $true
     }
 }
 else {
-    Return $true
+    Write-Output $true
 }
 }
 Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
@@ -1098,7 +1172,7 @@ if ($ProxyAddress -notlike "{$proxyaddresstype}:*")
 if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
 {
     Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
-    Return $false
+    Write-Output $false
 }
 else
 {
@@ -1142,38 +1216,38 @@ Process {
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $ExchangeOrganization -string "-Identity $Identity -ErrorAction SilentlyContinue" -ErrorAction SilentlyContinue
     if ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue) {
-        Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Succeeded -verbose    
-        Return $true
+        Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Succeeded  
+        Write-Output $true
     }
     elseif ($InitiateSynchronization) {
-        Write-Log -Message "Initiating Directory Synchronization and Checking/Waiting for a maximum of $MaxSyncWaitMinutes minutes." -EntryType Notification -Verbose
+        Write-Log -Message "Initiating Directory Synchronization and Checking/Waiting for a maximum of $MaxSyncWaitMinutes minutes." -EntryType Notification
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         $minutes = 0
         Start-DirectorySynchronization
         do {
             Start-Sleep -Seconds $SyncCheckInterval
             Connect-Exchange -ExchangeOrganization $ExchangeOrganization
-            Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Attempting -verbose
+            Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Attempting
             $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $ExchangeOrganization -string "-Identity $Identity -ErrorAction SilentlyContinue" -ErrorAction SilentlyContinue
             #check if we have already waited the DeltaSyncExpectedMinutes.  If so, request a new directory synchronization
             if (($stopwatch.Elapsed.Minutes % $DeltaSyncExpectedMinutes -eq 0) -and ($stopwatch.Elapsed.Minutes -ne $minutes)) {
                 $minutes = $stopwatch.Elapsed.Minutes
-                Write-Log -Message "$minutes minutes of a maximum $MaxSyncWaitMinutes minutes elapsed. Initiating additional Directory Synchronization attempt." -EntryType Notification -Verbose
+                Write-Log -Message "$minutes minutes of a maximum $MaxSyncWaitMinutes minutes elapsed. Initiating additional Directory Synchronization attempt." -EntryType Notification
                 Start-DirectorySynchronization
             }
         }
         until ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue -or $stopwatch.Elapsed.Minutes -ge $MaxSyncWaitMinutes)
         $stopwatch.Stop()
         if ($stopwatch.Elapsed.Minutes -ge $MaxSyncWaitMinutes) {
-            Write-Log -Message "Maximum Synchronization Wait Time Met or Exceeded" -EntryType Notification -ErrorLog -Verbose
+            Write-Log -Message "Maximum Synchronization Wait Time Met or Exceeded" -EntryType Notification -ErrorLog
         }
         if ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue) {
-            Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Succeeded -verbose            
-            Return $true
+            Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Succeeded
+            Write-Output $true
         }
-        else {Return $false}
+        else {Write-Output $false}
     }
-    else {Return $false}
+    else {Write-Output $false}
 }#Process
 End {}
 }
@@ -1198,7 +1272,7 @@ do {
     $scope++
 }
 until (-not [string]::IsNullOrWhiteSpace($value) -or $stopwatch.ElapsedMilliseconds -ge $timeout -or $scope -ge $ScopeLevels)
-Return $value
+Write-Output $value
 }
 Function Write-Log
 {
@@ -1334,7 +1408,8 @@ $stamp = Get-TimeStamp
         }#csv
     }#switch $dataType
     #Attempt Export of Data to File
-    Write-Log -Message "Attempting: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose
+    $message = "Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath"
+    Write-Log -Message $message -EntryType Attempting
     Try
     {
         switch ($DataType)
@@ -1354,7 +1429,7 @@ $stamp = Get-TimeStamp
             }#csv
         }
         if ($ReturnExportFilePath) {Write-Output $ExportFilePath}
-        Write-Log -Message "Succeeded: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose
+        Write-Log -Message $message -EntryType Succeeded
     }#try
     Catch
     {
@@ -1385,7 +1460,7 @@ function Export-Credential
         Password = $ExportPassword
         Systems = @($systems)
     }
-    return $exportCredential
+    Write-Output $exportCredential
 }
 Function Remove-AgedFiles
 {
@@ -1709,12 +1784,12 @@ Function Read-AnyKey {
             Write-Host -NoNewline "."
         }       
         If ($secondsCounter -eq $secondsToWait) { 
-            Write-Host "`r`n"
-            return $false;
+            Write-Host "`r`n" #yuck?
+            Write-Output $false
         }
     }
-    Write-Host "`r`n"
-    return $true;
+    Write-Host "`r`n" #yuck?
+    Write-Output $true;
 }
 function Read-InputBoxDialog { # Show input box popup and return the value entered by the user. 
     param(
@@ -1725,7 +1800,7 @@ function Read-InputBoxDialog { # Show input box popup and return the value enter
 
     Add-Type -AssemblyName Microsoft.VisualBasic     
     $inputbox = [Microsoft.VisualBasic.Interaction]::InputBox($Message, $WindowTitle, $DefaultText)
-    $inputbox
+    Write-Output $inputbox
 } 
 function Read-OpenFileDialog {
     param(
@@ -1745,7 +1820,7 @@ function Read-OpenFileDialog {
     $openFileDialog.ShowHelp = $true
     # Without this line the ShowDialog() function may hang depending on system configuration and running from console vs. ISE.     
     $openFileDialog.ShowDialog() > $null
-    if ($AllowMultiSelect) { return $openFileDialog.Filenames } else { return $openFileDialog.Filename } 
+    if ($AllowMultiSelect) { Write-Output $openFileDialog.Filenames } else { Write-Output $openFileDialog.Filename } 
 }  
 function Read-Choice {     
     Param(
@@ -1780,7 +1855,7 @@ function Read-FolderBrowserDialog {# Show an Open Folder Dialog and return the d
     $folder = $app.BrowseForFolder(0, $Message, $browseForFolderOptions, $InitialDirectory)     
     if ($folder) { $selectedDirectory = $folder.Self.Path } else { $selectedDirectory = '' }     
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($app) > $null    
-    return $selectedDirectory
+    Write-Output $selectedDirectory
 }
 ##########################################################################################################
 #Remote System Connection Functions
@@ -1790,7 +1865,7 @@ Function Import-RequiredModule {
     param
     (
     [parameter(Mandatory=$true)]
-    [ValidateSet('ActiveDirectory','MSOnline','AADRM','LyncOnlineConnector')]
+    [ValidateSet('ActiveDirectory','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer')]
     [string]$ModuleName
     )
     #Do any custom environment preparation per specific module
@@ -1811,14 +1886,14 @@ Function Import-RequiredModule {
         try 
         {
             $message = "Import the $ModuleName Module"
-            Write-Log -message $message -Verbose -EntryType Attempting
+            Write-Log -message $message -EntryType Attempting
             Import-Module -Name $ModuleName -Global -ErrorAction Stop
-            Write-Log -message $message -Verbose -EntryType Succeeded
-            Return $true
+            Write-Log -message $message -EntryType Succeeded
+            Write-Output $true
         }#try
         catch 
         {
-            $myerror = $Error[0]
+            $myerror = $_
             Write-Log -message $message -Verbose -ErrorLog -EntryType Failed 
             Write-Log -message $myerror.tostring() -ErrorLog
             $PSCmdlet.ThrowTerminatingError($myerror)
@@ -1827,7 +1902,7 @@ Function Import-RequiredModule {
     else 
     {
         Write-Log -EntryType Notification -Message "$ModuleName Module is already loaded."
-        Return $true
+        Write-Output $true
     }
 }#Import-RequiredModule
 Function Connect-Exchange {
@@ -1900,7 +1975,7 @@ Function Connect-Exchange {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         switch ($PSCmdlet.ParameterSetName) {
@@ -1940,7 +2015,7 @@ Function Connect-Exchange {
             #Write-Log -Message "Existing session for $SessionName exists"
             #Write-Log -Message "Checking $SessionName State" 
             if ($existingsession.State -ne 'Opened') {
-                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'" -Verbose
+                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'"
                 Remove-PSSession -Name $SessionName 
                 $UseExistingSession = $False
             }#if
@@ -2009,10 +2084,10 @@ Function Connect-Exchange {
                     }
                 }
                 try {
-                    Write-Log -Message "Attempting: Creation of Remote Session $SessionName to Exchange System $orgName" -Verbose
+                    Write-Log -Message "Attempting: Creation of Remote Session $SessionName to Exchange System $orgName"
                     $sessionobj = New-PSSession @sessionParams -ErrorAction Stop
-                    Write-Log -Message "Succeeded: Creation of Remote Session to Exchange System $orgName" -Verbose
-                    Write-Log -Message "Attempting: Import Exchange Session $SessionName and Module" -Verbose 
+                    Write-Log -Message "Succeeded: Creation of Remote Session to Exchange System $orgName"
+                    Write-Log -Message "Attempting: Import Exchange Session $SessionName and Module" 
                     $ImportPSSessionParams = @{
                         AllowClobber = $true
                         DisableNameChecking = $true
@@ -2029,7 +2104,7 @@ Function Connect-Exchange {
                         $ImportModuleParams.Prefix = $CommandPrefix
                     }
                     Import-Module (Import-PSSession @ImportPSSessionParams) @ImportModuleParams
-                    Write-Log -Message "Succeeded: Import Exchange Session $SessionName and Module" -Verbose 
+                    Write-Log -Message "Succeeded: Import Exchange Session $SessionName and Module" 
                     if ($orgtype -eq 'OnPremises') {
                         if ($PreferredDomainControllers.Count -ge 1) {
                             $splat=@{ViewEntireForest=$true;SetPreferredDomainControllers=$PreferredDomainControllers;ErrorAction='Stop'}
@@ -2039,13 +2114,13 @@ Function Connect-Exchange {
                         }#else    
                         Invoke-ExchangeCommand -cmdlet Set-ADServerSettings -ExchangeOrganization $orgName -splat $splat
                     }#if
-                    Return $true
-                    Write-Log -Message "Succeeded: Connect to Exchange System $orgName" -Verbose
+                    Write-Output $true
+                    Write-Log -Message "Succeeded: Connect to Exchange System $orgName"
                 }#try
                 catch {
                     Write-Log -Message "Failed: Connect to Exchange System $orgName" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
-                    Return $False
+                    Write-Output $False
                     $_
                 }#catch
             }#$false
@@ -2122,7 +2197,7 @@ Function Connect-Skype {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         switch ($PSCmdlet.ParameterSetName) {
@@ -2164,7 +2239,7 @@ Function Connect-Skype {
             Write-Log -Message "Checking $SessionName State" 
             if ($existingsession.State -ne 'Opened')
             {
-                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'" -Verbose
+                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'"
                 Remove-PSSession -Name $SessionName 
                 $UseExistingSession = $False
             }#if
@@ -2199,7 +2274,7 @@ Function Connect-Skype {
                             {
                                 Write-Log -Message 'Unable to load LyncOnlineConnector Module' -EntryType Failed -ErrorLog -Verbose
                                 Write-Log -Message $_.tostring() -ErrorLog 
-                                Return $false
+                                Write-Output $false
                             }
                             $Global:ErrorActionPreference = 'Stop'
                             Invoke-SkypeCommand -cmdlet 'Get-CsTenantFederationConfiguration' -SkypeOrganization $orgName -string '-erroraction Stop'
@@ -2250,10 +2325,10 @@ Function Connect-Skype {
                 }
                 try {
                     $message = "Creation of Remote Session $SessionName to Skype System $orgName"
-                    Write-Log -Message $message -Verbose -entryType Attempting
+                    Write-Log -Message $message -entryType Attempting
                     $sessionobj = New-cSonlineSession @sessionParams -ErrorAction Stop
-                    Write-Log -Message $message -Verbose -EntryType Succeeded
-                    Write-Log -Message "Attempting: Import Skype Session $SessionName and Module" -Verbose 
+                    Write-Log -Message $message -EntryType Succeeded
+                    Write-Log -Message "Attempting: Import Skype Session $SessionName and Module" 
                     $ImportPSSessionParams = @{
                         AllowClobber = $true
                         DisableNameChecking = $true
@@ -2270,14 +2345,14 @@ Function Connect-Skype {
                         $ImportModuleParams.Prefix = $CommandPrefix
                     }
                     Import-Module (Import-PSSession @ImportPSSessionParams) @ImportModuleParams
-                    Write-Log -Message "Succeeded: Import Skype Session $SessionName and Module" -Verbose 
-                    Return $true
-                    Write-Log -Message "Succeeded: Connect to Skype System $orgName" -Verbose
+                    Write-Log -Message "Succeeded: Import Skype Session $SessionName and Module" 
+                    Write-Output $true
+                    Write-Log -Message "Succeeded: Connect to Skype System $orgName"
                 }#try
                 catch {
                     Write-Log -Message "Failed: Connect to Skype System $orgName" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
-                    Return $False
+                    Write-Output $False
                     $_
                 }#catch
             }#$false
@@ -2333,7 +2408,7 @@ Function Connect-AADSync {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
@@ -2359,7 +2434,7 @@ Function Connect-AADSync {
             #Write-Log -Message "Existing session for $SessionName exists"
             #Write-Log -Message "Checking $SessionName State" 
             if ($existingsession.State -ne 'Opened') {
-                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'" -Verbose
+                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'"
                 Remove-PSSession -Name $SessionName 
                 $UseExistingSession = $False
             }#if
@@ -2373,10 +2448,10 @@ Function Connect-AADSync {
             $UseExistingSession = $false
         }#catch
         if ($UseExistingSession -eq $False) {
-            Write-Log -Verbose -Message "Connecting to Directory Synchronization Server $server as User $($credential.username)."
+            Write-Log -Message "Connecting to Directory Synchronization Server $server as User $($credential.username)."
             Try {
-                $Session = New-PsSession -ComputerName $Server -Verbose -Credential $Credential -Name $SessionName -ErrorAction Stop
-                Write-Log -Message "Attempting: Import AADSync Session $SessionName and Module" -Verbose 
+                $Session = New-PsSession -ComputerName $Server -Credential $Credential -Name $SessionName -ErrorAction Stop
+                Write-Log -Message "Attempting: Import AADSync Session $SessionName and Module" 
                 if ($usePrefix) {
                     Invoke-Command -Session $Session -ScriptBlock {Import-Module ADSync -DisableNameChecking} -ErrorAction Stop
                     Import-Module (Import-PSSession -Session $Session -Module ADSync -DisableNameChecking -ErrorAction Stop -Prefix $CommandPrefix) -Global -DisableNameChecking -ErrorAction Stop -Prefix $CommandPrefix
@@ -2385,7 +2460,7 @@ Function Connect-AADSync {
                     Invoke-Command -Session $Session -ScriptBlock {Import-Module ADSync -DisableNameChecking} -ErrorAction Stop
                     Import-Module (Import-PSSession -Session $Session -Module ADSync -DisableNameChecking -ErrorAction Stop) -Global -DisableNameChecking -ErrorAction Stop 
                 }
-                Write-Log -Message "Succeeded: Import AADSync Session $SessionName and Module" -Verbose 
+                Write-Log -Message "Succeeded: Import AADSync Session $SessionName and Module" 
                 if ((Invoke-Command -Session (Get-PSSession -Name $SessionName) -ScriptBlock {Get-Command -Module ADSync | select -ExpandProperty Name}) -contains 'Get-ADSyncScheduler') 
                 {
                 if ($usePrefix) {$functionstring = "Function Global:Start-$($CommandPrefix)DirectorySynchronization {"}
@@ -2425,12 +2500,12 @@ Function Connect-AADSync {
                 }
                 $function = [scriptblock]::Create($functionstring)
                 &$function
-                Return $true
+                Write-Output $true
             }#Try
             Catch {
                 Write-Log -Verbose -Message "ERROR: Connection to $server failed." -ErrorLog
                 Write-Log -Verbose -Message $_.tostring() -ErrorLog
-                Return $false
+                Write-Output $false
             }#catch
         }#if
     }#process 
@@ -2488,7 +2563,7 @@ Function Connect-ADInstance {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         $ProcessStatus = @{
@@ -2555,12 +2630,12 @@ Function Connect-ADInstance {
             if ($Description) {$NewPSDriveParams.Description = $Description}
             if ($credential) {$NewPSDriveParams.Credential = $Credential}
             try {
-                Write-Log -Message "Attempting: Connect PS Drive $name`: to $Description" -Verbose
+                Write-Log -Message "Attempting: Connect PS Drive $name`: to $Description"
                 if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop) {
                     New-PSDrive @NewPSDriveParams | Out-Null
                 }#if
-                Write-Log -Message "Succeeded: Connect PS Drive $name`: to $Description" -Verbose
-                Return $true
+                Write-Log -Message "Succeeded: Connect PS Drive $name`: to $Description"
+                Write-Output $true
             }#try
             catch {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
@@ -2612,7 +2687,7 @@ Function Connect-AzureAD {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory
     begin{
@@ -2636,17 +2711,17 @@ Function Connect-AzureAD {
     {
             try 
             {
-                Import-RequiredModule -ModuleName MSOnline -ErrorAction Stop
-                Write-Log -Message "Attempting: Connect to Windows Azure AD Administration with User $($Credential.username)." -Verbose
+                $ModuleStatus = Import-RequiredModule -ModuleName MSOnline -ErrorAction Stop
+                Write-Log -Message "Attempting: Connect to Windows Azure AD Administration with User $($Credential.username)."
                 Connect-MsolService -Credential $Credential -ErrorAction Stop
-                Write-Log -Message "Succeeded: Connect to Windows Azure AD Administration with User $($Credential.username)." -Verbose
-                Return $true
+                Write-Log -Message "Succeeded: Connect to Windows Azure AD Administration with User $($Credential.username)."
+                Write-Output $true
             }
             Catch 
             {
                 Write-Log -Message "FAILED: Connect to Windows Azure AD Administration with User $($Credential.username)." -Verbose -ErrorLog
                 Write-Log -Message $_.tostring()
-                Return $false 
+                Write-Output $false 
             }
     } #process
     <#Proxy for connect-msolservice
@@ -2695,7 +2770,7 @@ Function Connect-AADRM {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
     begin{
@@ -2717,17 +2792,17 @@ Function Connect-AADRM {
     {
         try 
         {
-            Import-RequiredModule -ModuleName AADRM -ErrorAction Stop
-            Write-Log -Message "Attempting: Connect to Azure AD RMS Administration with User $($Credential.username)." -Verbose
+            $ModuleStatus = Import-RequiredModule -ModuleName AADRM -ErrorAction Stop
+            Write-Log -Message "Attempting: Connect to Azure AD RMS Administration with User $($Credential.username)."
             Connect-AadrmService -Credential $Credential -errorAction Stop | Out-Null
-            Write-Log -Message "Succeeded: Connect to Azure AD RMS Administration with User $($Credential.username)." -Verbose
-            Return $true
+            Write-Log -Message "Succeeded: Connect to Azure AD RMS Administration with User $($Credential.username)."
+            Write-Output $true
         }
         catch 
         {
             Write-Log -Message "FAILED: Connect to Azure AD RMS Administration with User $($Credential.username)." -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
-            Return $false 
+            Write-Output $false 
         }
     }#process
 }#function Connect-AADRM 
@@ -2772,7 +2847,7 @@ Function Connect-SQLDatabase {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
     begin{
@@ -2803,12 +2878,12 @@ Function Connect-SQLDatabase {
         {
             $message = "Import required module POSH_ADO_SQLServer"
             Write-Log -Message $message -EntryType Attempting
-            Import-RequiredModule -ModuleName POSH_ADO_SQLServer -ErrorAction Stop
+            $ModuleStatus = Import-RequiredModule -ModuleName POSH_ADO_SQLServer -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
         {
-            $myerror = $Error[0]
+            $myerror = $_
             Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
             Write-Log -Message $myerror.tostring() -ErrorLog
             $PSCmdlet.ThrowTerminatingError($myerror)
@@ -2817,14 +2892,18 @@ Function Connect-SQLDatabase {
         {
             $message = "Connect to $Description on $SQLServer as User $($Credential.username)."
             Write-Log -Message $message -EntryType Attempting
-            $SQLConnection = New-SQLServerConnection -server $SQLServer -database $Database -user $credential.username -password $($Credential.password | Convert-SecureStringToString)
+            Write-Warning -Message "Connect-SQLDatabase currently uses Windows Integrated Authentication to connect to SQL Servers and ignores supplied credentials"
+            $SQLConnection = New-SQLServerConnection -server $SQLServer -database $Database -ErrorAction Stop #-user $credential.username -password $($Credential.password | Convert-SecureStringToString)
+            $SQLConnectionString = New-SQLServerConnectionString -server $SQLServer -database $Database -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
-            Update-SessionManagementGroups -ManagementGroups $ManagementGroups -Session $SessionName -ErrorAction Stop
-            $true
+            $SQLConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
+            Update-SQLConnections -ConnectionName $Name -SQLConnection $SQLConnection
+            Update-SQLConnectionStrings -ConnectionName $name -SQLConnectionString $SQLConnectionString
+            Write-Output $true
         }
         catch 
         {
-            $myerror = $Error[0]
+            $myerror = $_
             Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
             Write-Log -Message $myerror.tostring() -ErrorLog
             $PSCmdlet.ThrowTerminatingError($myerror) 
@@ -2882,7 +2961,7 @@ Function Connect-PowerShellSystem {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
@@ -2909,7 +2988,7 @@ Function Connect-PowerShellSystem {
             #Write-Log -Message "Existing session for $SessionName exists"
             #Write-Log -Message "Checking $SessionName State" 
             if ($existingsession.State -ne 'Opened') {
-                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'" -Verbose -EntryType Notification
+                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'" -EntryType Notification
                 Remove-PSSession -Name $SessionName 
                 $UseExistingSession = $False
             }#if
@@ -2925,9 +3004,9 @@ Function Connect-PowerShellSystem {
         if ($UseExistingSession -eq $False) {
             $message = "Connecting to System $system as User $($credential.username)."
             Try {
-                Write-Log -Verbose -Message $message -EntryType Attempting
-                $Session = New-PsSession -ComputerName $System -Verbose -Credential $Credential -Name $SessionName -ErrorAction Stop
-                Write-Log -Verbose -Message $message -EntryType Succeeded
+                Write-Log -Message $message -EntryType Attempting
+                $Session = New-PsSession -ComputerName $System -Credential $Credential -Name $SessionName -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
                 Update-SessionManagementGroups -ManagementGroups $ManagementGroups -Session $SessionName -ErrorAction Stop
                 $true
             }#Try
@@ -2940,64 +3019,114 @@ Function Connect-PowerShellSystem {
     }#process 
 }#Function Connect-PowerShellSystem
 Function Update-SessionManagementGroups {
-    [cmdletbinding(DefaultParameterSetName = 'Profile')]
-    Param(
-        [parameter(Mandatory=$true)]
-        $SessionName
-        ,[parameter(Mandatory=$true)]
-        [string[]]$ManagementGroups    
-    )#param
-    foreach ($MG in $ManagementGroups) {
-        $SessionGroup = $MG + '_Sessions'
-        #Check if the Session Group already exists
-        if (Test-Path -Path "variable:\$SessionGroup") 
+[cmdletbinding(DefaultParameterSetName = 'Profile')]
+Param(
+    [parameter(Mandatory=$true)]
+    $SessionName
+    ,[parameter(Mandatory=$true)]
+    [string[]]$ManagementGroups
+)#param
+foreach ($MG in $ManagementGroups)
+{
+    $SessionGroup = $MG + '_Sessions'
+    #Check if the Session Group already exists
+    if (Test-Path -Path "variable:\$SessionGroup") 
+    {
+    #since the session group already exists, add the session to it if it is not already present
+        $existingSessions = Get-Variable -Name $SessionGroup -Scope Global -ValueOnly
+        $existingSessionNames = $existingSessions | Select-Object -ExpandProperty Name
+        $existingSessionIDs = $existingSessions | Select-Object -ExpandProperty ID
+        if ($SessionName -in $existingSessionNames) 
         {
-        #since the session group already exists, add the session to it if it is not already present
-            $existingSessions = Get-Variable -Name $SessionGroup -Scope Global -ValueOnly
-            $existingSessionNames = $existingSessions | Select-Object -ExpandProperty Name
-            $existingSessionIDs = $existingSessions | Select-Object -ExpandProperty ID
-            if ($SessionName -in $existingSessionNames) 
-            {
-                $NewSession = Get-PSSession -Name $SessionName
-                $newvalue = @($existingSessions | Where-Object -FilterScript {$_.Name -ne $SessionName})
-                $newvalue += $NewSession
-                Set-Variable -Name $SessionGroup -Value $newvalue -Scope Global
-            }
-            else 
-            {
-                $NewSession = Get-PSSession -Name $SessionName
-                $newvalue = @(Get-PSSession -Name $existingSessionNames)
-                $newvalue += $NewSession
-                Set-Variable -Name $SessionGroup -Value $newvalue -Scope Global
-            }
+            $NewSession = Get-PSSession -Name $SessionName
+            $newvalue = @($existingSessions | Where-Object -FilterScript {$_.Name -ne $SessionName})
+            $newvalue += $NewSession
+            Set-Variable -Name $SessionGroup -Value $newvalue -Scope Global
+        } else {
+            $NewSession = Get-PSSession -Name $SessionName
+            $newvalue = @(Get-PSSession -Name $existingSessionNames)
+            $newvalue += $NewSession
+            Set-Variable -Name $SessionGroup -Value $newvalue -Scope Global
         }
-        else 
-        {
-        #since the session group does not exist, create it and add the session to it
-            New-Variable -Name $SessionGroup -Value @($(Get-PSSession -Name $SessionName)) -Scope Global
-        }#else
-    }#foreach
+    } else {
+    #since the session group does not exist, create it and add the session to it
+        New-Variable -Name $SessionGroup -Value @($(Get-PSSession -Name $SessionName)) -Scope Global
+    }#else
+}#foreach
 }#function Update-SessionManagementGroups
-Function Connect-RemoteSystems {
+Function Update-SQLConnections {
+[cmdletbinding()]
+Param(
+    [parameter(Mandatory=$true)]
+    $ConnectionName
+    ,[parameter(Mandatory=$true)]
+    $SQLConnection
+)#param
+#Check if the Session Group already exists
+if (Test-Path -Path 'variable:\SQLConnections') 
+{
+    #since the connection group already exists, add the connection to it if it is not already present or update it if it is
+    $existingConnections = Get-Variable -Name 'SQLConnections' -Scope Global -ValueOnly
+    $existingConnectionNames = $existingConnections | Select-Object -ExpandProperty Name
+    #$existingSessionIDs = $existingSessions | Select-Object -ExpandProperty ID
+    if ($ConnectionName -in $existingConnectionNames) 
+    {
+        $newvalue = @($existingConnections | Where-Object -FilterScript {$_.Name -ne $ConnectionName})
+        $newvalue += $SQLConnection
+        Set-Variable -Name 'SQLConnections' -Value $newvalue -Scope Global
+    } else {
+        $newvalue = @($existingConnections)
+        $newvalue += $SQLConnection
+        Set-Variable -Name 'SQLConnections' -Value $newvalue -Scope Global
+    }
+
+} else {
+#since the session group does not exist, create it and add the session to it
+    New-Variable -Name 'SQLConnections' -Value @(,$SQLConnection) -Scope Global
+}#else
+}#function Update-SQLConnections
+Function Update-SQLConnectionStrings {
+[cmdletbinding()]
+Param(
+    [parameter(Mandatory=$true)]
+    $ConnectionName
+    ,[parameter(Mandatory=$true)]
+    $SQLConnectionString
+)#param
+#Check if the Session Group already exists
+if (Test-Path -Path 'variable:\SQLConnectionStrings') 
+{
+    $Global:SQLConnectionStrings.$($ConnectionName)=$SQLConnectionString
+} else {
+#since the session group does not exist, create it and add the session to it
+    New-Variable -Name 'SQLConnectionStrings' -Value @{$ConnectionName = $SQLConnectionString} -Scope Global
+}#else
+}#function Update-SQLConnectionStrings
+Function Connect-RemoteSystems
+{
     [CmdletBinding()]
     param ()
     $ProcessStatus = @{
         Command = $MyInvocation.MyCommand.Name
         BoundParameters = $MyInvocation.BoundParameters
         Outcome = $null
+        Connections = @()
     }
     try {
         # Connect To Exchange Systems
         foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
         {
             try {
-                Write-Log -Message "Attempting: Connect to $sys-Exchange." -Verbose
-                Connect-Exchange -ExchangeOrganization $sys -ErrorAction Stop
-                Write-Log -Message "Succeeded: Connect to $sys-Exchange." -Verbose
+                Write-Log -Message "Attempting: Connect to $sys-Exchange."
+                $Status = Connect-Exchange -ExchangeOrganization $sys -ErrorAction Stop
+                Write-Log -Message "Succeeded: Connect to $sys-Exchange."
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$Status}
             }#try
             catch {
                 Write-Log -Message "Failed: Connect to $sys-Exchange." -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$Status}
             }#catch
         }
         # Connect to Azure AD Sync
@@ -3006,13 +3135,16 @@ Function Connect-RemoteSystems {
             $ConnectAADSyncParams = @{AADSyncServer = $sys; ErrorAction = 'Stop'}
             if (($Script:AADSyncServers | Where-Object AutoConnect -EQ $true).count -gt 1) {$ConnectAADSyncParams.UsePrefix = $true}
             try {
-                Write-Log -Message "Attempting: Connect to $sys-AADSync." -Verbose
-                Connect-AADSync @ConnectAADSyncParams
-                Write-Log -Message "Succeeded: Connect to $sys-AADSync." -Verbose
+                Write-Log -Message "Attempting: Connect to $sys-AADSync."
+                $Status = Connect-AADSync @ConnectAADSyncParams
+                Write-Log -Message "Succeeded: Connect to $sys-AADSync."
+                $ProcessStatus.Connections += [pscustomobject]@{Type='AADSync';Name=$sys;ConnectionStatus=$Status}
             }#try
             catch {
                 Write-Log -Message "Failed: Connect to $sys-AADSync." -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='AADSync';Name=$sys;ConnectionStatus=$Status}
             }#catch    
         }
         # Connect to Active Directory Forests
@@ -3020,13 +3152,16 @@ Function Connect-RemoteSystems {
         {
             foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name)) {
                 try {
-                    Write-Log -Message "Attempting: Connect to AD Instance $sys." -Verbose
-                    Connect-ADInstance -ActiveDirectoryInstance $sys -ErrorAction Stop
-                    Write-Log -Message "Succeeded: Connect to AD Instance $sys." -Verbose
+                    Write-Log -Message "Attempting: Connect to AD Instance $sys."
+                    $Status = Connect-ADInstance -ActiveDirectoryInstance $sys -ErrorAction Stop
+                    Write-Log -Message "Succeeded: Connect to AD Instance $sys."
+                    $ProcessStatus.Connections += [pscustomobject]@{Type='AD Instance';Name=$sys;ConnectionStatus=$Status}
                 }
                 catch {
                     Write-Log -Message "FAILED: Connect to AD Instance $sys." -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
+                    $Status = $false
+                    $ProcessStatus.Connections += [pscustomobject]@{Type='AD Instance';Name=$sys;ConnectionStatus=$Status}
                 }
             }
         }
@@ -3034,25 +3169,74 @@ Function Connect-RemoteSystems {
         $DefaultTenant = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.autoconnect -eq $true} | Select-Object -First 1)
         if ($DefaultTenant.Count -eq 1) 
         {
-            Connect-AzureAD -Tenant $DefaultTenant.Name -ErrorAction Stop
-            Connect-AADRM -Tenant $DefaultTenant.Name -ErrorAction Stop
+            try
+            {
+                $message = "Connect to Azure AD Tenant $sys"
+                $Status = Connect-AzureAD -Tenant $DefaultTenant.Name -ErrorAction Stop
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Azure AD';Name=$DefaultTenant.Name;ConnectionStatus=$Status}
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Azure AD';Name=$DefaultTenant.Name;ConnectionStatus=$Status}
+            }
+            try
+            {
+                $message = "Connect to Azure AD RMS Tenant $sys"
+                $Status = Connect-AADRM -Tenant $DefaultTenant.Name -ErrorAction Stop
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Azure AD RMS';Name=$DefaultTenant.Name;ConnectionStatus=$Status}
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Azure AD RMS';Name=$DefaultTenant.Name;ConnectionStatus=$Status}
+            }
         }
         # Connect To PowerShell Systems
         foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowershellSystems' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
         {
             try {
                 $message = "Connect to PowerShell on System $sys"
-                Write-Log -Message $message -Verbose -EntryType Attempting
-                Connect-PowerShellSystem -PowerShellSystem $sys -ErrorAction Stop
-                Write-Log -Message $message -Verbose -EntryType Succeeded
+                Write-Log -Message $message -EntryType Attempting
+                $Status = Connect-PowerShellSystem -PowerShellSystem $sys -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='PowerShell';Name=$sys;ConnectionStatus=$Status}
             }#try
             catch {
+                $myerror = $_
                 Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
-                Write-Log -Message $_.tostring() -ErrorLog
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='PowerShell';Name=$sys;ConnectionStatus=$Status}
+            }#catch
+        }
+        # Connect To SQL Database Systems
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
+        {
+            try {
+                $message = "Connect to SQL Database $sys"
+                Write-Log -Message $message -EntryType Attempting
+                $Status = Connect-SQLDatabase -SQLDatabase $sys -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='SQL Database';Name=$sys;ConnectionStatus=$Status}
+            }#try
+            catch {
+                $myerror = $_
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='SQL Database';Name=$sys;ConnectionStatus=$Status}
             }#catch
         }
         $ProcessStatus.Outcome = $true
         $PSO = $ProcessStatus | Convert-HashTableToObject
+        $ProcessStatus.Connections
     }
     catch {
         $ProcessStatus.Outcome = $false
@@ -3109,7 +3293,7 @@ function Invoke-ExchangeCommand {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
 
     begin {
@@ -3187,7 +3371,7 @@ function Invoke-SkypeCommand {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
 
     begin {
@@ -3415,7 +3599,7 @@ function Find-ADUser {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         $ADInstance = $PSBoundParameters[$ParameterName]
@@ -3522,7 +3706,7 @@ function Find-ADUser {
             switch ($aduser.Count) {
                 1 {
                     $TrimmedADUser = $ADUser | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                    Return $TrimmedADUser
+                    Write-Output $TrimmedADUser
                 }#1
                 0 {
                     if ($ReportExceptions) {$Script:LookupADUserNotFound += $ID}
@@ -3530,7 +3714,7 @@ function Find-ADUser {
                 Default {
                     if ($AmbiguousAllowed) {
                         $TrimmedADUser = $ADUser | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                        Return $TrimmedADUser    
+                        Write-Output $TrimmedADUser    
                     }
                     else {
                         if ($ReportExceptions) {$Script:LookupADUserAmbiguous += $ID}
@@ -3608,7 +3792,7 @@ function Find-ADContact {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        return $RuntimeParameterDictionary
+        Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         $ADInstance = $PSBoundParameters[$ParameterName]
@@ -3619,7 +3803,7 @@ function Find-ADContact {
             #Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" -Verbose
         }#try
         catch {
-            Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" -Verbose -ErrorLog
+            Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
             $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
             $PSCmdlet.ThrowTerminatingError($ErrorRecord)
@@ -3683,7 +3867,7 @@ function Find-ADContact {
             switch ($ADContact.Count) {
                 1 {
                     $TrimmedADObject = $ADContact | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                    Return $TrimmedADObject
+                    Write-Output $TrimmedADObject
                 }#1
                 0 {
                     if ($ReportExceptions) {$Script:LookupADContactNotFound += $ID}
@@ -3691,7 +3875,7 @@ function Find-ADContact {
                 Default {
                     if ($AmbiguousAllowed) {
                         $TrimmedADObject = $ADContact | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                        Return $TrimmedADObject    
+                        Write-Output $TrimmedADObject    
                     }
                     else {
                         if ($ReportExceptions) {$Script:LookupADContactAmbiguous += $ID}
@@ -3759,7 +3943,7 @@ function Get-AdObjectDomain {
         $adobject
     )
     [string]$domain=$adobject.canonicalname.split('/')[0]
-    Return $domain
+    Write-Output $domain
 }
 Function Get-ADAttributeSchema {
     param(
@@ -3809,7 +3993,7 @@ function Get-MsolUserLicenseDetail {
                 UsageLocation = $user.UsageLocation
                 LicenseReconciliationNeeded = $user.LicenseReconciliationNeeded
             }#result
-            Return $result
+            Write-Output $result
         }
     }#begin
     process {
@@ -3969,7 +4153,7 @@ Function Export-OrgProfile
 
     try {
         ConvertTo-Json @JSONparams | Out-File -FilePath $path -Encoding ascii -ErrorAction Stop
-        Return $true
+        Write-Output $true
     }#try
     catch {
         $_
@@ -4068,11 +4252,11 @@ Try
 {
     $OrgProfilesToImport = @(Get-OrgProfile @GetOrgProfileParams) 
     Set-OneShellVariable -Name OrgProfiles -Value $OrgProfilesToImport
-    Return $True
+    Write-Output $True
 }
 catch
 {
-    Return $false
+    Write-Output $false
 }
 }#function Import-OrgProfile
 Function Use-OrgProfile
@@ -4117,7 +4301,7 @@ begin
             Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name)." -EntryType Notification -Verbose
         }
         $Script:CurrentOrgAdminProfileSystems = @()
-        Return $true
+        Write-Output $true
     }#process
 }
 Function Select-OrgProfile
@@ -4389,11 +4573,11 @@ if ($PSBoundParameters.ContainsKey('OrgIdentity'))
 try
 {
     $Script:AdminUserProfiles = @(Get-AdminUserProfile @getAdminUserProfileParams)
-    Return $True
+    Write-Output $True
 }
 catch
 {
-    Return $false
+    Write-Output $false
 }
 }
 Function Select-AdminUserProfile {
@@ -4552,7 +4736,7 @@ param
         Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
     }
     #return the admin profile raw object to the pipeline
-    Return $newAdminUserProfile
+    Write-Output $newAdminUserProfile
 }# New-AdminUserProfile
 function Set-AdminUserProfile
 {
@@ -4861,7 +5045,7 @@ Would you like to add, edit, or remove a credential?"
     }
     until ($noMoreCreds -eq $true)
     $exportcredentials = $editableCredentials | Select-Object @{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}},@{n='Systems';e={[string[]]@()}}
-    Return $exportcredentials
+    Write-Output $exportcredentials
 }
 Function Export-AdminUserProfile
 {
@@ -4885,7 +5069,7 @@ param(
     try
     {
         ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
-        Return $true
+        Write-Output $true
     }#try
     catch
     {
@@ -4922,12 +5106,6 @@ Switch ($PSCmdlet.ParameterSetName)
             {
                 {$_ -eq 1}
                 {
-            $message = @"
-Loading Default Org Profile:  
-Name: $($DefaultOrgProfile.General.Name)
-Identity: $($DefaultOrgProfile.Identity) 
-"@
-                    Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue
                     [boolean]$OrgProfileLoaded = Use-OrgProfile -Profile $DefaultOrgProfile
                 }
                 {$_ -gt 1}
@@ -4950,12 +5128,8 @@ Identity: $($DefaultOrgProfile.Identity)
             {
                 {$_ -eq 1}
                 {
-                $message = @"
-Loading Default Admin Profile for Default Org Profile:  
-Name: $($DefaultAdminUserProfile.General.Name)
-Identity: $($DefaultAdminUserProfile.Identity) 
-"@
-                    Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue
+                    $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
+                    Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
                     [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -Profile $DefaultAdminUserProfile
                     if ($AdminUserProfileLoaded)
                     {
@@ -5053,11 +5227,11 @@ param
 )
     Remove-Variable -Scope Script -Name $name
 }
-#Global Variabls to be replaced with Module/Script Level Variables in a coming release
+#Global Variables to be replaced with Module/Script Level Variables in a coming release
 function Set-OneShellVariables
 {
     #Write-Log -message 'Setting OneShell Module Variables'
-    $Script:OneShellModuleFolderPath = $Script:PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
+    $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
     [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
     [string]$Script:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
