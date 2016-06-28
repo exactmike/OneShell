@@ -1860,51 +1860,53 @@ function Read-FolderBrowserDialog {# Show an Open Folder Dialog and return the d
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
-Function Import-RequiredModule {
-    [cmdletbinding()]
-    param
-    (
-    [parameter(Mandatory=$true)]
-    [ValidateSet('ActiveDirectory','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer')]
-    [string]$ModuleName
-    )
-    #Do any custom environment preparation per specific module
-    switch ($ModuleName) 
+Function Import-RequiredModule
+{
+[cmdletbinding()]
+param
+(
+[parameter(Mandatory=$true)]
+[ValidateSet('ActiveDirectory','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
+[string]$ModuleName
+)
+#Do any custom environment preparation per specific module
+switch ($ModuleName)
+{
+    'ActiveDirectory'
     {
-        'ActiveDirectory' 
-        {
-            #Suppress Creation of the Default AD Drive with current credentials
-            $Env:ADPS_LoadDefaultDrive = 0
-        }
-        Default 
-        {}
+        #Suppress Creation of the Default AD Drive with current credentials
+        $Env:ADPS_LoadDefaultDrive = 0
     }
-    #Test if the module required is already loaded:
-    $ModuleLoaded = @(Get-Module | Where-Object Name -eq $ModuleName)
-    if ($ModuleLoaded.count -eq 0) 
+    Default 
     {
-        try 
-        {
-            $message = "Import the $ModuleName Module"
-            Write-Log -message $message -EntryType Attempting
-            Import-Module -Name $ModuleName -Global -ErrorAction Stop
-            Write-Log -message $message -EntryType Succeeded
-            Write-Output $true
-        }#try
-        catch 
-        {
-            $myerror = $_
-            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed 
-            Write-Log -message $myerror.tostring() -ErrorLog
-            $PSCmdlet.ThrowTerminatingError($myerror)
-        }#catch
-    }#if
-    else 
+    }
+}
+#Test if the module required is already loaded:
+$ModuleLoaded = @(Get-Module | Where-Object Name -eq $ModuleName)
+if ($ModuleLoaded.count -eq 0) 
+{
+    try 
     {
-        Write-Log -EntryType Notification -Message "$ModuleName Module is already loaded."
+        $message = "Import the $ModuleName Module"
+        Write-Log -message $message -Verbose -EntryType Attempting
+        Import-Module -Name $ModuleName -Global -ErrorAction Stop
+        Write-Log -message $message -Verbose -EntryType Succeeded
         Write-Output $true
-    }
-}#Import-RequiredModule
+    }#try
+    catch 
+    {
+        $myerror = $_
+        Write-Log -message $message -Verbose -ErrorLog -EntryType Failed 
+        Write-Log -message $myerror.tostring() -ErrorLog
+        Write-Output $false
+        $PSCmdlet.ThrowTerminatingError($myerror)
+    }#catch
+} else 
+{
+    Write-Log -EntryType Notification -Message "$ModuleName Module is already loaded."
+    Write-Output $true
+}
+}# Function Import-RequiredModule
 Function Connect-Exchange {
     [cmdletbinding(DefaultParameterSetName = 'Organization')]
     Param(
@@ -3018,6 +3020,89 @@ Function Connect-PowerShellSystem {
         }#if
     }#process 
 }#Function Connect-PowerShellSystem
+Function Connect-MigrationWiz
+{
+[cmdletbinding(DefaultParameterSetName = 'Account')]
+Param(
+    [parameter(ParameterSetName='Manual')]
+    $Credential
+)#param
+DynamicParam
+{
+    #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
+    # Set the dynamic parameters' name
+    $ParameterName = 'Account'
+        
+    # Create the dictionary 
+    $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+
+    # Create the collection of attributes
+    $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+        
+    # Create and set the parameters' attributes
+    $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
+    $ParameterAttribute.Mandatory = $true
+    $ParameterAttribute.Position = 2
+    $ParameterAttribute.ParameterSetName = 'Account'
+
+    # Add the attributes to the attributes collection
+    $AttributeCollection.Add($ParameterAttribute)
+
+    # Generate and set the ValidateSet 
+    $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
+    $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
+
+    # Add the ValidateSet to the attributes collection
+    $AttributeCollection.Add($ValidateSetAttribute)
+
+    # Create and return the dynamic parameter
+    $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
+    $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
+    Write-Output $RuntimeParameterDictionary
+}#DynamicParam
+#Connect to MigrationWiz
+begin
+{
+    $ProcessStatus = @{
+        Command = $MyInvocation.MyCommand.Name
+        BoundParameters = $MyInvocation.BoundParameters
+        Outcome = $null
+    }
+    switch ($PSCmdlet.ParameterSetName) {
+        'Account' 
+        {
+            $Identity = $PSBoundParameters[$ParameterName]
+            $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Identity}
+            $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
+            $Name = $MigrationWizAccountObj.Name
+        }#Account
+        'Manual' 
+        {
+        }#manual
+    }#switch
+}#begin
+process 
+{
+    try 
+    {
+        $message = "Connect to MigrationWiz with User $($Credential.username)."
+        Write-Log -Message $message -EntryType Attempting                
+        $ModuleStatus = Import-RequiredModule -ModuleName MigrationPowerShell -ErrorAction Stop
+        #May eliminate the Script/Module variable later (dropping $Script:) in favor of the MigrationWizTickets Hashtable
+        $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop
+        Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket
+        Write-Log -Message $message -EntryType Succeeded
+        Write-Output $true
+    }
+    Catch 
+    {
+        $myerror = $_
+        Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+        Write-Log -Message $myerror.tostring()
+        Write-Output $false 
+    }
+} 
+}#function Connect-MigrationWiz
 Function Update-SessionManagementGroups {
 [cmdletbinding(DefaultParameterSetName = 'Profile')]
 Param(
@@ -3102,11 +3187,28 @@ if (Test-Path -Path 'variable:\SQLConnectionStrings')
     New-Variable -Name 'SQLConnectionStrings' -Value @{$ConnectionName = $SQLConnectionString} -Scope Global
 }#else
 }#function Update-SQLConnectionStrings
+Function Update-MigrationWizTickets
+{
+[cmdletbinding()]
+Param(
+    [parameter(Mandatory=$true)]
+    $AccountName
+    ,[parameter(Mandatory=$true)]
+    $MigrationWizTicket
+)#param
+if (Test-Path -Path 'variable:Global:MigrationWizTickets') 
+{
+    $Global:MigrationWizTickets.$($AccountName)=$MigrationWizTicket
+} else
+{
+    New-Variable -Name 'MigrationWizTickets' -Value @{$AccountName = $MigrationWizTicket} -Scope Global
+}#else
+}#function Update-MigrationWizTickets
 Function Connect-RemoteSystems
 {
     [CmdletBinding()]
     param ()
-    $ProcessStatus = @{
+    $ProcessStatus = [pscustomobject]@{
         Command = $MyInvocation.MyCommand.Name
         BoundParameters = $MyInvocation.BoundParameters
         Outcome = $null
@@ -3148,9 +3250,10 @@ Function Connect-RemoteSystems
             }#catch    
         }
         # Connect to Active Directory Forests
-        if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop) 
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name))
         {
-            foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object AutoConnect -EQ $true | Select-Object -ExpandProperty Name)) {
+            if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop)
+            {
                 try {
                     Write-Log -Message "Attempting: Connect to AD Instance $sys."
                     $Status = Connect-ADInstance -ActiveDirectoryInstance $sys -ErrorAction Stop
@@ -3234,13 +3337,30 @@ Function Connect-RemoteSystems
                 $ProcessStatus.Connections += [pscustomobject]@{Type='SQL Database';Name=$sys;ConnectionStatus=$Status}
             }#catch
         }
+        # Connect To MigrationWiz Accounts
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
+        {
+            try {
+                $message = "Connect to Migration Wiz Account $sys"
+                Write-Log -Message $message -EntryType Attempting
+                $Status = Connect-MigrationWiz -Account $sys -ErrorAction Stop 
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Migration Wiz Account';Name=$sys;ConnectionStatus=$Status}
+            }#try
+            catch {
+                $myerror = $_
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Migration Wiz Account';Name=$sys;ConnectionStatus=$Status}
+            }#catch
+        }
         $ProcessStatus.Outcome = $true
-        $PSO = $ProcessStatus | Convert-HashTableToObject
-        $ProcessStatus.Connections
+        Write-Output $ProcessStatus.Connections
     }
     catch {
         $ProcessStatus.Outcome = $false
-        $PSO = $ProcessStatus | Convert-HashTableToObject
+        Write-Output $ProcessStatus.Connections
     }
 }
 function Invoke-ExchangeCommand {
