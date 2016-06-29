@@ -1888,9 +1888,9 @@ if ($ModuleLoaded.count -eq 0)
     try 
     {
         $message = "Import the $ModuleName Module"
-        Write-Log -message $message -Verbose -EntryType Attempting
+        Write-Log -message $message -EntryType Attempting
         Import-Module -Name $ModuleName -Global -ErrorAction Stop
-        Write-Log -message $message -Verbose -EntryType Succeeded
+        Write-Log -message $message -EntryType Succeeded
         Write-Output $true
     }#try
     catch 
