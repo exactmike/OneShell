@@ -5411,7 +5411,6 @@ function Set-OneShellVariables
         'deliverandRedirect'
         'distinguishedName'
         'msExchHideFromAddressLists'
-        'msExchPoliciesExcluded'
         'msExchUsageLocation'
         'c'
         'co'
