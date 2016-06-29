@@ -5429,7 +5429,7 @@ function Set-OneShellVariables
         'msExchPoliciesExcluded'
     )#MultiValuedADAttributesToRetrieve
     $Script:AllADAttributesToRetrieve = @($ScalarADAttributesToRetrieve + $MultiValuedADAttributesToRetrieve)
-    $Script:AllADContactAttributesToRetrieve = $script:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServer')}
+    $Script:AllADContactAttributesToRetrieve = $script:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:Stamp = Get-TimeStamp
     #Module Menu Definitions
     $menudefinition = [pscustomobject]@{
