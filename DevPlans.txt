@@ -1,0 +1,4 @@
+#Notes/Domino LDAP Connections
+#Fix Skype Connectivity
+#AD Properties/Schema info into AD systems in Org Profiles
+#Make parameters which ask for a computer consistently named ComputerName?
