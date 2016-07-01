@@ -5578,6 +5578,7 @@ function Set-OneShellVariables
     $Script:ADUserAttributes = @($script:ScalarADAttributes + $Script:MultiValuedADAttributes)
     $Script:ADContactAttributes = $script:ADUserAttributes | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
     $Script:Stamp = Get-TimeStamp
     #Module Menu Definitions
