@@ -1970,26 +1970,118 @@ function Read-OpenFileDialog {
     $openFileDialog.ShowDialog() > $null
     if ($AllowMultiSelect) { Write-Output $openFileDialog.Filenames } else { Write-Output $openFileDialog.Filename } 
 }  
-function Read-Choice {     
-    Param(
-        [System.String]$Message
-        ,       
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [System.String[]]$Choices
-        ,         
-        [System.Int32]$DefaultChoice = 1
-        ,         
-        [System.String]$Title = [string]::Empty 
-    )   
-    $choiceCount = -1     
-    [System.Management.Automation.Host.ChoiceDescription[]]$Poss = 
-    $Choices | ForEach-Object {
-        $choiceCount++
-        New-Object System.Management.Automation.Host.ChoiceDescription "&$choiceCount $($_)", "Sets $_ as an answer."      
-    }       
-    $Host.UI.PromptForChoice( $Title, $Message, $Poss, $DefaultChoice )     
-}
+function Read-Choice
+{
+[cmdletbinding(DefaultParameterSetName='StringChoices')]
+Param(
+    [System.String]$Message
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('StringChoices')]
+    [System.String[]]$Choices
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('ObjectChoices')]
+    [psobject[]]$ChoiceObjects
+    ,
+    [System.Int32]$DefaultChoice = 0
+    ,
+    [System.String]$Title = [string]::Empty
+    ,
+    [Parameter(ParameterSetName='StringChoices')]
+    [switch]$Numbered
+)
+    #Build Choice Objects
+switch ($PSCmdlet.ParameterSetName)
+{
+    'StringChoices'
+    #Create the Choice Objects
+    {
+        if ($Numbered)
+        {
+            $choiceCount = 0
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $choiceCount++
+                    [PSCustomObject]@{
+                        Enumerator = $choiceCount
+                        Choice = $choice
+                    }
+                }
+            )
+        }
+        else
+        {
+            [char[]]$choiceEnumerators = @()
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $Enumerator = $null
+                    foreach ($char in $choice.ToCharArray())
+                    {
+                        if ($char -notin $choiceEnumerators -and $char -match '[a-zA-Z]' )
+                        {
+                            $Enumerator = $char
+                            $choiceEnumerators += $Enumerator
+                            break
+                        }
+                    }
+                    if ($Enumerator -eq $null)
+                    {
+                        $EnumeratorError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 0 -ErrorCategory InvalidData -TargetObject $choice -Message 'Unable to determine an enumerator'
+                        $PSCmdlet.ThrowTerminatingError($EnumeratorError)
+                    }
+                    else
+                    {
+                        [PSCustomObject]@{
+                            Enumerator = $Enumerator
+                            Choice = $choice
+                        }
+                    }
+                }
+            )
+        }
+    }
+    'ObjectChoices'
+    #Validate the Choice Objects using the first object as a representative
+    {
+        if ($ChoiceObjects[0].Enumerator -eq $null -or $ChoiceObjects[0].Choice -eq $null)
+        {
+            $ChoiceObjectError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 1 -ErrorCategory InvalidData -TargetObject $ChoiceObjects[0] -Message 'Choice Object(s) do not include the required enumerator and/or choice properties'
+            $PSCmdlet.ThrowTerminatingError($ChoiceObjectError)
+        }
+    }
+}#Switch
+[System.Management.Automation.Host.ChoiceDescription[]]$PossibleChoices = @(
+    $ChoiceObjects | ForEach-Object {
+        $Enumerator = $_.Enumerator
+        $Choice = $_.Choice
+        $Description = if (-not [string]::IsNullOrWhiteSpace($_.Description)) {$_.Description} else {$_.Choice}
+        $ChoiceWithEnumerator = 
+            if ($Numbered)
+            {
+                "&$Enumerator $($Choice)"
+            }
+            else
+            {
+                $index = $choice.IndexOf($Enumerator)
+                if ($index -eq -1)
+                {
+                    "&$Enumerator $($Choice)"
+                }
+                else
+                {
+                    $choice.insert($index,'&')
+                }
+            }
+        New-Object System.Management.Automation.Host.ChoiceDescription $ChoiceWithEnumerator, $Description
+    }
+)
+$Host.UI.PromptForChoice($Title, $Message, $PossibleChoices, $DefaultChoice)
+}#Read-Choice
 function Read-FolderBrowserDialog {# Show an Open Folder Dialog and return the directory selected by the user. 
     Param(
         [string]$Message
