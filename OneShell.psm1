@@ -5358,7 +5358,7 @@ function Set-AdminUserProfileCredentials {
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Edit' {
-            $editableCredentials = @($Credentials | Select-Object @{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
+            $editableCredentials = @($Credentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
         }
         'New' {$editableCredentials = @()}
     }
@@ -5379,17 +5379,22 @@ Would you like to add, edit, or remove a credential?"
 "@
         $response = Read-Choice -Message $prompt -Choices 'Add','Edit','Remove','Done' -DefaultChoice 0 -Title 'Add/Remove Credential?'
         switch ($response) {
-            0 {#Add
-                $editableCredentials += $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+            0
+            {#Add
+                $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+                $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
+                $editableCredentials += $NewCredential
             }
             1 {#Edit
                 if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to edit'}
                 else {
                     $CredChoices = @($editableCredentials.UserName)
                     $whichcred = Read-Choice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'
-                    $editableCredentials[$whichcred] = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
+                    $OriginalCredential = $editableCredentials[$whichcred]
+                    $NewCredential = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
+                    $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
+                    $editableCredentials[$whichcred] = $NewCredential
                 }
-                
             }
             2 {#Remove
                 if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to remove'}
@@ -5404,7 +5409,7 @@ Would you like to add, edit, or remove a credential?"
         }
     }
     until ($noMoreCreds -eq $true)
-    $exportcredentials = $editableCredentials | Select-Object @{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}},@{n='Systems';e={[string[]]@()}}
+    $exportcredentials = @($editableCredentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
     Write-Output $exportcredentials
 }
 Function Export-AdminUserProfile
