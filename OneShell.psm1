@@ -2087,14 +2087,14 @@ function Read-FolderBrowserDialog {# Show an Open Folder Dialog and return the d
         [string]$Message
         , [string]$InitialDirectory
         , [switch]$NoNewFolderButton
-    ) 
-
-    $browseForFolderOptions = 0     
-    if ($NoNewFolderButton) { $browseForFolderOptions += 512 }       
-    $app = New-Object -ComObject Shell.Application     
-    $folder = $app.BrowseForFolder(0, $Message, $browseForFolderOptions, $InitialDirectory)     
-    if ($folder) { $selectedDirectory = $folder.Self.Path } else { $selectedDirectory = '' }     
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($app) > $null    
+    )
+    $browseForFolderOptions = 0
+    if ($NoNewFolderButton) { $browseForFolderOptions += 512 }
+    $app = New-Object -ComObject Shell.Application
+    $folder = $app.BrowseForFolder(0, $Message, $browseForFolderOptions, $InitialDirectory)
+    if ($folder) { $selectedDirectory = $folder.Self.Path } else { $selectedDirectory = '' }
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($app) > $null
+    Remove-Variable -Name $app
     Write-Output $selectedDirectory
 }
 ##########################################################################################################
@@ -4975,6 +4975,8 @@ param
     [string]$OrganizationIdentity
     ,
     [string]$name
+    ,
+    [switch]$Passthru
 )
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
     switch ($targetOrgProfile.Count)
@@ -4996,107 +4998,162 @@ param
     $newAdminUserProfile = [ordered]@{
         Identity = [guid]::NewGuid()
         ProfileType = 'OneShellAdminUserProfile'
+        ProfileTypeVersion = 1.0
         General = [ordered]@{
             Name = if ($name) {"$name-" + $targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME} else {$targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME}
             Host = $env:COMPUTERNAME
             OrganizationIdentity = $targetOrgProfile.identity
-            ProfileFolder = GetAdminUserProfileFolder
-            Default = if ((Read-Choice -Message "Should this be the default profile for Organization Profile $($targetorgprofile.general.name)?" -Choices 'Yes','No' -DefaultChoice 1 -Title 'Default Profile?') -eq 0) {$true} else {$false}
+            ProfileFolder = ''
+            MailFrom = ''
+            MailRelayEndpointToUse = ''
+            Default = $false
         }
         Systems = @()
         Credentials = @()
     }
-    #Get the Admin user's email address
-    $newAdminUserProfile.General.MailFrom = GetAdminUserProfileEmailAddress
-    #Get Org Profile Defined Systems
-    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-    #Select the mail relay endpoint for the profile to use
-    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
-    if ($MailRelayEndpoints.Count -gt 1)
+    #Set the required profile items
+    $RequiredValues = @('ProfileDirectory')
+    $quit = $false
+    $choices = 'Profile Name', 'Set Default', 'Profile Directory','Mail From Email Address','Mail Relay Endpoint','Credentials','Systems','Save','Save and Quit','Cancel'
+    do
     {
-        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
-        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
-    }
-    else
-    {
-        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
-    }
-    $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
-    #Get the admin User's Credentials
-    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
-    #Prepare Stored Credentials to associate with one or more systems
-    :SysCredAssociation foreach ($sys in $systems) #using the label just to make the use of Continue explicit in the code below
-    {
-        if ($sys.AuthenticationRequired -eq $false) {Continue SysCredAssociation}
-        if ($sys.SystemType -eq 'MailRelayEndpoints')
+        $UserChoice = Read-Choice -Message 'New Admin User Profile Menu' -Choices $choices -Title 'New Admin User Profile'
+        switch ($choices[$UserChoice])
         {
-            if ($sys.Identity -eq $MailRelayEndpointToUse) {$autoConnectChoice = 1}
-            else {Continue SysCredAssociation}
-        }
-        else
-        {
-            $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
-            $prompt = "Do you want to Auto Connect to this system with this admin profile: `n`n$label"
-            $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice 0 -Title 'Auto Connect?'
-        }
-        switch ($autoConnectChoice) {
-            0 {
-                $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $true}
-                $newAdminUserProfile.Systems += $SystemEntry
-                #associate a credential with the autoconnect system
-                $prompt = "Which Credential do you want to associate with this system: `n`n$label"
-                $choice = Read-Choice -Message $prompt -Choices $exportcredentials.Username -Title "Associate Credential:$label" -DefaultChoice 0
-                [array]$currentAssociatedSystems = @($exportcredentials[$choice].Systems)
-                $currentAssociatedSystems += $sys.Identity
-                $exportcredentials[$choice].Systems = $currentAssociatedSystems
-            }
-            1 {
-                $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $false}
-                $newAdminUserProfile.Systems += $SystemEntry
-                #ask if user still wants to associate a credential
-                $prompt = "Do you want to associate a credential for on demand connections to this system: `n`n$label"
-                $AssociateOnDemandCredentialChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -Title "Associate Credential:$label" -DefaultChoice 1
-                switch ($AssociateOnDemandCredentialChoice) {
-                    0 {
-                        #associate a credential with the non-autoconnect system for on demand connections via profile
-                        $prompt = "Which Credential do you want to associate with this system: `n`n$label"
-                        $choice = Read-Choice -Message $prompt -Choices $exportcredentials.Username -Title "Associate Credential:$label" -DefaultChoice 0
-                        [array]$currentAssociatedSystems = @($exportcredentials[$choice].Systems)
-                        $currentAssociatedSystems += $sys.Identity
-                        $exportcredentials[$choice].Systems = $currentAssociatedSystems
-                    }
-                    1 {}
-                }
-            }
-        }
-        Remove-Variable -Name SystemEntry
-    }
-    #add the stored and system associated credentials to the profile
-    $newAdminUserProfile.Credentials = @($exportcredentials)
-    #if necessary, create the Admin Profile File System Folders and export the JSON profile file
-    try
-    {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -path $newAdminUserProfile.General.profileFolder -ErrorAction Stop)
-        {
-            if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop -path $newAdminUserProfile.General.profileFolder)
+            'Profile Name'
             {
-                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $newAdminUserProfile.General.profileFolder)
+                $ProfileName = Read-InputBoxDialog -Message 'Configure Admin Profile Name' -WindowTitle 'Admin Profile Name' -DefaultText $newAdminUserProfile.General.Name
+                if ($ProfileName -ne $newAdminUserProfile.General.Name)
                 {
-                    Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
-                    Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                    $newAdminUserProfile.General.Name = $ProfileName
                 }
+            }
+            'Set Default'
+            {
+                $DefaultChoice = if ($newAdminUserProfile.General.Default -eq $true) {0} elseif ($newAdminUserProfile.General.Default -eq $null) {-1} else {1}
+                $Default = if ((Read-Choice -Message "Should this admin profile be the default admin profile for Organization Profile $($targetorgprofile.general.name)?" -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title 'Default Profile?') -eq 0) {$true} else {$false}
+                if ($Default -ne $newAdminUserProfile.General.Default)
+                {
+                    $newAdminUserProfile.General.Default = $Default
+                }
+            }
+            'Profile Directory'
+            {
+                $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $newAdminUserProfile.General.ProfileFolder
+                if ($ProfileDirectory -ne $newAdminUserProfile.General.ProfileFolder)
+                {
+                    $newAdminUserProfile.General.ProfileFolder = $ProfileDirectory
+                }
+            }
+            'Mail From Email Address'
+            {
+                $MailFromEmailAddress = GetAdminUserProfileEmailAddress -CurrentEmailAddress $newAdminUserProfile.General.MailFrom
+                if ($MailFromEmailAddress -ne $newAdminUserProfile.General.MailFrom)
+                {
+                    $newAdminUserProfile.General.MailFrom = $MailFromEmailAddress
+                }
+            }
+            'Mail Relay Endpoint'
+            {
+                $MailRelayEndpointToUse = GetAdminUserProfileMailRelayEndpointToUse -OrganizationIdentity $OrganizationIdentity -CurrentMailRelayEndpoint $newAdminUserProfile.General.MailRelayEndpointToUse
+                if ($MailRelayEndpointToUse -ne $newAdminUserProfile.General.MailRelayEndpointToUse)
+                {
+                    $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+                }
+            }
+            'Credentials'
+            {
+                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+                $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
+                $newAdminUserProfile.Credentials = $exportcredentials
+
+            }
+            'Systems'
+            {
+                
+                $SystemsDone = $false
+                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+                $SystemEntries = @($systems | foreach-object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}})
+                $Labels = @($systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name)
+                $Labels += 'Done'
+                $SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
+                $SystemChoiceTitle = 'Configure Systems'
+                Do {
+                    $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $Labels -Numbered
+                    if ($Labels[$SystemChoice] -eq 'Done')
+                    {
+                        $SystemsDone = $true
+                    } else
+                    {
+                        $EditsDone = $false
+                        $EditTypePrompt = "Edit AutoConnect or Associated Credential for this system:  `n`n$($labels[$SystemChoice])"
+                        $EditTypes = 'AutoConnect','AssociateCredential','Done'
+                        $CredPrompt = "Which Credential (if any) do you want to associate with this system: `n`n$($labels[$SystemChoice])"
+                        $AutoConnectPrompt = "Do you want to Auto Connect to this system with this admin profile: `n`n$($labels[$SystemChoice])"
+                        Do {
+                            $EditTypeChoice = Read-Choice -Message $EditTypePrompt -Choices 'AutoConnect','Associated Credential','Done' -DefaultChoice 0 -Title "Edit System $($labels[$SystemChoice])"
+                            switch ($editTypes[$EditTypeChoice])
+                            {
+                                'AutoConnect'
+                                {
+                                    $DefaultChoice = if ($SystemEntries[$SystemChoice].AutoConnect -eq $true) {0} elseif ($SystemEntries[$SystemChoice].AutoConnect -eq $null) {-1} else {1}
+                                    $AutoConnect = Read-Choice -Message $AutoConnectPrompt -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title "AutoConnect System $($labels[$SystemChoice])?"
+                                    switch ($AutoConnect)
+                                    {
+                                        0
+                                        {
+                                            $SystemEntries[$SystemChoice].AutoConnect = $true
+                                        }
+                                        1
+                                        {
+                                            $SystemEntries[$SystemChoice].AutoConnect = $false
+                                        }
+                                    }
+                                }
+                                'AssociateCredential'
+                                {
+                                    if ($newAdminUserProfile.Credentials.Count -ge 1)
+                                    {
+                                        $DefaultChoice = if ($SystemEntries[$SystemChoice].Credential -eq $null) {-1} else {Get-ArrayIndexForValue -value $SystemEntries[$SystemChoice].Credential -array $newAdminUserProfile.Credentials -property Identity}
+                                        $CredentialChoice = Read-Choice -Message $CredPrompt -Choices $newAdminUserProfile.Credentials.Username -Title "Associate Credential to System $($labels[$SystemChoice])" -DefaultChoice $DefaultChoice
+                                        $SystemEntries[$SystemChoice].Credential = $newAdminUserProfile.Credentials[$CredentialChoice].Identity
+                                    } else
+                                    {
+                                        Write-Error -Message "No Credentials exist in the Admin User Profile.  Please add one or more credentials." -Category InvalidData -ErrorId 0
+                                    }
+                                }
+                                'Done'
+                                {
+                                    $EditsDone = $true
+                                }
+                            }
+                        }
+                        Until
+                        ($EditsDone)
+                    }
+                }
+                Until
+                ($SystemsDone)
+                $newAdminUserProfile.Systems = $SystemEntries                
+            }
+            'Save'
+            {
+                SaveAdminUserProfile -AdminUserProfile $newAdminUserProfile
+            }
+            'Save and Quit'
+            {
+                SaveAdminUserProfile -AdminUserProfile $newAdminUserProfile
+                $quit = $true
+            }
+            'Cancel'
+            {
+                $quit = $true
             }
         }
     }
-    catch
-    {
-        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($newAdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
-        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
-    }
+    until ($quit)
     #return the admin profile raw object to the pipeline
-    Write-Output $newAdminUserProfile
+    if ($passthru) {Write-Output $newAdminUserProfile}
 }# New-AdminUserProfile
 function Set-AdminUserProfile
 {
@@ -5285,10 +5342,14 @@ function Set-AdminUserProfile
 #supporting functions for AdminUserProfile Editing
 function GetAdminUserProfileFolder
 {
+Param(
+    $InitialDirectory = 'MyComputer'
+)
+    if ([string]::IsNullOrEmpty($InitialDirectory)) {$InitialDirectory = 'MyComputer'}
     $message = "Select a location for your admin user profile directory. A sub-directory named 'OneShell' will be created in the selected directory if one does not already exist. The user profile $($env:UserProfile) is the recommended location.  Additionally, under the OneShell directory, sub-directories for Logs, Input, and Export files will be created."
     Do
     {
-        $UserChosenPath = Read-FolderBrowserDialog -Message $message  -InitialDirectory 'MyComputer' 
+        $UserChosenPath = Read-FolderBrowserDialog -Message $message  -InitialDirectory $InitialDirectory
         if (Test-IsWriteableDirectory -Path $UserChosenPath)
         {
             $ProfileFolderToCreate = Join-Path $UserChosenPath 'OneShell'
@@ -5299,7 +5360,7 @@ function GetAdminUserProfileFolder
     (
         $IsWriteableFilesystemDirectory
     )
-    $ProfileFolderToCreate
+    Write-Output $ProfileFolderToCreate
 }#function GetAdminUserProfileFolder
 function GetAdminUserProfileEmailAddress
 {
@@ -5322,6 +5383,55 @@ do
 until
 (Test-EmailAddress -EmailAddress $address)
 $address
+}
+function GetAdminUserProfileMailRelayEndpointToUse
+{
+param(
+$OrganizationIdentity
+,
+$CurrentMailRelayEndpoint
+)
+        $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+        $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
+        if ($MailRelayEndpoints.Count -gt 1)
+        {
+            $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
+            $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
+            $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+            $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title "Select Mail Relay Endpoint"
+            $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
+        }
+        else
+        {
+            $choice = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+            Read-AnyKey -prompt "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice."
+            $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
+        }
+}
+function SaveAdminUserProfile
+{
+param(
+$AdminUserProfile
+)
+    try
+    {
+        if (Add-AdminUserProfileFolders -AdminUserProfile $AdminUserProfile -path $AdminUserProfile.General.profileFolder -ErrorAction Stop)
+        {
+            if (Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.profileFolder)
+            {
+                if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.profileFolder)
+                {
+                    Write-Log -Message "New Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                    Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                }
+            }
+        }
+    }
+    catch
+    {
+        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+    }
 }
 function Add-AdminUserProfileFolders {
     [cmdletbinding()]
