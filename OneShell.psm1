@@ -1939,37 +1939,59 @@ Function Read-AnyKey {
     Write-Host "`r`n" #yuck?
     Write-Output $true;
 }
-function Read-InputBoxDialog { # Show input box popup and return the value entered by the user. 
+function Read-InputBoxDialog
+{ # Show input box popup and return the value entered by the user. 
+#update with system.windows.forms code? https://msdn.microsoft.com/en-us/library/system.windows.forms.textbox(v=vs.110).aspx
     param(
         [string]$Message
         , [string]$WindowTitle
         , [string]$DefaultText
     )
-
     Add-Type -AssemblyName Microsoft.VisualBasic     
     $inputbox = [Microsoft.VisualBasic.Interaction]::InputBox($Message, $WindowTitle, $DefaultText)
     Write-Output $inputbox
 } 
-function Read-OpenFileDialog {
-    param(
-        [string]$WindowTitle
-        ,
-        [string]$InitialDirectory
-        ,
-        [string]$Filter = "All files (*.*)|*.*"
-        ,
-    [switch]$AllowMultiSelect)
+function Read-OpenFileDialog
+{
+[cmdletbinding()]
+param(
+    [string]$WindowTitle
+    ,
+    [Parameter()]
+    [string]$InitialDirectory
+    ,
+    [string]$Filter = "All files (*.*)|*.*"
+    ,
+    [switch]$AllowMultiSelect
+)
     Add-Type -AssemblyName System.Windows.Forms
     $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $openFileDialog.Title = $WindowTitle
-    if (![string]::IsNullOrWhiteSpace($InitialDirectory)) { $openFileDialog.InitialDirectory = $InitialDirectory }
+    if ($PSBoundParameters.ContainsKey('InitialDirectory')) { $openFileDialog.InitialDirectory = $InitialDirectory }
     $openFileDialog.Filter = $Filter
     if ($AllowMultiSelect) { $openFileDialog.MultiSelect = $true }
     $openFileDialog.ShowHelp = $true
     # Without this line the ShowDialog() function may hang depending on system configuration and running from console vs. ISE.     
-    $openFileDialog.ShowDialog() > $null
-    if ($AllowMultiSelect) { Write-Output $openFileDialog.Filenames } else { Write-Output $openFileDialog.Filename } 
-}  
+    $result = $openFileDialog.ShowDialog()
+    switch ($Result)
+    {
+        'OK'
+        {
+            if ($AllowMultiSelect)
+            {
+                Write-Output $openFileDialog.Filenames
+            } else
+            {
+                Write-Output $openFileDialog.Filename
+            } 
+        }
+        'Cancel'
+        {
+        }
+    }
+    $openFileDialog.Dispose()
+    Remove-Variable openFileDialog
+}#Read-OpenFileDialog
 function Read-Choice
 {
 [cmdletbinding(DefaultParameterSetName='StringChoices')]
@@ -2082,21 +2104,40 @@ switch ($PSCmdlet.ParameterSetName)
 )
 $Host.UI.PromptForChoice($Title, $Message, $PossibleChoices, $DefaultChoice)
 }#Read-Choice
-function Read-FolderBrowserDialog {# Show an Open Folder Dialog and return the directory selected by the user. 
+function Read-FolderBrowserDialog
+{# Show an Open Folder Dialog and return the directory selected by the user. 
+[cmdletbinding()]
     Param(
-        [string]$Message
-        , [string]$InitialDirectory
-        , [switch]$NoNewFolderButton
+        [string]$Description
+        ,
+        [Parameter()]
+        [string]$InitialDirectory
+        ,
+        [string]$RootDirectory
+        ,
+        [switch]$NoNewFolderButton
     )
-    $browseForFolderOptions = 0
-    if ($NoNewFolderButton) { $browseForFolderOptions += 512 }
-    $app = New-Object -ComObject Shell.Application
-    $folder = $app.BrowseForFolder(0, $Message, $browseForFolderOptions, $InitialDirectory)
-    if ($folder) { $selectedDirectory = $folder.Self.Path } else { $selectedDirectory = '' }
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($app) > $null
-    Remove-Variable -Name $app
-    Write-Output $selectedDirectory
-}
+    Add-Type -AssemblyName System.Windows.Forms
+    $FolderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    if ($NoNewFolderButton) {$FolderBrowserDialog.ShowNewFolderButton = $false}
+    if ($PSBoundParameters.ContainsKey('Description')) {$FolderBrowserDialog.Description = $Description}
+    if ($PSBoundParameters.ContainsKey('InitialDirectory')) {$FolderBrowserDialog.SelectedPath = $InitialDirectory}
+    if ($PSBoundParameters.ContainsKey('RootDirectory')) {$FolderBrowserDialog.RootFolder = $RootDirectory}
+    $Result = $FolderBrowserDialog.ShowDialog()
+    switch ($Result)
+    {
+        'OK'
+        {
+            $folder = $FolderBrowserDialog.SelectedPath
+            Write-Output $folder
+        }
+        'Cancel'
+        {
+        }
+    }
+    $FolderBrowserDialog.Dispose()
+    Remove-Variable FolderBrowserDialog
+}#Read-FolderBrowswerDialog
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
@@ -5039,7 +5080,7 @@ param
             }
             'Profile Directory'
             {
-                $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $newAdminUserProfile.General.ProfileFolder
+                $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $(Split-Path $newAdminUserProfile.General.ProfileFolder)
                 if ($ProfileDirectory -ne $newAdminUserProfile.General.ProfileFolder)
                 {
                     $newAdminUserProfile.General.ProfileFolder = $ProfileDirectory
@@ -5349,7 +5390,7 @@ Param(
     $message = "Select a location for your admin user profile directory. A sub-directory named 'OneShell' will be created in the selected directory if one does not already exist. The user profile $($env:UserProfile) is the recommended location.  Additionally, under the OneShell directory, sub-directories for Logs, Input, and Export files will be created."
     Do
     {
-        $UserChosenPath = Read-FolderBrowserDialog -Message $message  -InitialDirectory $InitialDirectory
+        $UserChosenPath = Read-FolderBrowserDialog -Description $message -InitialDirectory $InitialDirectory
         if (Test-IsWriteableDirectory -Path $UserChosenPath)
         {
             $ProfileFolderToCreate = Join-Path $UserChosenPath 'OneShell'
@@ -5391,22 +5432,23 @@ $OrganizationIdentity
 ,
 $CurrentMailRelayEndpoint
 )
-        $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-        $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
-        if ($MailRelayEndpoints.Count -gt 1)
-        {
-            $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
-            $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-            $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-            $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title "Select Mail Relay Endpoint"
-            $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
-        }
-        else
-        {
-            $choice = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-            Read-AnyKey -prompt "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice."
-            $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
-        }
+    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
+    if ($MailRelayEndpoints.Count -gt 1)
+    {
+        $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
+        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
+        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title "Select Mail Relay Endpoint"
+        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
+    }
+    else
+    {
+        $choice = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+        Read-AnyKey -prompt "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice."
+        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
+    }
+    Write-Output $MailRelayEndpointToUse
 }
 function SaveAdminUserProfile
 {
