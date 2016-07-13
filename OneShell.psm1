@@ -5080,7 +5080,8 @@ param
             }
             'Profile Directory'
             {
-                $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $(Split-Path $newAdminUserProfile.General.ProfileFolder)
+                if ($newAdminUserProfile.General.ProfileFolder -ne $null) {$InitialDirectory = Split-Path $newAdminUserProfile.General.ProfileFolder}
+                $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
                 if ($ProfileDirectory -ne $newAdminUserProfile.General.ProfileFolder)
                 {
                     $newAdminUserProfile.General.ProfileFolder = $ProfileDirectory
