@@ -15,11 +15,11 @@ function Get-ArrayIndexForValue {
         $property
     )
     if ([string]::IsNullOrWhiteSpace($Property)) {
-        Write-Verbose -Message "Using Simple"
+        Write-Verbose -Message "Using Simple Match for Index"
         [array]::indexof($array,$value)
     }#if
     else {
-        Write-Verbose -Message "Using Property"
+        Write-Verbose -Message "Using Property Match for Index"
         [array]::indexof($array.$property,$value)
     }#else
 }#function
@@ -1992,7 +1992,7 @@ param(
     $openFileDialog.Dispose()
     Remove-Variable openFileDialog
 }#Read-OpenFileDialog
-function Read-Choice
+function Read-PromptForChoice
 {
 [cmdletbinding(DefaultParameterSetName='StringChoices')]
 Param(
@@ -2008,7 +2008,8 @@ Param(
     [alias('ObjectChoices')]
     [psobject[]]$ChoiceObjects
     ,
-    [System.Int32]$DefaultChoice = 0
+    [int]$DefaultChoice = -1
+    #[int[]]$DefaultChoices = @(0)
     ,
     [System.String]$Title = [string]::Empty
     ,
@@ -2082,7 +2083,7 @@ switch ($PSCmdlet.ParameterSetName)
         $Enumerator = $_.Enumerator
         $Choice = $_.Choice
         $Description = if (-not [string]::IsNullOrWhiteSpace($_.Description)) {$_.Description} else {$_.Choice}
-        $ChoiceWithEnumerator = 
+        $ChoiceWithEnumerator =
             if ($Numbered)
             {
                 "&$Enumerator $($Choice)"
@@ -2103,6 +2104,254 @@ switch ($PSCmdlet.ParameterSetName)
     }
 )
 $Host.UI.PromptForChoice($Title, $Message, $PossibleChoices, $DefaultChoice)
+}#Read-Choice
+function Read-Choice
+{
+[cmdletbinding()]
+param(
+    [System.String]$Title = [string]::Empty
+    ,
+    [System.String]$Message
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('StringChoices')]
+    [System.String[]]$Choices
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('ObjectChoices')]
+    [psobject[]]$ChoiceObjects
+    ,
+    [int]$DefaultChoice = -1
+    ,
+    [Parameter(ParameterSetName='StringChoices')]
+    [switch]$Numbered
+    ,
+    [switch]$Vertical
+    ,
+    [switch]$ReturnChoice
+)
+#Region ProcessChoices
+#Prepare the PossibleChoices objects
+switch ($PSCmdlet.ParameterSetName)
+{
+    'StringChoices'
+    #Create the Choice Objects
+    {
+        if ($Numbered)
+        {
+            $choiceCount = 0
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $choiceCount++
+                    [PSCustomObject]@{
+                        Enumerator = $choiceCount
+                        Choice = $choice
+                    }
+                }
+            )
+        }
+        else
+        {
+            [char[]]$choiceEnumerators = @()
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $Enumerator = $null
+                    foreach ($char in $choice.ToCharArray())
+                    {
+                        if ($char -notin $choiceEnumerators -and $char -match '[a-zA-Z]' )
+                        {
+                            $Enumerator = $char
+                            $choiceEnumerators += $Enumerator
+                            break
+                        }
+                    }
+                    if ($Enumerator -eq $null)
+                    {
+                        $EnumeratorError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 0 -ErrorCategory InvalidData -TargetObject $choice -Message 'Unable to determine an enumerator'
+                        $PSCmdlet.ThrowTerminatingError($EnumeratorError)
+                    }
+                    else
+                    {
+                        [PSCustomObject]@{
+                            Enumerator = $Enumerator
+                            Choice = $choice
+                        }
+                    }
+                }
+            )
+        }
+    }
+    'ObjectChoices'
+    #Validate the Choice Objects using the first object as a representative
+    {
+        if ($ChoiceObjects[0].Enumerator -eq $null -or $ChoiceObjects[0].Choice -eq $null)
+        {
+            $ChoiceObjectError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 1 -ErrorCategory InvalidData -TargetObject $ChoiceObjects[0] -Message 'Choice Object(s) do not include the required enumerator and/or choice properties'
+            $PSCmdlet.ThrowTerminatingError($ChoiceObjectError)
+        }
+    }
+}#Switch
+$possiblechoices = @(
+    $ChoiceObjects | ForEach-Object {
+        $Enumerator = $_.Enumerator
+        $Choice = $_.Choice
+        $Description = if (-not [string]::IsNullOrWhiteSpace($_.Description)) {$_.Description} else {$_.Choice}
+        $ChoiceWithEnumerator = 
+            if ($Numbered)
+            {
+                "_$Enumerator $($Choice)"
+            }
+            else
+            {
+                $index = $choice.IndexOf($Enumerator)
+                if ($index -eq -1)
+                {
+                    "_$Enumerator $($Choice)"
+                }
+                else
+                {
+                    $choice.insert($index,'_')
+                }
+            }
+       [pscustomobject]@{
+            ChoiceText = $Choice
+            ChoiceWithEnumerator = $ChoiceWithEnumerator
+            Description = $Description
+       }
+    }
+)
+$Script:UserChoice = $null
+#EndRegion ProcessChoices
+#Region Layout
+if ($Vertical)
+{
+    $layout = 'Vertical'
+} else
+{
+    $layout = 'Horizontal'
+}
+#EndRegion Layout
+#Region BuildWPFWindow
+# Add required assembly
+Add-Type -AssemblyName PresentationFramework
+# Create a Size Object
+$wpfSize = [Windows.Size]::new([double]::PositiveInfinity,[double]::PositiveInfinity)
+# Create a Window
+$Window = New-Object Windows.Window
+$Window.Title = $Title
+$Window.SizeToContent ='WidthAndHeight'
+$window.WindowStartupLocation="CenterScreen"
+# Create a grid container with x rows, one for the message, x for the buttons
+$Grid =  New-Object Windows.Controls.Grid
+$FirstRow = New-Object Windows.Controls.RowDefinition
+$FirstRow.Height = 'Auto'
+$grid.RowDefinitions.Add($FirstRow)
+# Create a label for the message
+$label = New-Object Windows.Controls.Label
+$label.Content = $Message
+$label.Margin = "5,5,5,5"
+$label.HorizontalAlignment = 'Left'
+$label.Measure($wpfSize)
+#add the label to Row 1
+$label.SetValue([Windows.Controls.Grid]::RowProperty,0)
+#prepare for button sizing
+$buttonHeights = @()
+$buttonWidths = @()
+if ($layout -eq 'Horizontal') {$label.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,$($choices.Count))}
+elseif ($layout -eq 'Vertical') {$buttonWidths += $label.DesiredSize.Width}
+#create the buttons and add them to the grid
+$buttonIndex = 0
+foreach ($pc in $possiblechoices)
+{
+    # Create a button to get running Processes
+    Set-Variable "buttonControl$buttonIndex" -Value (New-Object Windows.Controls.Button) -Scope local
+    $tempButton = Get-Variable -Name "buttonControl$buttonIndex" -ValueOnly
+    $tempButton.Name = "Choice$buttonIndex"
+    $tempButton.Content = $pc.ChoiceWithEnumerator
+    $tempButton.Tooltip = $pc.Description
+    $tempButton.HorizontalAlignment = 'Center'
+    $tempButton.VerticalAlignment = 'Top'
+    # Add an event on the Get Processes button
+    $tempButton.Add_Click({
+        [System.Object]$sender = $args[0]
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+        $Script:UserChoice = $sender.content.tostring()
+        $Window.DialogResult = $true
+        $Window.Close()
+    })
+    switch ($layout)
+    {
+        'Vertical'
+        {
+            #Create additional row for each button
+            $Row = New-Object Windows.Controls.RowDefinition
+            $Row.Height = 'Auto'
+            $grid.RowDefinitions.Add($Row)
+            $RowIndex = $buttonIndex + 1
+            $tempButton.SetValue([Windows.Controls.Grid]::RowProperty,$RowIndex)
+        }
+        'Horizontal'
+        {
+            #Create additional row for the buttons
+            $Row = New-Object Windows.Controls.RowDefinition
+            $Row.Height = 'Auto'
+            $grid.RowDefinitions.Add($Row)
+            $RowIndex = 1
+            $tempButton.SetValue([Windows.Controls.Grid]::RowProperty,$RowIndex)
+            #create additional column for each button
+            $Column = New-Object Windows.Controls.ColumnDefinition
+            $Column.Width = 'Auto'
+            $grid.ColumnDefinitions.Add($Column)
+            $ColumnIndex = $buttonIndex
+            $tempButton.SetValue([Windows.Controls.Grid]::ColumnProperty,$ColumnIndex)
+        }
+    }
+    $tempButton.MinHeight = 10
+    $tempButton.Margin = "5,5,5,5"
+    $tempButton.Measure($wpfSize)
+    $buttonheights += $tempButton.desiredSize.Height
+    $buttonwidths += $tempButton.desiredSize.Width
+    $buttonIndex++
+}
+$buttonHeight = ($buttonHeights | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum)
+Write-Verbose -Message "Button Height is $buttonHeight"
+$buttonWidth = ($buttonWidths| Measure-Object -Maximum | Select-Object -ExpandProperty Maximum) + 10
+Write-Verbose -Message "Button Width is $buttonWidth"
+$buttons = Get-Variable 'buttonControl*' -Scope local -ValueOnly
+$buttonIndex = 0
+foreach ($button in $buttons)
+{
+    $button.Height = $buttonHeight
+    $button.Width = $buttonWidth
+    $grid.AddChild($button)
+    if ($buttonIndex -eq $DefaultChoice)
+    {
+        $button.focus()
+    }
+    $buttonIndex++
+}
+# Add the elements to the relevant parent control
+$Grid.AddChild($label)
+$window.Content = $Grid
+#EndRegion BuildWPFWindow
+# Show the window
+    
+if ($window.ShowDialog())
+{
+    if ($ReturnChoice)
+    {
+        $cindex = Get-ArrayIndexForValue -array $possiblechoices -value $Script:UserChoice -property ChoiceWithEnumerator
+        $possiblechoices[$cindex].ChoiceText
+    } 
+    else
+    {
+        Get-ArrayIndexForValue -array $possiblechoices -value $Script:UserChoice -property ChoiceWithEnumerator
+    }
+}
 }#Read-Choice
 function Read-FolderBrowserDialog
 {# Show an Open Folder Dialog and return the directory selected by the user. 
@@ -5049,7 +5298,7 @@ param
             MailRelayEndpointToUse = ''
             Default = $false
         }
-        Systems = @()
+        Systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity) | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}}
         Credentials = @()
     }
     #Set the required profile items
@@ -5058,7 +5307,23 @@ param
     $choices = 'Profile Name', 'Set Default', 'Profile Directory','Mail From Email Address','Mail Relay Endpoint','Credentials','Systems','Save','Save and Quit','Cancel'
     do
     {
-        $UserChoice = Read-Choice -Message 'New Admin User Profile Menu' -Choices $choices -Title 'New Admin User Profile'
+        $Message = @"
+Oneshell: New Admin User Profile Menu
+
+    Identity: $($newAdminUserProfile.Identity)
+    Host: $($newAdminUserProfile.General.Host)
+    Profile Name: $($newAdminUserProfile.General.Name)
+    Default: $($newAdminUserProfile.General.Default)
+    Directory: $($newAdminUserProfile.General.ProfileFolder)
+    Mail From: $($newAdminUserProfile.General.MailFrom)
+    Credential Count: $($newAdminUserProfile.Credentials.Count)
+    Credentials:
+    $(foreach ($c in $newAdminUserProfile.Credentials) {"`t$($c.Username)`r`n"})
+    Count of Systems with Associated Credentials: $(@($newAdminUserProfile.Systems | Where-Object {$_.credential -ne $null}).count)
+    Count of Systems Configured for AutoConnect: $(@($newAdminUserProfile.Systems | Where-Object {$_.AutoConnect -eq $true}).count)
+
+"@
+        $UserChoice = Read-Choice -Message $message -Choices $choices -Title 'New Admin User Profile' -Vertical
         switch ($choices[$UserChoice])
         {
             'Profile Name'
@@ -5080,8 +5345,14 @@ param
             }
             'Profile Directory'
             {
-                if ($newAdminUserProfile.General.ProfileFolder -ne $null) {$InitialDirectory = Split-Path $newAdminUserProfile.General.ProfileFolder}
-                $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
+                if (-not [string]::IsNullOrEmpty($newAdminUserProfile.General.ProfileFolder))
+                {
+                    $InitialDirectory = Split-Path $newAdminUserProfile.General.ProfileFolder
+                    $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
+                } else 
+                {
+                    $ProfileDirectory = GetAdminUserProfileFolder
+                }
                 if ($ProfileDirectory -ne $newAdminUserProfile.General.ProfileFolder)
                 {
                     $newAdminUserProfile.General.ProfileFolder = $ProfileDirectory
@@ -5108,84 +5379,33 @@ param
                 $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
                 $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
                 $newAdminUserProfile.Credentials = $exportcredentials
-
             }
             'Systems'
             {
-                
-                $SystemsDone = $false
-                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-                $SystemEntries = @($systems | foreach-object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}})
-                $Labels = @($systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name)
-                $Labels += 'Done'
-                $SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
-                $SystemChoiceTitle = 'Configure Systems'
-                Do {
-                    $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $Labels -Numbered
-                    if ($Labels[$SystemChoice] -eq 'Done')
-                    {
-                        $SystemsDone = $true
-                    } else
-                    {
-                        $EditsDone = $false
-                        $EditTypePrompt = "Edit AutoConnect or Associated Credential for this system:  `n`n$($labels[$SystemChoice])"
-                        $EditTypes = 'AutoConnect','AssociateCredential','Done'
-                        $CredPrompt = "Which Credential (if any) do you want to associate with this system: `n`n$($labels[$SystemChoice])"
-                        $AutoConnectPrompt = "Do you want to Auto Connect to this system with this admin profile: `n`n$($labels[$SystemChoice])"
-                        Do {
-                            $EditTypeChoice = Read-Choice -Message $EditTypePrompt -Choices 'AutoConnect','Associated Credential','Done' -DefaultChoice 0 -Title "Edit System $($labels[$SystemChoice])"
-                            switch ($editTypes[$EditTypeChoice])
-                            {
-                                'AutoConnect'
-                                {
-                                    $DefaultChoice = if ($SystemEntries[$SystemChoice].AutoConnect -eq $true) {0} elseif ($SystemEntries[$SystemChoice].AutoConnect -eq $null) {-1} else {1}
-                                    $AutoConnect = Read-Choice -Message $AutoConnectPrompt -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title "AutoConnect System $($labels[$SystemChoice])?"
-                                    switch ($AutoConnect)
-                                    {
-                                        0
-                                        {
-                                            $SystemEntries[$SystemChoice].AutoConnect = $true
-                                        }
-                                        1
-                                        {
-                                            $SystemEntries[$SystemChoice].AutoConnect = $false
-                                        }
-                                    }
-                                }
-                                'AssociateCredential'
-                                {
-                                    if ($newAdminUserProfile.Credentials.Count -ge 1)
-                                    {
-                                        $DefaultChoice = if ($SystemEntries[$SystemChoice].Credential -eq $null) {-1} else {Get-ArrayIndexForValue -value $SystemEntries[$SystemChoice].Credential -array $newAdminUserProfile.Credentials -property Identity}
-                                        $CredentialChoice = Read-Choice -Message $CredPrompt -Choices $newAdminUserProfile.Credentials.Username -Title "Associate Credential to System $($labels[$SystemChoice])" -DefaultChoice $DefaultChoice
-                                        $SystemEntries[$SystemChoice].Credential = $newAdminUserProfile.Credentials[$CredentialChoice].Identity
-                                    } else
-                                    {
-                                        Write-Error -Message "No Credentials exist in the Admin User Profile.  Please add one or more credentials." -Category InvalidData -ErrorId 0
-                                    }
-                                }
-                                'Done'
-                                {
-                                    $EditsDone = $true
-                                }
-                            }
-                        }
-                        Until
-                        ($EditsDone)
-                    }
-                }
-                Until
-                ($SystemsDone)
-                $newAdminUserProfile.Systems = $SystemEntries                
+                $newAdminUserProfile.Systems = GetAdminUserProfileSystemEntries -existingSystemEntries $newAdminUserProfile.Systems -OrganizationIdentity $OrganizationIdentity
             }
             'Save'
             {
-                SaveAdminUserProfile -AdminUserProfile $newAdminUserProfile
+                if ($newAdminUserProfile.General.ProfileFolder -eq '')
+                {
+                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                }
+                else
+                {
+                    SaveAdminUserProfile -AdminUserProfile $newAdminUserProfile
+                }
             }
             'Save and Quit'
             {
-                SaveAdminUserProfile -AdminUserProfile $newAdminUserProfile
-                $quit = $true
+                if ($newAdminUserProfile.General.ProfileFolder -eq '')
+                {
+                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                }
+                else
+                {
+                    SaveAdminUserProfile -AdminUserProfile $newAdminUserProfile
+                    $quit = $true
+                }
             }
             'Cancel'
             {
@@ -5450,6 +5670,95 @@ $CurrentMailRelayEndpoint
         $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
     }
     Write-Output $MailRelayEndpointToUse
+}
+function GetAdminUserProfileSystemEntries
+{
+[cmdletbinding()]
+param(
+$existingSystemEntries
+,
+$OrganizationIdentity
+)
+$SystemsDone = $false
+$systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+$existingSystemEntriesIdentities = $existingSystemEntries | Select-Object -ExpandProperty Identity
+$SystemEntries = @($systems | Where-Object -FilterScript {$_.Identity -notin $existingSystemEntriesIdentities} | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}})
+$SystemEntries = @($existingSystemEntries + $SystemEntries)
+$SystemLabels = @(
+    foreach ($s in $SystemEntries)
+    {
+        $system = $systems | Where-Object -FilterScript {$_.Identity -eq $s.Identity}
+        "$($system.SystemType):$($system.Name)"
+    } 
+)
+$SystemLabels += 'Done'
+$SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
+$SystemChoiceTitle = 'Configure Systems'
+Do {
+    $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $SystemLabels -Vertical
+    if ($SystemLabels[$SystemChoice] -eq 'Done')
+    {
+        $SystemsDone = $true
+    } else
+    {
+        Do {
+            $EditTypePrompt = @"
+Edit AutoConnect or Associated Credential for this system: $($SystemLabels[$SystemChoice])
+Current Settings
+AutoConnect: $($SystemEntries[$SystemChoice].AutoConnect)
+Credential: $($newAdminUserProfile.Credentials | where-object {$_.Identity -eq $SystemEntries[$SystemChoice].Credential} | Select-Object -ExpandProperty UserName)
+"@
+            $EditTypes = 'AutoConnect','Associate Credential','Done'
+            $EditTypeChoice = $null
+            $EditTypeChoice = Read-Choice -Message $EditTypePrompt -Choices $editTypes -DefaultChoice -1 -Title "Edit System $($SystemLabels[$SystemChoice])"
+            switch ($editTypes[$EditTypeChoice])
+            {
+                'AutoConnect'
+                {
+                    Write-Verbose -Message "Running AutoConnect Prompt"
+                    $AutoConnectPrompt = "Do you want to Auto Connect to this system: $($SystemLabels[$SystemChoice])?"
+                    $DefaultChoice = if ($SystemEntries[$SystemChoice].AutoConnect -eq $true) {0} elseif ($SystemEntries[$SystemChoice].AutoConnect -eq $null) {-1} else {1}
+                    $AutoConnectChoice = Read-Choice -Message $AutoConnectPrompt -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title "AutoConnect System $($SystemLabels[$SystemChoice])?"
+                    switch ($AutoConnectChoice)
+                    {
+                        0
+                        {
+                            $SystemEntries[$SystemChoice].AutoConnect = $true
+                        }
+                        1
+                        {
+                            $SystemEntries[$SystemChoice].AutoConnect = $false
+                        }
+                    }
+                    $EditsDone = $false
+                }
+                'Associate Credential'
+                {
+                    if ($newAdminUserProfile.Credentials.Count -ge 1)
+                    {
+                        $CredPrompt = "Which Credential do you want to associate with this system: $($SystemLabels[$SystemChoice])?"
+                        $DefaultChoice = if ($SystemEntries[$SystemChoice].Credential -eq $null) {-1} else {Get-ArrayIndexForValue -value $SystemEntries[$SystemChoice].Credential -array $newAdminUserProfile.Credentials -property Identity}
+                        $CredentialChoice = Read-Choice -Message $CredPrompt -Choices $newAdminUserProfile.Credentials.Username -Title "Associate Credential to System $($SystemLabels[$SystemChoice])" -DefaultChoice $DefaultChoice -Vertical
+                        $SystemEntries[$SystemChoice].Credential = $newAdminUserProfile.Credentials[$CredentialChoice].Identity
+                    } else
+                    {
+                        Write-Error -Message "No Credentials exist in the Admin User Profile.  Please add one or more credentials." -Category InvalidData -ErrorId 0
+                    }
+                    $EditsDone = $false
+                }
+                'Done'
+                {
+                    $EditsDone = $true
+                }
+            }
+        }
+        Until
+        ($EditsDone -eq $true)
+    }
+}
+Until
+($SystemsDone)
+$SystemEntries
 }
 function SaveAdminUserProfile
 {
