@@ -223,7 +223,6 @@ A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and the
     ModifiedBy: Mike Campbell
 #>
 }
-#requires -Version 2.0
 function Get-CallerPreference
 {
     <#
@@ -1591,8 +1590,6 @@ function Export-Credential
         [string]$message
         ,
         [string]$username
-        ,
-        [string[]]$Systems
     )
     $GetCredentialParams=@{}
     if ($message) {$GetCredentialParams.Message = $message}
@@ -1606,7 +1603,6 @@ function Export-Credential
     $exportCredential = [pscustomobject]@{
         UserName = $ExportUserName
         Password = $ExportPassword
-        Systems = @($systems)
     }
     Write-Output $exportCredential
 }
@@ -1617,7 +1613,7 @@ param(
     [int]$Days
     ,
     [parameter()]
-    [validatescript({if ((Test-Path $_) -and (Get-Item -Path $_).PSIsContainer) {$true} else {$false}})]
+    [validatescript({Test-IsWriteableDirectory -Path $_})]
     [string[]]$Directory
 )
     $now = Get-Date
@@ -1941,15 +1937,104 @@ Function Read-AnyKey {
 }
 function Read-InputBoxDialog
 { # Show input box popup and return the value entered by the user. 
-#update with system.windows.forms code? https://msdn.microsoft.com/en-us/library/system.windows.forms.textbox(v=vs.110).aspx
-    param(
-        [string]$Message
-        , [string]$WindowTitle
-        , [string]$DefaultText
-    )
-    Add-Type -AssemblyName Microsoft.VisualBasic     
-    $inputbox = [Microsoft.VisualBasic.Interaction]::InputBox($Message, $WindowTitle, $DefaultText)
-    Write-Output $inputbox
+param(
+    [string]$Message
+    ,
+    [Alias("WindowTitle")]
+    [string]$Title
+    ,
+    [string]$DefaultText
+)
+$Script:UserInput = $null
+#Region BuildWPFWindow
+# Add required assembly
+Add-Type -AssemblyName PresentationFramework
+# Create a Size Object
+$wpfSize = [Windows.Size]::new([double]::PositiveInfinity,[double]::PositiveInfinity)
+# Create a Window
+$Window = New-Object Windows.Window
+$Window.Title = $WindowTitle
+$Window.MinWidth = 250
+$Window.SizeToContent ='WidthAndHeight'
+$window.WindowStartupLocation="CenterScreen"
+# Create a grid container with 3 rows, one for the message, one for the text box, and one for the buttons
+$Grid =  New-Object Windows.Controls.Grid
+$FirstRow = New-Object Windows.Controls.RowDefinition
+$FirstRow.Height = 'Auto'
+$grid.RowDefinitions.Add($FirstRow)
+$SecondRow = New-Object Windows.Controls.RowDefinition
+$SecondRow.Height = 'Auto'
+$grid.RowDefinitions.Add($SecondRow)
+$ThirdRow = New-Object Windows.Controls.RowDefinition
+$ThirdRow.Height = 'Auto'
+$grid.RowDefinitions.Add($ThirdRow)
+$ColumnOne = New-Object Windows.Controls.ColumnDefinition
+$ColumnOne.Width = 'Auto'
+$grid.ColumnDefinitions.Add($ColumnOne)
+$ColumnTwo = New-Object Windows.Controls.ColumnDefinition
+$ColumnTwo.Width = 'Auto'
+$grid.ColumnDefinitions.Add($ColumnTwo)
+# Create a label for the message
+$label = New-Object Windows.Controls.Label
+$label.Content = $Message
+$label.Margin = "5,5,5,5"
+$label.HorizontalAlignment = 'Left'
+$label.Measure($wpfSize)
+#add the label to Row 1
+$label.SetValue([Windows.Controls.Grid]::RowProperty,0)
+$label.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,2)
+$textbox = New-Object Windows.Controls.TextBox
+$textbox.name = 'InputBox'
+$textbox.Text = $DefaultText
+$textbox.Margin = "10,10,10,10"
+$textbox.MinWidth = 200
+$textbox.SetValue([Windows.Controls.Grid]::RowProperty,1)
+$textbox.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,2)
+$OKButton = New-Object Windows.Controls.Button
+$OKButton.Name = 'OK'
+$OKButton.Content = 'OK'
+$OKButton.ToolTip = 'OK'
+$OKButton.HorizontalAlignment = 'Center'
+$OKButton.VerticalAlignment = 'Top'
+$OKButton.Add_Click({
+        [System.Object]$sender = $args[0]
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+        $Script:UserInput = $textbox.text
+        $Window.DialogResult = $true
+        $Window.Close()
+    })
+$OKButton.SetValue([Windows.Controls.Grid]::RowProperty,2)
+$OKButton.SetValue([Windows.Controls.Grid]::ColumnProperty,0)
+$OKButton.Margin = "5,5,5,5"
+$CancelButton = New-Object Windows.Controls.Button
+$CancelButton.Name = 'Cancel'
+$CancelButton.Content = 'Cancel'
+$CancelButton.ToolTip = 'Cancel'
+$CancelButton.HorizontalAlignment = 'Center'
+$CancelButton.VerticalAlignment = 'Top'
+$CancelButton.Margin = "5,5,5,5"
+$CancelButton.Measure($wpfSize)
+$CancelButton.Add_Click({
+        [System.Object]$sender = $args[0]
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+        $Window.DialogResult = $false
+        $Window.Close()
+    })
+$CancelButton.SetValue([Windows.Controls.Grid]::RowProperty,2)
+$CancelButton.SetValue([Windows.Controls.Grid]::ColumnProperty,1)
+$CancelButton.Height = $CancelButton.DesiredSize.Height
+$CancelButton.Width = $CancelButton.DesiredSize.Width + 10
+$OKButton.Height = $CancelButton.DesiredSize.Height
+$OKButton.Width = $CancelButton.DesiredSize.Width + 10
+$Grid.AddChild($label)
+$Grid.AddChild($textbox)
+$Grid.AddChild($OKButton)
+$Grid.AddChild($CancelButton)
+$window.Content = $Grid
+if ($window.ShowDialog())
+{
+    $Script:UserInput
+}
 } 
 function Read-OpenFileDialog
 {
