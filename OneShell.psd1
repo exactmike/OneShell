@@ -67,6 +67,7 @@ NestedModules = @('PSMenu.psm1')
 
 # Functions to export from this module
 #FunctionsToExport = '*'
+#FunctionsToExport = '*-*' #May turn this on soon
 
 # Cmdlets to export from this module
 #CmdletsToExport = '*'
