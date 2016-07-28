@@ -2674,7 +2674,10 @@ Function Connect-Exchange
             $UseExistingSession = $false
         }#catch
         switch ($UseExistingSession) {
-            $true {}#$true
+            $true
+            {
+                Write-Output $true
+            }#$true
             $false {
                 $sessionParams = @{
                     ConfigurationName = 'Microsoft.Exchange'
@@ -2915,7 +2918,7 @@ Function Connect-Skype {
             $UseExistingSession = $false
         }#catch
         switch ($UseExistingSession) {
-            $true {}#$true
+            $true {Write-Output $true}#$true
             $false {
                 $sessionParams = @{
                     Credential = $Credential
@@ -3059,6 +3062,7 @@ Function Connect-AADSync {
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 $UseExistingSession = $true
+                Write-Output $true
             }#else
         }#try
         catch {
@@ -3216,6 +3220,7 @@ Function Connect-ADInstance {
                     If ($result.Count -ge 1) {
                         Write-Log -Message "Succeeded: Validate Operational Status of Drive $name."
                         $UseExistingDrive = $True
+                        Write-Output $True
                     }
                     else {
                         Remove-PSDrive -Name $name -ErrorAction Stop
@@ -3613,6 +3618,7 @@ Function Connect-PowerShellSystem {
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 $UseExistingSession = $true
+                Write-Output $true
             }#else
         }#try
         catch {
@@ -5109,7 +5115,7 @@ Function Use-AdminUserProfile
 [cmdletbinding()]
 param(
     [parameter(ParameterSetName = 'Object',ValueFromPipeline=$true)]
-    $profile 
+    $AdminUserProfile 
     ,
     [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyname = $true, Mandatory = $true)]
     [string]$Identity
@@ -5134,39 +5140,41 @@ begin
             {
                 $GetAdminUserProfileParams.Path = $Path
             }
-            $profile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+            $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
         }
     }
 }#begin
 process{
     #check if there is already a "Current" admin profile and if it is different from the one being used/applied by this run of the function
     #need to add some clean-up functionality for sessions when there is a change, or make it always optional to reset all sessions with this function
-    if ($script:CurrentAdminUserProfile -and $profile.Identity -ne $script:CurrentAdminUserProfile.Identity) 
+    if (($script:CurrentAdminUserProfile -ne $null) -and $AdminUserProfile.Identity -ne $script:CurrentAdminUserProfile.Identity) 
     {
-        $script:CurrentAdminUserProfile = $profile
+        $script:CurrentAdminUserProfile = $AdminUserProfile
         Write-Warning "Admin User Profile has been changed to $($script:CurrentAdminUserProfile.Identity). Remove PSSessions and then re-establish connectivity using Connect-RemoteSystems."
     }
     else {
-        $script:CurrentAdminUserProfile = $profile
+        $script:CurrentAdminUserProfile = $AdminUserProfile
         Write-Verbose "Admin User Profile has been set to $($script:CurrentAdminUserProfile.Identity), $($script:CurrentAdminUserProfile.general.name)."
     }
     #Retrieve the systems from the current org profile
-    $systems = Get-OrgProfileSystem -OrganizationIdentity $script:CurrentAdminUserProfile.general.OrganizationIdentity
+    $systems = Get-OrgProfileSystem -OrganizationIdentity $AdminUserProfile.general.OrganizationIdentity
     #Build the autoconnect property and the mapped credentials for each system and store in the CurrentOrgAdminProfileSystems Script variable
     $Script:CurrentOrgAdminProfileSystems = 
     @(
         foreach ($sys in $systems) {
             $sys | Add-Member -MemberType NoteProperty -Name Autoconnect -Value $null
-            [boolean]$autoconnect = $script:CurrentAdminUserProfile.systems | Where-Object -FilterScript {$sys.Identity -eq $_.Identity} | foreach-Object {$_.autoconnect}
-            $sys.AutoConnect = $autoconnect
-            if (! $sys.Autoconnect) {$sys.Autoconnect = $false}
-            $sysPreCredential = $script:CurrentAdminUserProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $sys.credential} 
-            if (! $sysPreCredential) {$Credential = $null}
-            else {
-                $SSPassword = $sysPreCredential.password | ConvertTo-SecureString
-                $Credential = if ($sysPreCredential -and $SSPassword) {New-Object System.Management.Automation.PSCredential($sysPreCredential.Username,$SSPassword)} else {$null}
+            $sys | Add-Member -MemberType NoteProperty -Name Credential -value $null
+            $adminUserProfileSystem = $AdminUserProfile.systems | Where-Object -FilterScript {$sys.Identity -eq $_.Identity}
+            $sys.AutoConnect = $adminUserProfileSystem.AutoConnect
+            $PreCredential = @($AdminUserProfile.credentials | Where-Object -FilterScript {$_.Identity -eq $adminUserProfileSystem.Credential})
+            if ($PreCredential.count -eq 1)
+            {
+                $SSPassword = $PreCredential[0].password | ConvertTo-SecureString
+                $Credential = New-Object System.Management.Automation.PSCredential($PreCredential[0].Username,$SSPassword)
             }
-            $sys | Add-Member -MemberType NoteProperty -Name Credential -value $Credential
+            else
+            {$Credential = $null}
+            $sys.Credential = $Credential
             $sys
         }
     )
@@ -5178,7 +5186,7 @@ process{
     $Script:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations.log'
     $Script:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations-Errors.log'
     $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
-    Return $true
+    Write-Output $true
 }#process
 }
 Function Get-AdminUserProfile
@@ -5369,7 +5377,7 @@ param
     }
     Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
     #Build the basic Admin profile object
-    $AdminUserProfile = GetGenericNewAdminsUserProfileObject
+    $AdminUserProfile = GetGenericNewAdminsUserProfileObject -OrganizationIdentity $OrganizationIdentity
     #Let user configure the profile
     $quit = $false
     $choices = 'Profile Name', 'Set Default', 'Profile Directory','Mail From Email Address','Mail Relay Endpoint','Credentials','Systems','Save','Save and Quit','Cancel'
@@ -5430,12 +5438,19 @@ param
             'Credentials'
             {
                 $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-                $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -edit -Credentials $AdminUserProfile.Credentials)
+                if ($AdminUserProfile.Credentials.Count -ge 1)
+                {
+                    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -edit -Credentials $AdminUserProfile.Credentials)
+                }
+                else
+                {
+                    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
+                }
                 $AdminUserProfile.Credentials = $exportcredentials
             }
             'Systems'
             {
-                $AdminUserProfile.Systems = GetAdminUserProfileSystemEntries -OrganizationIdentity $OrganizationIdentity -AdminProfile $AdminUserProfile
+                $AdminUserProfile.Systems = GetAdminUserProfileSystemEntries -OrganizationIdentity $OrganizationIdentity -AdminUserProfile $AdminUserProfile
             }
             'Save'
             {
@@ -5684,8 +5699,8 @@ Oneshell: Admin User Profile Menu
     Credential Count: $($AdminUserProfile.Credentials.Count)
     Credentials:
     $(foreach ($c in $AdminUserProfile.Credentials) {"`t$($c.Username)`r`n"})
-    Count of Systems with Associated Credentials: $(@($AdminUserProfile.Systems | Where-Object {$_.credential -ne $null}).count)
-    Count of Systems Configured for AutoConnect: $(@($AdminUserProfile.Systems | Where-Object {$_.AutoConnect -eq $true}).count)
+    Count of Systems with Associated Credentials: $(@($AdminUserProfile.Systems | Where-Object -FilterScript {$_.credential -ne $null}).count)
+    Count of Systems Configured for AutoConnect: $(@($AdminUserProfile.Systems | Where-Object -FilterScript {$_.AutoConnect -eq $true}).count)
 
 "@
 $Message
@@ -5735,11 +5750,47 @@ param($AdminUserProfile)
         $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $null
     }
     #ProfileTypeVersion
-    if (-not (Test-Member -InputObject $AdminUserProfile -MemberType NoteProperty -Name ProfileTypeVersion))
+    if (-not (Test-Member -InputObject $AdminUserProfile -Name ProfileTypeVersion))
     {
         $AdminUserProfile | Add-Member -MemberType NoteProperty -Name ProfileTypeVersion -Value 1.0
     }
-$AdminUserProfile
+    #Credentials add Identity
+    foreach ($Credential in $AdminUserProfile.Credentials)
+    {
+        if (-not (Test-Member -InputObject $Credential -Name Identity))
+        {
+            $Credential | Add-Member -MemberType NoteProperty -Name Identity -Value $(New-Guid).guid
+        }
+    }
+    #SystemEntries
+    foreach ($se in $AdminUserProfile.Systems)
+    {
+        if (-not (Test-Member -InputObject $se -Name Credential))
+        {
+            $se | Add-Member -MemberType NoteProperty -Name Credential -Value $null
+        }
+        foreach ($credential in $AdminUserProfile.Credentials)
+        {
+            if (Test-Member -InputObject $credential -Name Systems)
+            {
+                if ($se.Identity -in $credential.systems)
+                {$se.credential = $credential.Identity}
+            }
+        }
+    }
+    #Credentials Remove Systems
+    $UpdatedCredentialObjects = @(
+        foreach ($Credential in $AdminUserProfile.Credentials)
+        {
+            if (Test-Member -InputObject $Credential -Name Systems)
+            {
+                $UpdatedCredential = $Credential | Select-Object -Property Identity,Username,Password
+                $UpdatedCredential
+            }
+        }
+    )
+    $AdminUserProfile.Credentials = $UpdatedCredentialObjects
+Write-Output $AdminUserProfile
 } #UpdateAdminUserProfileObjectVersion
 #supporting functions for AdminUserProfile Editing
 function GetAdminUserProfileFolder
@@ -5819,13 +5870,14 @@ $OrganizationIdentity
 ,
 $AdminUserProfile
 )
-$SystemsDone = $false
+
 $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
 $existingSystemEntriesIdentities = $AdminUserProfile.systems | Select-Object -ExpandProperty Identity
 $SystemEntries = @($systems | Where-Object -FilterScript {$_.Identity -notin $existingSystemEntriesIdentities} | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}})
-$SystemEntries = @($existingSystemEntries + $SystemEntries)
+$SystemEntries = @($AdminUserProfile.systems + $SystemEntries)
 #upgrade any old System Entries that do not have credential properties
-$SystemEntries | ForEach-Object {if (-not (Test-Member -InputObject $_ -Name Credential)) {$_ | Add-Member -Name Credential -MemberType NoteProperty -Value $null}}
+#this is done by the UpdateAdminUserProfileObjectVersion function now
+#$SystemEntries | ForEach-Object {if (-not (Test-Member -InputObject $_ -Name Credential)) {$_ | Add-Member -Name Credential -MemberType NoteProperty -Value $null}}
 $SystemLabels = @(
     foreach ($s in $SystemEntries)
     {
@@ -5836,6 +5888,7 @@ $SystemLabels = @(
 $SystemLabels += 'Done'
 $SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
 $SystemChoiceTitle = 'Configure Systems'
+$SystemsDone = $false
 Do {
     $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $SystemLabels -Vertical
     if ($SystemLabels[$SystemChoice] -eq 'Done')
@@ -5848,7 +5901,7 @@ Do {
 Edit AutoConnect or Associated Credential for this system: $($SystemLabels[$SystemChoice])
 Current Settings
 AutoConnect: $($SystemEntries[$SystemChoice].AutoConnect)
-Credential: $($AdminUserProfile.Credentials | where-object {$_.Identity -eq $SystemEntries[$SystemChoice].Credential} | Select-Object -ExpandProperty UserName)
+Credential: $($AdminUserProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $SystemEntries[$SystemChoice].Credential} | Select-Object -ExpandProperty UserName)
 "@
             $EditTypes = 'AutoConnect','Associate Credential','Done'
             $EditTypeChoice = $null
@@ -5876,12 +5929,12 @@ Credential: $($AdminUserProfile.Credentials | where-object {$_.Identity -eq $Sys
                 }
                 'Associate Credential'
                 {
-                    if ($AdminProfile.Credentials.Count -ge 1)
+                    if ($AdminUserProfile.Credentials.Count -ge 1)
                     {
                         $CredPrompt = "Which Credential do you want to associate with this system: $($SystemLabels[$SystemChoice])?"
                         $DefaultChoice = if ($SystemEntries[$SystemChoice].Credential -eq $null) {-1} else {Get-ArrayIndexForValue -value $SystemEntries[$SystemChoice].Credential -array $AdminUserProfile.Credentials -property Identity}
                         $CredentialChoice = Read-Choice -Message $CredPrompt -Choices $AdminUserProfile.Credentials.Username -Title "Associate Credential to System $($SystemLabels[$SystemChoice])" -DefaultChoice $DefaultChoice -Vertical
-                        $SystemEntries[$SystemChoice].Credential = $AdminProfile.Credentials[$CredentialChoice].Identity
+                        $SystemEntries[$SystemChoice].Credential = $AdminUserProfile.Credentials[$CredentialChoice].Identity
                     } else
                     {
                         Write-Error -Message "No Credentials exist in the Admin User Profile.  Please add one or more credentials." -Category InvalidData -ErrorId 0
@@ -5966,7 +6019,7 @@ function Set-AdminUserProfileCredentials {
         }
         'New' {$editableCredentials = @()}
     }
-    $systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
+    #$systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
     $labels = $systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}}
     do {
         $prompt = @"
@@ -6099,7 +6152,7 @@ Switch ($PSCmdlet.ParameterSetName)
                 {
                     $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
                     Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
-                    [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -Profile $DefaultAdminUserProfile
+                    [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
                     if ($AdminUserProfileLoaded)
                     {
                         Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
