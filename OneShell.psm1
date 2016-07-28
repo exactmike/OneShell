@@ -2324,7 +2324,9 @@ if ($Vertical)
 # Add required assembly
 Add-Type -AssemblyName PresentationFramework
 # Create a Size Object
-$wpfSize = [Windows.Size]::new([double]::PositiveInfinity,[double]::PositiveInfinity)
+$wpfSize = new-object System.Windows.Size
+$wpfSize.Height = [double]::PositiveInfinity
+$wpfSize.Width = [double]::PositiveInfinity
 # Create a Window
 $Window = New-Object Windows.Window
 $Window.Title = $Title
@@ -4910,8 +4912,8 @@ param(
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'OrgName')]
-    #add locations validation with Test-Path
-    [string[]]$Location = @("$env:ALLUSERSPROFILE\OneShell")
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
@@ -4936,7 +4938,7 @@ if ($PSCmdlet.ParameterSetName -eq 'Imported')
 {$OrgProfiles}
 else
 {
-foreach ($loc in $Location)
+foreach ($loc in $Path)
 {
     $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
     if ($JSONProfiles.Count -ge 1) {
@@ -4977,8 +4979,9 @@ Function Import-OrgProfile
 [cmdletbinding()]
 param
 (
-#Add validation for the path
-[string[]]$Location
+[Parameter()]
+[ValidateScript({Test-DirectoryPath -path $_})]
+[string[]]$Path
 ,
 [string]$OrgProfileType
 )
@@ -4986,8 +4989,8 @@ $GetOrgProfileParams=@{
     ErrorAction = 'Stop'
     Raw = $true
 }
-if ($PSBoundParameters.ContainsKey('Location'))
-{$GetOrgProfileParams.Location = $Location}
+if ($PSBoundParameters.ContainsKey('Path'))
+{$GetOrgProfileParams.Path = $Path}
 if ($PSBoundParameters.ContainsKey('OrgProfileType'))
 {$GetOrgProfileParams.OrgProfileType = $OrgProfileType}
 Try
@@ -6114,14 +6117,36 @@ param(
     ,
     [parameter(ParameterSetName = 'SpecifiedProfile')]
     $AdminProfile
+    ,
+    [parameter()]
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$OrgProfilePath
+    ,
+    [parameter()]
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$AdminProfilePath
 )
 Process
 {
+$ImportOrgProfileParams = @{
+    ErrorAction = 'Stop'
+}
+$ImportAdminUserProfileParams = @{
+    ErrorAction = 'Stop'
+}
+if ($PSBoundParameters.ContainsKey('OrgProfilePath'))
+{
+    $ImportOrgProfileParams.Path = $OrgProfilePath
+}
+if ($PSBoundParameters.ContainsKey('AdminProfilePath'))
+{
+    $ImportAdminUserProfileParams.Path = $AdminProfilePath
+}
 Switch ($PSCmdlet.ParameterSetName)
 {
     'AutoConnect'
     {
-        if (Import-OrgProfile)
+        if (Import-OrgProfile @ImportOrgProfileParams)
         {
             $DefaultOrgProfile = @($script:OrgProfiles | Where-Object {$_.General.Default -eq $true})
             switch ($DefaultOrgProfile.Count)
@@ -6142,7 +6167,7 @@ Switch ($PSCmdlet.ParameterSetName)
         }#If Get-OrgProfile
         if ($OrgProfileLoaded)
         {
-            if (Import-AdminUserProfile -OrgIdentity CurrentOrg)
+            if (Import-AdminUserProfile -OrgIdentity CurrentOrg @ImportAdminUserProfileParams)
             {
                 $DefaultAdminUserProfile = @($script:AdminUserProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
             }
@@ -6169,7 +6194,7 @@ Switch ($PSCmdlet.ParameterSetName)
                     Write-Warning "No Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity)"
                     switch ($Script:AdminUserProfiles.count)
                     {
-                        {$_ -ge 1}
+                        {$_ -eq 1}
                         {
                             Use-AdminUserProfile -Identity (Select-AdminUserProfile -purpose Use)
                         }
@@ -6184,20 +6209,93 @@ Switch ($PSCmdlet.ParameterSetName)
     }#AutoConnect
     'ShowMenu'
     {
-        Start-Sleep -Seconds 2
-        $menudefinition = [pscustomobject]@{
-            GUID = 'ac4ce63e-8b76-4381-a1d5-ad19510f47c7'
-            Title = 'OneShell Module Startup Menu'
-            Initialization = $Null
-            Choices = @(
-                #[pscustomobject]@{choice='Connect to Autoconnect Remote Systems from Initialized Profile (Runs command Connect-RemoteSystems)';command='Connect-RemoteSystems';exit=$true}
-                [pscustomobject]@{choice='Manage Organization and/or Admin User Profiles';command='Invoke-Menu -menuGUID 9e7ff8e1-afbb-418d-a31f-9c07bce3ab33'}
-                [pscustomobject]@{choice='Exit to Command Line';command='';exit=$true}
-            )
-            ParentGUID = $Null
+        try
+        {
+            $Message = 'Importing Organization Profile(s) using Import-OrgProfile'
+            Write-Log -Message $message -EntryType Attempting
+            Import-OrgProfile @ImportOrgProfileParams | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+            if ($script:OrgProfiles.Count -eq 0) {
+                throw "No OrgProfile(s) found in the specified location"
+            }
         }
-        Invoke-Menu -menudefinition $menudefinition
-    }#ShowMenu
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        try
+        {
+            $message = 'Get the User Organization Profile Choice'
+            Write-Log -Message $message -EntryType Attempting 
+            $Choices = @($script:OrgProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+            $UserChoice = Read-Choice -Title "Select OrgProfile" -Message "Select an organization profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+            Use-OrgProfile -profile $script:OrgProfiles[$UserChoice] -ErrorAction Stop | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        Try
+        {
+            $message = 'Importing Admin User Profiles for Current Org Profile'
+            Write-Log -Message $message -EntryType Attempting
+            Import-AdminUserProfile -OrgIdentity CurrentOrg @ImportAdminUserProfileParams | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        Try
+        {
+            switch ($script:AdminUserProfiles.Count) 
+            {
+                {$_ -ge 1}
+                {
+                    $message = 'Get the User Admin User Profile Choice'
+                    Write-Log -Message $message -EntryType Attempting
+                    $Choices = @($script:AdminUserProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+                    $UserChoice = Read-Choice -Title "Select AdminUserProfile" -Message "Select an Admin User Profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+                    $AdminUserProfile = $script:AdminUserProfiles[$UserChoice]
+                    Write-Log -Message $message -EntryType Succeeded
+                }
+                {$_ -lt 1}
+                    {
+                        $AdminUserProfile = New-AdminUserProfile -OrganizationIdentity $CurrentOrgProfile.Identity
+                    }
+            }#Switch
+        }#Try
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        Try
+        {
+            $message = 'Load User Selected Admin User Profile'
+            Write-Log -Message $message -EntryType Attempting
+            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        if ($AdminUserProfileLoaded)
+        {
+            Connect-RemoteSystems
+        }
+    }
 }#Switch
 }#Process
 }
