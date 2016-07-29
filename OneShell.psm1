@@ -5588,7 +5588,11 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
 function Update-AdminUserProfileTypeVersion
 {
 [cmdletbinding()]
-param($Identity,$Path)
+param(
+[parameter(Mandatory=$true)]
+$Identity
+,
+$Path)
 $GetAdminUserProfileParams = @{
     Identity = $Identity
     errorAction = 'Stop'
@@ -5666,6 +5670,9 @@ $OrganizationIdentity
 function UpdateAdminUserProfileObjectVersion
 {
 param($AdminUserProfile)
+#Check Admin User Profile Version
+$RequiredVersion = 1
+if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion) {
    #Profile Version Upgrades
     #MailFrom
     if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailFrom))
@@ -5720,9 +5727,14 @@ param($AdminUserProfile)
                 $UpdatedCredential = $Credential | Select-Object -Property Identity,Username,Password
                 $UpdatedCredential
             }
+            else
+            {
+                $Credential
+            }
         }
     )
     $AdminUserProfile.Credentials = $UpdatedCredentialObjects
+}
 Write-Output $AdminUserProfile
 } #UpdateAdminUserProfileObjectVersion
 #supporting functions for AdminUserProfile Editing
