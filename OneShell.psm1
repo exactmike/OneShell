@@ -5986,8 +5986,11 @@ Would you like to add, edit, or remove a credential?"
             0
             {#Add
                 $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
-                $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
-                $editableCredentials += $NewCredential
+                if ($NewCredential -ne $null)
+                {
+                    $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
+                    $editableCredentials += $NewCredential
+                }
             }
             1 {#Edit
                 if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to edit'}
@@ -5996,8 +5999,11 @@ Would you like to add, edit, or remove a credential?"
                     $whichcred = Read-Choice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'
                     $OriginalCredential = $editableCredentials[$whichcred]
                     $NewCredential = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
-                    $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
-                    $editableCredentials[$whichcred] = $NewCredential
+                    if ($NewCredential -ne $null)
+                    {
+                        $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
+                        $editableCredentials[$whichcred] = $NewCredential
+                    }
                 }
             }
             2 {#Remove
