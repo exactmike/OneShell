@@ -2335,7 +2335,7 @@ foreach ($button in $buttons)
     $grid.AddChild($button)
     if ($buttonIndex -eq $DefaultChoice)
     {
-        $button.focus()
+        [void]$button.focus()
     }
     $buttonIndex++
 }
