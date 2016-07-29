@@ -67,7 +67,7 @@ NestedModules = @('PSMenu.psm1')
 
 # Functions to export from this module
 #FunctionsToExport = '*'
-#FunctionsToExport = '*-*' #May turn this on soon
+FunctionsToExport = '*-*'
 
 # Cmdlets to export from this module
 #CmdletsToExport = '*'
@@ -92,6 +92,4 @@ NestedModules = @('PSMenu.psm1')
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
 # DefaultCommandPrefix = ''
-
 }
-

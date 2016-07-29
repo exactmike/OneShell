@@ -2,7 +2,8 @@
 #Utility and Support Functions
 ##########################################################################################################
 #Used By Other OneShell Functions
-function Get-ArrayIndexForValue {
+function Get-ArrayIndexForValue
+{
     [cmdletbinding()]
     param(
         [parameter(mandatory=$true)]
@@ -22,15 +23,17 @@ function Get-ArrayIndexForValue {
         Write-Verbose -Message "Using Property Match for Index"
         [array]::indexof($array.$property,$value)
     }#else
-}#function
-function Get-TimeStamp {
+}#Get-ArrayIndexForValue
+function Get-TimeStamp
+{
     [string]$Stamp = Get-Date -Format yyyyMMdd-HHmm
     $Stamp
 }#Get-TimeStamp
-function Get-DateStamp {
+function Get-DateStamp
+{
     [string]$Stamp = Get-Date -Format yyyyMMdd
     $Stamp
-}
+}#Get-DateStamp
 #Error Handling Functions and used by other OneShell Functions
 function Get-AvailableExceptionsList
 {
@@ -373,7 +376,8 @@ function Get-CallerPreference
 #Useful Functions
 function Get-CustomRange
 {
-#Start http://www.vistax64.com/powershell/15525-range-operator.html
+#http://www.vistax64.com/powershell/15525-range-operator.html
+[cmdletbinding()]
 param(
     [string] $first
     ,
@@ -385,7 +389,7 @@ param(
     $rangeEnd = [int] ($second -as $type)
     $rangeStart..$rangeEnd | ForEach-Object { $_ -as $type }
 }
-function Compare-ComplexObject #MC
+function Compare-ComplexObject
 {
 [cmdletbinding()]
 param(
@@ -586,97 +590,6 @@ function Start-WindowsSecurity
 }
 function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
-function Merge-Hashtables
-{
-    #requires -Version 2.0
-    <#
-        .NOTES
-        ===========================================================================
-        Filename              : Merge-Hashtables.ps1
-        Created on            : 2014-09-04
-        Created by            : Frank Peter Schultze
-        ===========================================================================
-
-        .SYNOPSIS
-        Create a single hashtable from two hashtables where the second given
-        hashtable will override.
-
-        .DESCRIPTION
-        Create a single hashtable from two hashtables. In case of duplicate keys
-        the function the second hashtable's key values "win". Merge-Hashtables
-        supports nested hashtables.
-
-        .EXAMPLE
-        $configData = Merge-Hashtables -First $defaultData -Second $overrideData
-
-        .INPUTS
-        None
-
-        .OUTPUTS
-        System.Collections.Hashtable
-    #>
-
-    [CmdletBinding()]
-    Param
-    (
-        #Identifies the first hashtable
-        [Parameter(Mandatory=$true)]
-        [Hashtable]
-        $First
-        ,
-        #Identifies the second hashtable
-        [Parameter(Mandatory=$true)]
-        [Hashtable]
-        $Second
-    )
-
-    function Set-Keys ($First, $Second)
-    {
-        @($First.Keys) | Where-Object {
-            $Second.ContainsKey($_)
-        } | ForEach-Object {
-            if (($First.$_ -is [Hashtable]) -and ($Second.$_ -is [Hashtable]))
-            {
-                Set-Keys -First $First.$_ -Second $Second.$_
-            }
-            else
-            {
-                $First.Remove($_)
-                $First.Add($_, $Second.$_)
-            }
-        }
-    }
-
-    function Add-Keys ($First, $Second)
-    {
-        @($Second.Keys) | ForEach-Object {
-            if ($First.ContainsKey($_))
-            {
-                if (($Second.$_ -is [Hashtable]) -and ($First.$_ -is [Hashtable]))
-                {
-                    Add-Keys -First $First.$_ -Second $Second.$_
-                }
-            }
-            else
-            {
-                $First.Add($_, $Second.$_)
-            }
-        }
-    }
-
-    # Do not touch the original hashtables
-    $firstClone  = $First.Clone()
-    $secondClone = $Second.Clone()
-
-    # Bring modified keys from secondClone to firstClone
-    Set-Keys -First $firstClone -Second $secondClone
-
-    # Bring additional keys from secondClone to firstClone
-    Add-Keys -First $firstClone -Second $secondClone
-
-    # return firstClone
-    $firstClone
-}
 function Convert-HashtableToObject
 {
     [CmdletBinding()]
@@ -697,7 +610,7 @@ function Convert-HashtableToObject
             Write-Verbose "Recursing $($Keys.Count) keys"
             foreach($key in $keys) {
                 if($hashtable.$key -is [HashTable]) {
-                    $hashtable.$key = ConvertFrom-Hashtable $hashtable.$key -Recurse # -Combine:$combine
+                    $hashtable.$key = Convert-HashtableToObject $hashtable.$key -Recurse # -Combine:$combine
                 }
             }
         }
@@ -1019,39 +932,39 @@ function Test-IsWriteableDirectory
 #Credits to the following:
 #http://poshcode.org/2236
 #http://stackoverflow.com/questions/9735449/how-to-verify-whether-the-share-has-write-access
-    [CmdletBinding()]
-    param (
-        [parameter()]
-        [ValidateScript({
-            $IsContainer = Test-Path -Path ($_) -PathType Container
-            if ($IsContainer) 
+[CmdletBinding()]
+param (
+    [parameter()]
+    [ValidateScript({
+        $IsContainer = Test-Path -Path ($_) -PathType Container
+        if ($IsContainer)
+        {
+            $Item = Get-Item -Path $_
+            if ($item.PsProvider.Name -eq 'FileSystem')
             {
-                $Item = Get-Item -Path $_ 
-                if ($item.PsProvider.Name -eq 'FileSystem')
-                {
-                    $true
-                }
-                else
-                {
-                    $false
-                }
+                $true
             }
             else
             {
                 $false
             }
-        })]
-        [string]$Path
-    )
-    try {
-        $testPath = Join-Path $Path ([IO.Path]::GetRandomFileName())
-            New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
-        $true
-    } catch {
-        $false
-    } finally {
-        Remove-Item $testPath -ErrorAction SilentlyContinue
-    }
+        }
+        else
+        {
+            $false
+        }
+    })]
+    [string]$Path
+)
+try {
+    $testPath = Join-Path $Path ([IO.Path]::GetRandomFileName())
+        New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
+    $true
+} catch {
+    $false
+} finally {
+    Remove-Item $testPath -ErrorAction SilentlyContinue
+}
 }
 function Test-CurrentPrincipalIsAdmin
 {
@@ -1508,7 +1421,8 @@ Write-Log -Message "$CallingFunction completed."}
 Function Write-StartFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction starting."}
-Function Export-Data {
+Function Export-Data
+{
 [cmdletbinding(DefaultParameterSetName='delimited')]
 param(
     $ExportFolderPath = $script:ExportDataPath
@@ -1544,9 +1458,11 @@ $stamp = Get-TimeStamp
         }#json
         'csv'
         {
-            if ($Append) {
+            if ($Append)
+            {
                 $mostrecent = @(get-childitem -Path $ExportFolderPath -Filter "*$DataToExportTitle.csv" | Sort-Object -Property CreationTime -Descending | Select-Object -First 1)
-                if ($mostrecent.count -eq 1) {
+                if ($mostrecent.count -eq 1)
+                {
                     $ExportFilePath = $mostrecent[0].fullname
                 }#if
                 else {$ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.csv'}#else
@@ -1950,7 +1866,9 @@ $Script:UserInput = $null
 # Add required assembly
 Add-Type -AssemblyName PresentationFramework
 # Create a Size Object
-$wpfSize = [Windows.Size]::new([double]::PositiveInfinity,[double]::PositiveInfinity)
+$wpfSize = new-object System.Windows.Size
+$wpfSize.Height = [double]::PositiveInfinity
+$wpfSize.Width = [double]::PositiveInfinity
 # Create a Window
 $Window = New-Object Windows.Window
 $Window.Title = $WindowTitle
@@ -5146,6 +5064,12 @@ begin
             $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
         }
     }
+    #Check Admin User Profile Version
+    $RequiredVersion = 1
+    if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion)
+    {
+        throw "The selected Admin User Profile $($AdminUserProfile.General.Name) is an older version. Please Run Set-AdminUserProfile -Identity $($AdminUserProfile.Identity) or Update-AdminUserProfileTypeVersion -Identity $($AdminUserProfile.Identity) to update it to version $RequiredVersion."
+    }
 }#begin
 process{
     #check if there is already a "Current" admin profile and if it is different from the one being used/applied by this run of the function
@@ -5274,7 +5198,7 @@ else
     $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}},@{n='OrgIdentity';e={$_.general.organizationidentity}}
 }#else when not "Raw"
 }#else when not "Imported"
-}#function Get-AdminUserProfile
+}#Get-AdminUserProfile
 Function Import-AdminUserProfile
 {
 [cmdletbinding()]
@@ -5326,33 +5250,7 @@ catch
 {
     Write-Output $false
 }
-}
-Function Select-AdminUserProfile {
-    param(
-        [parameter()]
-        [validateset('Use','Edit')]
-        $purpose 
-    )
-    $MenuDefinition = [pscustomobject]@{
-        GUID = [guid]::NewGuid()
-        Title = "Select Admin User Profile to $purpose"
-        Initialization = ''
-        ParentGUID = $null
-        Choices = @()
-    }
-    foreach ($profile in $Script:AdminUserProfiles) {
-        $MenuDefinition.choices += [pscustomobject]@{
-            choice = $profile.general.Name
-            command = switch ($purpose) {
-                'Edit' {"Set-AdminUserProfile -Identity $($Profile.Identity)"} 
-                'Use' {"Use-AdminUserProfile -Identity $($profile.identity)"}
-            }#switch
-            exit = $true
-        }
-
-    }
-    Invoke-Menu -menudefinition $MenuDefinition 
-}
+}#Import-AdminUserProfile
 function New-AdminUserProfile
 {
 [cmdletbinding()]
@@ -5443,11 +5341,11 @@ param
                 $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
                 if ($AdminUserProfile.Credentials.Count -ge 1)
                 {
-                    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -edit -Credentials $AdminUserProfile.Credentials)
+                    $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems -edit -Credentials $AdminUserProfile.Credentials)
                 }
                 else
                 {
-                    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
+                    $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems)
                 }
                 $AdminUserProfile.Credentials = $exportcredentials
             }
@@ -5465,7 +5363,7 @@ param
                 {
                     Try
                     {
-                        Add-AdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
                         SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
                         if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
                             Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
@@ -5488,7 +5386,7 @@ param
                 {
                     Try
                     {
-                        Add-AdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
                         SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
                         if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
                             Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
@@ -5562,6 +5460,7 @@ switch ($targetOrgProfile.Count)
 }
 #Update the Admin User Profile if necessary
 $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+   Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
 #Let user configure the profile
     $quit = $false
     $choices = 'Profile Name', 'Set Default', 'Profile Directory','Mail From Email Address','Mail Relay Endpoint','Credentials','Systems','Save','Save and Quit','Cancel'
@@ -5622,7 +5521,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
             'Credentials'
             {
                 $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-                $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -credentials $AdminUserProfile.Credentials -edit)
+                $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems -credentials $AdminUserProfile.Credentials -edit)
                 $AdminUserProfile.Credentials = $exportcredentials
             }
             'Systems'
@@ -5639,7 +5538,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
                 {
                     Try
                     {
-                        Add-AdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
                         SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
                         if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
                             Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
@@ -5662,7 +5561,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
                 {
                     Try
                     {
-                        Add-AdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
                         SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
                         if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
                             Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
@@ -5686,6 +5585,39 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
     #return the admin profile raw object to the pipeline
     if ($passthru) {Write-Output $AdminUserProfile}
  }# Set-AdminUserProfile
+function Update-AdminUserProfileTypeVersion
+{
+[cmdletbinding()]
+param($Identity,$Path)
+$GetAdminUserProfileParams = @{
+    Identity = $Identity
+    errorAction = 'Stop'
+    raw = $true
+}
+if ($PSBoundParameters.ContainsKey('Path'))
+{
+    $GetAdminUserProfileParams.Path = $Path
+}
+$AdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams
+$BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the Admin User Profile $($AdminUserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes','No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
+if ($BackupProfileUserChoice -eq 'Yes')
+{
+    $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
+    if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
+    {
+        if ($Folder -ne $AdminUserProfile.General.ProfileFolder)
+        {
+            Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop | Out-Null
+        }
+        else
+        {
+            throw "Choose a different directory."
+        }
+    }
+}
+$UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.general.profilefolder | Out-Null
+}
 function GetAdminUserProfileMenuMessage
 {
 param($AdminUserProfile)
@@ -5734,8 +5666,6 @@ $OrganizationIdentity
 function UpdateAdminUserProfileObjectVersion
 {
 param($AdminUserProfile)
-
-    Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
    #Profile Version Upgrades
     #MailFrom
     if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailFrom))
@@ -5875,12 +5805,14 @@ $AdminUserProfile
 )
 
 $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+#Preserve existing entries and add any new ones from the Org Profile
 $existingSystemEntriesIdentities = $AdminUserProfile.systems | Select-Object -ExpandProperty Identity
+$OrgProfileSystemEntriesIdentities = $systems | Select-Object -ExpandProperty Identity
 $SystemEntries = @($systems | Where-Object -FilterScript {$_.Identity -notin $existingSystemEntriesIdentities} | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}})
 $SystemEntries = @($AdminUserProfile.systems + $SystemEntries)
-#upgrade any old System Entries that do not have credential properties
-#this is done by the UpdateAdminUserProfileObjectVersion function now
-#$SystemEntries | ForEach-Object {if (-not (Test-Member -InputObject $_ -Name Credential)) {$_ | Add-Member -Name Credential -MemberType NoteProperty -Value $null}}
+#filters out systems that have been removed from the OrgProfile
+$SystemEntries = @($SystemEntries | Where-Object -FilterScript {$_.Identity -in $OrgProfileSystemEntriesIdentities})
+#Build the system labels for use in the read-choice dialog
 $SystemLabels = @(
     foreach ($s in $SystemEntries)
     {
@@ -5965,13 +5897,13 @@ $AdminUserProfile
 )
     try
     {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $AdminUserProfile -path $AdminUserProfile.General.profileFolder -ErrorAction Stop)
+        if (AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -path $AdminUserProfile.General.profileFolder -ErrorAction Stop)
         {
             if (Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.profileFolder)
             {
                 if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.profileFolder)
                 {
-                    Write-Log -Message "New Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                    Write-Log -Message "New Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully saved to $($AdminUserProfile.General.ProfileFolder)." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
                     Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
                 }
             }
@@ -5983,7 +5915,7 @@ $AdminUserProfile
         Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
     }
 }
-function Add-AdminUserProfileFolders {
+function AddAdminUserProfileFolders {
     [cmdletbinding()]
     param(
         $AdminUserProfile
@@ -6003,7 +5935,7 @@ function Add-AdminUserProfileFolders {
     }
     $true
 }
-function Set-AdminUserProfileCredentials {
+function SetAdminUserProfileCredentials {
     [cmdletbinding(DefaultParameterSetName='New')]
     param(
         [parameter(ParameterSetName='New',Mandatory = $true)]
@@ -6113,10 +6045,10 @@ param(
     [switch]$ShowMenu
     ,
     [parameter(ParameterSetName = 'SpecifiedProfile')]
-    $OrgProfile
+    $OrgProfileIdentity
     ,
     [parameter(ParameterSetName = 'SpecifiedProfile')]
-    $AdminProfile
+    $AdminUserProfileIdentity
     ,
     [parameter()]
     [ValidateScript({Test-DirectoryPath -path $_})]
@@ -6475,9 +6407,4 @@ function Set-OneShellVariables
 ##########################################################################################################
 Set-OneShellVariables
 #Do one of the following in your profile or run script:
-#Initialize-AdminEnvironment
-# OR
-#Get-OrgProfile
-#Select-OrgProfile -purpose Use
-#Get-AdminUserProfile -OrgIdentity CurrentOrg
-#Use-AdminUserProfile -Identity [GUID]
+#Initialize-AdminEnvironment -showmenu or Initialize-AdminEnvironment -OrgProfileIdentity <value> -AdminUserProfileIdentity <value>
