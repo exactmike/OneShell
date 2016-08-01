@@ -2,7 +2,8 @@
 #Utility and Support Functions
 ##########################################################################################################
 #Used By Other OneShell Functions
-function Get-ArrayIndexForValue {
+function Get-ArrayIndexForValue
+{
     [cmdletbinding()]
     param(
         [parameter(mandatory=$true)]
@@ -15,22 +16,24 @@ function Get-ArrayIndexForValue {
         $property
     )
     if ([string]::IsNullOrWhiteSpace($Property)) {
-        Write-Verbose -Message "Using Simple"
+        Write-Verbose -Message "Using Simple Match for Index"
         [array]::indexof($array,$value)
     }#if
     else {
-        Write-Verbose -Message "Using Property"
+        Write-Verbose -Message "Using Property Match for Index"
         [array]::indexof($array.$property,$value)
     }#else
-}#function
-function Get-TimeStamp {
+}#Get-ArrayIndexForValue
+function Get-TimeStamp
+{
     [string]$Stamp = Get-Date -Format yyyyMMdd-HHmm
     $Stamp
 }#Get-TimeStamp
-function Get-DateStamp {
+function Get-DateStamp
+{
     [string]$Stamp = Get-Date -Format yyyyMMdd
     $Stamp
-}
+}#Get-DateStamp
 #Error Handling Functions and used by other OneShell Functions
 function Get-AvailableExceptionsList
 {
@@ -223,10 +226,158 @@ A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and the
     ModifiedBy: Mike Campbell
 #>
 }
+function Get-CallerPreference
+{
+    <#
+    .Synopsis
+       Fetches "Preference" variable values from the caller's scope.
+    .DESCRIPTION
+       Script module functions do not automatically inherit their caller's variables, but they can be
+       obtained through the $PSCmdlet variable in Advanced Functions.  This function is a helper function
+       for any script module Advanced Function; by passing in the values of $ExecutionContext.SessionState
+       and $PSCmdlet, Get-CallerPreference will set the caller's preference variables locally.
+    .PARAMETER Cmdlet
+       The $PSCmdlet object from a script module Advanced Function.
+    .PARAMETER SessionState
+       The $ExecutionContext.SessionState object from a script module Advanced Function.  This is how the
+       Get-CallerPreference function sets variables in its callers' scope, even if that caller is in a different
+       script module.
+    .PARAMETER Name
+       Optional array of parameter names to retrieve from the caller's scope.  Default is to retrieve all
+       Preference variables as defined in the about_Preference_Variables help file (as of PowerShell 4.0)
+       This parameter may also specify names of variables that are not in the about_Preference_Variables
+       help file, and the function will retrieve and set those as well.
+    .EXAMPLE
+       Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+       Imports the default PowerShell preference variables from the caller into the local scope.
+    .EXAMPLE
+       Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -Name 'ErrorActionPreference','SomeOtherVariable'
+
+       Imports only the ErrorActionPreference and SomeOtherVariable variables into the local scope.
+    .EXAMPLE
+       'ErrorActionPreference','SomeOtherVariable' | Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+       Same as Example 2, but sends variable names to the Name parameter via pipeline input.
+    .INPUTS
+       String
+    .OUTPUTS
+       None.  This function does not produce pipeline output.
+    .LINK
+       about_Preference_Variables
+    #>
+    #https://gallery.technet.microsoft.com/scriptcenter/Inherit-Preference-82343b9d
+    [CmdletBinding(DefaultParameterSetName = 'AllVariables')]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateScript({ $_.GetType().FullName -eq 'System.Management.Automation.PSScriptCmdlet' })]
+        $Cmdlet,
+
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.SessionState]
+        $SessionState,
+
+        [Parameter(ParameterSetName = 'Filtered', ValueFromPipeline = $true)]
+        [string[]]
+        $Name
+    )
+    begin
+    {
+        $filterHash = @{}
+    }
+    process
+    {
+        if ($null -ne $Name)
+        {
+            foreach ($string in $Name)
+            {
+                $filterHash[$string] = $true
+            }
+        }
+    }
+    end
+    {
+        # List of preference variables taken from the about_Preference_Variables help file in PowerShell version 4.0
+        $vars = @{
+            'ErrorView' = $null
+            'FormatEnumerationLimit' = $null
+            'LogCommandHealthEvent' = $null
+            'LogCommandLifecycleEvent' = $null
+            'LogEngineHealthEvent' = $null
+            'LogEngineLifecycleEvent' = $null
+            'LogProviderHealthEvent' = $null
+            'LogProviderLifecycleEvent' = $null
+            'MaximumAliasCount' = $null
+            'MaximumDriveCount' = $null
+            'MaximumErrorCount' = $null
+            'MaximumFunctionCount' = $null
+            'MaximumHistoryCount' = $null
+            'MaximumVariableCount' = $null
+            'OFS' = $null
+            'OutputEncoding' = $null
+            'ProgressPreference' = $null
+            'PSDefaultParameterValues' = $null
+            'PSEmailServer' = $null
+            'PSModuleAutoLoadingPreference' = $null
+            'PSSessionApplicationName' = $null
+            'PSSessionConfigurationName' = $null
+            'PSSessionOption' = $null
+            'ErrorActionPreference' = 'ErrorAction'
+            'DebugPreference' = 'Debug'
+            'ConfirmPreference' = 'Confirm'
+            'WhatIfPreference' = 'WhatIf'
+            'VerbosePreference' = 'Verbose'
+            'WarningPreference' = 'WarningAction'
+        }
+        foreach ($entry in $vars.GetEnumerator())
+        {
+            if (([string]::IsNullOrEmpty($entry.Value) -or -not $Cmdlet.MyInvocation.BoundParameters.ContainsKey($entry.Value)) -and
+                ($PSCmdlet.ParameterSetName -eq 'AllVariables' -or $filterHash.ContainsKey($entry.Name)))
+            {
+                $variable = $Cmdlet.SessionState.PSVariable.Get($entry.Key)
+                
+                if ($null -ne $variable)
+                {
+                    if ($SessionState -eq $ExecutionContext.SessionState)
+                    {
+                        Set-Variable -Scope 1 -Name $variable.Name -Value $variable.Value -Force -Confirm:$false -WhatIf:$false
+                    }
+                    else
+                    {
+                        $SessionState.PSVariable.Set($variable.Name, $variable.Value)
+                    }
+                }
+            }
+        }
+        if ($PSCmdlet.ParameterSetName -eq 'Filtered')
+        {
+            foreach ($varName in $filterHash.Keys)
+            {
+                if (-not $vars.ContainsKey($varName))
+                {
+                    $variable = $Cmdlet.SessionState.PSVariable.Get($varName)
+                
+                    if ($null -ne $variable)
+                    {
+                        if ($SessionState -eq $ExecutionContext.SessionState)
+                        {
+                            Set-Variable -Scope 1 -Name $variable.Name -Value $variable.Value -Force -Confirm:$false -WhatIf:$false
+                        }
+                        else
+                        {
+                            $SessionState.PSVariable.Set($variable.Name, $variable.Value)
+                        }
+                    }
+                }
+            }
+        }
+    } # end
+} # function Get-CallerPreference
 #Useful Functions
 function Get-CustomRange
 {
-#Start http://www.vistax64.com/powershell/15525-range-operator.html
+#http://www.vistax64.com/powershell/15525-range-operator.html
+[cmdletbinding()]
 param(
     [string] $first
     ,
@@ -238,7 +389,7 @@ param(
     $rangeEnd = [int] ($second -as $type)
     $rangeStart..$rangeEnd | ForEach-Object { $_ -as $type }
 }
-function Compare-ComplexObject #MC
+function Compare-ComplexObject
 {
 [cmdletbinding()]
 param(
@@ -439,97 +590,6 @@ function Start-WindowsSecurity
 }
 function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
-function Merge-Hashtables
-{
-    #requires -Version 2.0
-    <#
-        .NOTES
-        ===========================================================================
-        Filename              : Merge-Hashtables.ps1
-        Created on            : 2014-09-04
-        Created by            : Frank Peter Schultze
-        ===========================================================================
-
-        .SYNOPSIS
-        Create a single hashtable from two hashtables where the second given
-        hashtable will override.
-
-        .DESCRIPTION
-        Create a single hashtable from two hashtables. In case of duplicate keys
-        the function the second hashtable's key values "win". Merge-Hashtables
-        supports nested hashtables.
-
-        .EXAMPLE
-        $configData = Merge-Hashtables -First $defaultData -Second $overrideData
-
-        .INPUTS
-        None
-
-        .OUTPUTS
-        System.Collections.Hashtable
-    #>
-
-    [CmdletBinding()]
-    Param
-    (
-        #Identifies the first hashtable
-        [Parameter(Mandatory=$true)]
-        [Hashtable]
-        $First
-        ,
-        #Identifies the second hashtable
-        [Parameter(Mandatory=$true)]
-        [Hashtable]
-        $Second
-    )
-
-    function Set-Keys ($First, $Second)
-    {
-        @($First.Keys) | Where-Object {
-            $Second.ContainsKey($_)
-        } | ForEach-Object {
-            if (($First.$_ -is [Hashtable]) -and ($Second.$_ -is [Hashtable]))
-            {
-                Set-Keys -First $First.$_ -Second $Second.$_
-            }
-            else
-            {
-                $First.Remove($_)
-                $First.Add($_, $Second.$_)
-            }
-        }
-    }
-
-    function Add-Keys ($First, $Second)
-    {
-        @($Second.Keys) | ForEach-Object {
-            if ($First.ContainsKey($_))
-            {
-                if (($Second.$_ -is [Hashtable]) -and ($First.$_ -is [Hashtable]))
-                {
-                    Add-Keys -First $First.$_ -Second $Second.$_
-                }
-            }
-            else
-            {
-                $First.Add($_, $Second.$_)
-            }
-        }
-    }
-
-    # Do not touch the original hashtables
-    $firstClone  = $First.Clone()
-    $secondClone = $Second.Clone()
-
-    # Bring modified keys from secondClone to firstClone
-    Set-Keys -First $firstClone -Second $secondClone
-
-    # Bring additional keys from secondClone to firstClone
-    Add-Keys -First $firstClone -Second $secondClone
-
-    # return firstClone
-    $firstClone
-}
 function Convert-HashtableToObject
 {
     [CmdletBinding()]
@@ -550,7 +610,7 @@ function Convert-HashtableToObject
             Write-Verbose "Recursing $($Keys.Count) keys"
             foreach($key in $keys) {
                 if($hashtable.$key -is [HashTable]) {
-                    $hashtable.$key = ConvertFrom-Hashtable $hashtable.$key -Recurse # -Combine:$combine
+                    $hashtable.$key = Convert-HashtableToObject $hashtable.$key -Recurse # -Combine:$combine
                 }
             }
         }
@@ -872,39 +932,39 @@ function Test-IsWriteableDirectory
 #Credits to the following:
 #http://poshcode.org/2236
 #http://stackoverflow.com/questions/9735449/how-to-verify-whether-the-share-has-write-access
-    [CmdletBinding()]
-    param (
-        [parameter()]
-        [ValidateScript({
-            $IsContainer = Test-Path -Path ($_) -PathType Container
-            if ($IsContainer) 
+[CmdletBinding()]
+param (
+    [parameter()]
+    [ValidateScript({
+        $IsContainer = Test-Path -Path ($_) -PathType Container
+        if ($IsContainer)
+        {
+            $Item = Get-Item -Path $_
+            if ($item.PsProvider.Name -eq 'FileSystem')
             {
-                $Item = Get-Item -Path $_ 
-                if ($item.PsProvider.Name -eq 'FileSystem')
-                {
-                    $true
-                }
-                else
-                {
-                    $false
-                }
+                $true
             }
             else
             {
                 $false
             }
-        })]
-        [string]$Path
-    )
-    try {
-        $testPath = Join-Path $Path ([IO.Path]::GetRandomFileName())
-            New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
-        $true
-    } catch {
-        $false
-    } finally {
-        Remove-Item $testPath -ErrorAction SilentlyContinue
-    }
+        }
+        else
+        {
+            $false
+        }
+    })]
+    [string]$Path
+)
+try {
+    $testPath = Join-Path $Path ([IO.Path]::GetRandomFileName())
+        New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
+    $true
+} catch {
+    $false
+} finally {
+    Remove-Item $testPath -ErrorAction SilentlyContinue
+}
 }
 function Test-CurrentPrincipalIsAdmin
 {
@@ -1361,7 +1421,8 @@ Write-Log -Message "$CallingFunction completed."}
 Function Write-StartFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction starting."}
-Function Export-Data {
+Function Export-Data
+{
 [cmdletbinding(DefaultParameterSetName='delimited')]
 param(
     $ExportFolderPath = $script:ExportDataPath
@@ -1397,9 +1458,11 @@ $stamp = Get-TimeStamp
         }#json
         'csv'
         {
-            if ($Append) {
+            if ($Append)
+            {
                 $mostrecent = @(get-childitem -Path $ExportFolderPath -Filter "*$DataToExportTitle.csv" | Sort-Object -Property CreationTime -Descending | Select-Object -First 1)
-                if ($mostrecent.count -eq 1) {
+                if ($mostrecent.count -eq 1)
+                {
                     $ExportFilePath = $mostrecent[0].fullname
                 }#if
                 else {$ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.csv'}#else
@@ -1443,8 +1506,6 @@ function Export-Credential
         [string]$message
         ,
         [string]$username
-        ,
-        [string[]]$Systems
     )
     $GetCredentialParams=@{}
     if ($message) {$GetCredentialParams.Message = $message}
@@ -1458,7 +1519,6 @@ function Export-Credential
     $exportCredential = [pscustomobject]@{
         UserName = $ExportUserName
         Password = $ExportPassword
-        Systems = @($systems)
     }
     Write-Output $exportCredential
 }
@@ -1469,7 +1529,7 @@ param(
     [int]$Days
     ,
     [parameter()]
-    [validatescript({if ((Test-Path $_) -and (Get-Item -Path $_).PSIsContainer) {$true} else {$false}})]
+    [validatescript({Test-IsWriteableDirectory -Path $_})]
     [string[]]$Directory
 )
     $now = Get-Date
@@ -1791,72 +1851,547 @@ Function Read-AnyKey {
     Write-Host "`r`n" #yuck?
     Write-Output $true;
 }
-function Read-InputBoxDialog { # Show input box popup and return the value entered by the user. 
-    param(
-        [string]$Message
-        , [string]$WindowTitle
-        , [string]$DefaultText
-    )
-
-    Add-Type -AssemblyName Microsoft.VisualBasic     
-    $inputbox = [Microsoft.VisualBasic.Interaction]::InputBox($Message, $WindowTitle, $DefaultText)
-    Write-Output $inputbox
+function Read-InputBoxDialog
+{ # Show input box popup and return the value entered by the user. 
+param(
+    [string]$Message
+    ,
+    [Alias("WindowTitle")]
+    [string]$Title
+    ,
+    [string]$DefaultText
+)
+$Script:UserInput = $null
+#Region BuildWPFWindow
+# Add required assembly
+Add-Type -AssemblyName PresentationFramework
+# Create a Size Object
+$wpfSize = new-object System.Windows.Size
+$wpfSize.Height = [double]::PositiveInfinity
+$wpfSize.Width = [double]::PositiveInfinity
+# Create a Window
+$Window = New-Object Windows.Window
+$Window.Title = $WindowTitle
+$Window.MinWidth = 250
+$Window.SizeToContent ='WidthAndHeight'
+$window.WindowStartupLocation="CenterScreen"
+# Create a grid container with 3 rows, one for the message, one for the text box, and one for the buttons
+$Grid =  New-Object Windows.Controls.Grid
+$FirstRow = New-Object Windows.Controls.RowDefinition
+$FirstRow.Height = 'Auto'
+$grid.RowDefinitions.Add($FirstRow)
+$SecondRow = New-Object Windows.Controls.RowDefinition
+$SecondRow.Height = 'Auto'
+$grid.RowDefinitions.Add($SecondRow)
+$ThirdRow = New-Object Windows.Controls.RowDefinition
+$ThirdRow.Height = 'Auto'
+$grid.RowDefinitions.Add($ThirdRow)
+$ColumnOne = New-Object Windows.Controls.ColumnDefinition
+$ColumnOne.Width = 'Auto'
+$grid.ColumnDefinitions.Add($ColumnOne)
+$ColumnTwo = New-Object Windows.Controls.ColumnDefinition
+$ColumnTwo.Width = 'Auto'
+$grid.ColumnDefinitions.Add($ColumnTwo)
+# Create a label for the message
+$label = New-Object Windows.Controls.Label
+$label.Content = $Message
+$label.Margin = "5,5,5,5"
+$label.HorizontalAlignment = 'Left'
+$label.Measure($wpfSize)
+#add the label to Row 1
+$label.SetValue([Windows.Controls.Grid]::RowProperty,0)
+$label.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,2)
+$textbox = New-Object Windows.Controls.TextBox
+$textbox.name = 'InputBox'
+$textbox.Text = $DefaultText
+$textbox.Margin = "10,10,10,10"
+$textbox.MinWidth = 200
+$textbox.SetValue([Windows.Controls.Grid]::RowProperty,1)
+$textbox.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,2)
+$OKButton = New-Object Windows.Controls.Button
+$OKButton.Name = 'OK'
+$OKButton.Content = 'OK'
+$OKButton.ToolTip = 'OK'
+$OKButton.HorizontalAlignment = 'Center'
+$OKButton.VerticalAlignment = 'Top'
+$OKButton.Add_Click({
+        [System.Object]$sender = $args[0]
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+        $Script:UserInput = $textbox.text
+        $Window.DialogResult = $true
+        $Window.Close()
+    })
+$OKButton.SetValue([Windows.Controls.Grid]::RowProperty,2)
+$OKButton.SetValue([Windows.Controls.Grid]::ColumnProperty,0)
+$OKButton.Margin = "5,5,5,5"
+$CancelButton = New-Object Windows.Controls.Button
+$CancelButton.Name = 'Cancel'
+$CancelButton.Content = 'Cancel'
+$CancelButton.ToolTip = 'Cancel'
+$CancelButton.HorizontalAlignment = 'Center'
+$CancelButton.VerticalAlignment = 'Top'
+$CancelButton.Margin = "5,5,5,5"
+$CancelButton.Measure($wpfSize)
+$CancelButton.Add_Click({
+        [System.Object]$sender = $args[0]
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+        $Window.DialogResult = $false
+        $Window.Close()
+    })
+$CancelButton.SetValue([Windows.Controls.Grid]::RowProperty,2)
+$CancelButton.SetValue([Windows.Controls.Grid]::ColumnProperty,1)
+$CancelButton.Height = $CancelButton.DesiredSize.Height
+$CancelButton.Width = $CancelButton.DesiredSize.Width + 10
+$OKButton.Height = $CancelButton.DesiredSize.Height
+$OKButton.Width = $CancelButton.DesiredSize.Width + 10
+$Grid.AddChild($label)
+$Grid.AddChild($textbox)
+$Grid.AddChild($OKButton)
+$Grid.AddChild($CancelButton)
+$window.Content = $Grid
+if ($window.ShowDialog())
+{
+    $Script:UserInput
+}
 } 
-function Read-OpenFileDialog {
-    param(
-        [string]$WindowTitle
-        ,
-        [string]$InitialDirectory
-        ,
-        [string]$Filter = "All files (*.*)|*.*"
-        ,
-    [switch]$AllowMultiSelect)
+function Read-OpenFileDialog
+{
+[cmdletbinding()]
+param(
+    [string]$WindowTitle
+    ,
+    [Parameter()]
+    [string]$InitialDirectory
+    ,
+    [string]$Filter = "All files (*.*)|*.*"
+    ,
+    [switch]$AllowMultiSelect
+)
     Add-Type -AssemblyName System.Windows.Forms
     $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $openFileDialog.Title = $WindowTitle
-    if (![string]::IsNullOrWhiteSpace($InitialDirectory)) { $openFileDialog.InitialDirectory = $InitialDirectory }
+    if ($PSBoundParameters.ContainsKey('InitialDirectory')) { $openFileDialog.InitialDirectory = $InitialDirectory }
     $openFileDialog.Filter = $Filter
     if ($AllowMultiSelect) { $openFileDialog.MultiSelect = $true }
     $openFileDialog.ShowHelp = $true
     # Without this line the ShowDialog() function may hang depending on system configuration and running from console vs. ISE.     
-    $openFileDialog.ShowDialog() > $null
-    if ($AllowMultiSelect) { Write-Output $openFileDialog.Filenames } else { Write-Output $openFileDialog.Filename } 
-}  
-function Read-Choice {     
-    Param(
-        [System.String]$Message
-        ,       
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [System.String[]]$Choices
-        ,         
-        [System.Int32]$DefaultChoice = 1
-        ,         
-        [System.String]$Title = [string]::Empty 
-    )   
-    $choiceCount = -1     
-    [System.Management.Automation.Host.ChoiceDescription[]]$Poss = 
-    $Choices | ForEach-Object {
-        $choiceCount++
-        New-Object System.Management.Automation.Host.ChoiceDescription "&$choiceCount $($_)", "Sets $_ as an answer."      
-    }       
-    $Host.UI.PromptForChoice( $Title, $Message, $Poss, $DefaultChoice )     
+    $result = $openFileDialog.ShowDialog()
+    switch ($Result)
+    {
+        'OK'
+        {
+            if ($AllowMultiSelect)
+            {
+                Write-Output $openFileDialog.Filenames
+            } else
+            {
+                Write-Output $openFileDialog.Filename
+            } 
+        }
+        'Cancel'
+        {
+        }
+    }
+    $openFileDialog.Dispose()
+    Remove-Variable openFileDialog
+}#Read-OpenFileDialog
+function Read-PromptForChoice
+{
+[cmdletbinding(DefaultParameterSetName='StringChoices')]
+Param(
+    [System.String]$Message
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('StringChoices')]
+    [System.String[]]$Choices
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('ObjectChoices')]
+    [psobject[]]$ChoiceObjects
+    ,
+    [int]$DefaultChoice = -1
+    #[int[]]$DefaultChoices = @(0)
+    ,
+    [System.String]$Title = [string]::Empty
+    ,
+    [Parameter(ParameterSetName='StringChoices')]
+    [switch]$Numbered
+)
+    #Build Choice Objects
+switch ($PSCmdlet.ParameterSetName)
+{
+    'StringChoices'
+    #Create the Choice Objects
+    {
+        if ($Numbered)
+        {
+            $choiceCount = 0
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $choiceCount++
+                    [PSCustomObject]@{
+                        Enumerator = $choiceCount
+                        Choice = $choice
+                    }
+                }
+            )
+        }
+        else
+        {
+            [char[]]$choiceEnumerators = @()
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $Enumerator = $null
+                    foreach ($char in $choice.ToCharArray())
+                    {
+                        if ($char -notin $choiceEnumerators -and $char -match '[a-zA-Z]' )
+                        {
+                            $Enumerator = $char
+                            $choiceEnumerators += $Enumerator
+                            break
+                        }
+                    }
+                    if ($Enumerator -eq $null)
+                    {
+                        $EnumeratorError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 0 -ErrorCategory InvalidData -TargetObject $choice -Message 'Unable to determine an enumerator'
+                        $PSCmdlet.ThrowTerminatingError($EnumeratorError)
+                    }
+                    else
+                    {
+                        [PSCustomObject]@{
+                            Enumerator = $Enumerator
+                            Choice = $choice
+                        }
+                    }
+                }
+            )
+        }
+    }
+    'ObjectChoices'
+    #Validate the Choice Objects using the first object as a representative
+    {
+        if ($ChoiceObjects[0].Enumerator -eq $null -or $ChoiceObjects[0].Choice -eq $null)
+        {
+            $ChoiceObjectError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 1 -ErrorCategory InvalidData -TargetObject $ChoiceObjects[0] -Message 'Choice Object(s) do not include the required enumerator and/or choice properties'
+            $PSCmdlet.ThrowTerminatingError($ChoiceObjectError)
+        }
+    }
+}#Switch
+[System.Management.Automation.Host.ChoiceDescription[]]$PossibleChoices = @(
+    $ChoiceObjects | ForEach-Object {
+        $Enumerator = $_.Enumerator
+        $Choice = $_.Choice
+        $Description = if (-not [string]::IsNullOrWhiteSpace($_.Description)) {$_.Description} else {$_.Choice}
+        $ChoiceWithEnumerator =
+            if ($Numbered)
+            {
+                "&$Enumerator $($Choice)"
+            }
+            else
+            {
+                $index = $choice.IndexOf($Enumerator)
+                if ($index -eq -1)
+                {
+                    "&$Enumerator $($Choice)"
+                }
+                else
+                {
+                    $choice.insert($index,'&')
+                }
+            }
+        New-Object System.Management.Automation.Host.ChoiceDescription $ChoiceWithEnumerator, $Description
+    }
+)
+$Host.UI.PromptForChoice($Title, $Message, $PossibleChoices, $DefaultChoice)
+}#Read-Choice
+function Read-Choice
+{
+[cmdletbinding()]
+param(
+    [System.String]$Title = [string]::Empty
+    ,
+    [System.String]$Message
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('StringChoices')]
+    [System.String[]]$Choices
+    ,
+    [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
+    [ValidateNotNullOrEmpty()]
+    [alias('ObjectChoices')]
+    [psobject[]]$ChoiceObjects
+    ,
+    [int]$DefaultChoice = -1
+    ,
+    [Parameter(ParameterSetName='StringChoices')]
+    [switch]$Numbered
+    ,
+    [switch]$Vertical
+    ,
+    [switch]$ReturnChoice
+)
+#Region ProcessChoices
+#Prepare the PossibleChoices objects
+switch ($PSCmdlet.ParameterSetName)
+{
+    'StringChoices'
+    #Create the Choice Objects
+    {
+        if ($Numbered)
+        {
+            $choiceCount = 0
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $choiceCount++
+                    [PSCustomObject]@{
+                        Enumerator = $choiceCount
+                        Choice = $choice
+                    }
+                }
+            )
+        }
+        else
+        {
+            [char[]]$choiceEnumerators = @()
+            $ChoiceObjects = @(
+                foreach ($choice in $Choices)
+                {
+                    $Enumerator = $null
+                    foreach ($char in $choice.ToCharArray())
+                    {
+                        if ($char -notin $choiceEnumerators -and $char -match '[a-zA-Z]' )
+                        {
+                            $Enumerator = $char
+                            $choiceEnumerators += $Enumerator
+                            break
+                        }
+                    }
+                    if ($Enumerator -eq $null)
+                    {
+                        $EnumeratorError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 0 -ErrorCategory InvalidData -TargetObject $choice -Message 'Unable to determine an enumerator'
+                        $PSCmdlet.ThrowTerminatingError($EnumeratorError)
+                    }
+                    else
+                    {
+                        [PSCustomObject]@{
+                            Enumerator = $Enumerator
+                            Choice = $choice
+                        }
+                    }
+                }
+            )
+        }
+    }
+    'ObjectChoices'
+    #Validate the Choice Objects using the first object as a representative
+    {
+        if ($ChoiceObjects[0].Enumerator -eq $null -or $ChoiceObjects[0].Choice -eq $null)
+        {
+            $ChoiceObjectError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 1 -ErrorCategory InvalidData -TargetObject $ChoiceObjects[0] -Message 'Choice Object(s) do not include the required enumerator and/or choice properties'
+            $PSCmdlet.ThrowTerminatingError($ChoiceObjectError)
+        }
+    }
+}#Switch
+$possiblechoices = @(
+    $ChoiceObjects | ForEach-Object {
+        $Enumerator = $_.Enumerator
+        $Choice = $_.Choice
+        $Description = if (-not [string]::IsNullOrWhiteSpace($_.Description)) {$_.Description} else {$_.Choice}
+        $ChoiceWithEnumerator = 
+            if ($Numbered)
+            {
+                "_$Enumerator $($Choice)"
+            }
+            else
+            {
+                $index = $choice.IndexOf($Enumerator)
+                if ($index -eq -1)
+                {
+                    "_$Enumerator $($Choice)"
+                }
+                else
+                {
+                    $choice.insert($index,'_')
+                }
+            }
+       [pscustomobject]@{
+            ChoiceText = $Choice
+            ChoiceWithEnumerator = $ChoiceWithEnumerator
+            Description = $Description
+       }
+    }
+)
+$Script:UserChoice = $null
+#EndRegion ProcessChoices
+#Region Layout
+if ($Vertical)
+{
+    $layout = 'Vertical'
+} else
+{
+    $layout = 'Horizontal'
 }
-function Read-FolderBrowserDialog {# Show an Open Folder Dialog and return the directory selected by the user. 
-    Param(
-        [string]$Message
-        , [string]$InitialDirectory
-        , [switch]$NoNewFolderButton
-    ) 
-
-    $browseForFolderOptions = 0     
-    if ($NoNewFolderButton) { $browseForFolderOptions += 512 }       
-    $app = New-Object -ComObject Shell.Application     
-    $folder = $app.BrowseForFolder(0, $Message, $browseForFolderOptions, $InitialDirectory)     
-    if ($folder) { $selectedDirectory = $folder.Self.Path } else { $selectedDirectory = '' }     
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($app) > $null    
-    Write-Output $selectedDirectory
+#EndRegion Layout
+#Region BuildWPFWindow
+# Add required assembly
+Add-Type -AssemblyName PresentationFramework
+# Create a Size Object
+$wpfSize = new-object System.Windows.Size
+$wpfSize.Height = [double]::PositiveInfinity
+$wpfSize.Width = [double]::PositiveInfinity
+# Create a Window
+$Window = New-Object Windows.Window
+$Window.Title = $Title
+$Window.SizeToContent ='WidthAndHeight'
+$window.WindowStartupLocation="CenterScreen"
+# Create a grid container with x rows, one for the message, x for the buttons
+$Grid =  New-Object Windows.Controls.Grid
+$FirstRow = New-Object Windows.Controls.RowDefinition
+$FirstRow.Height = 'Auto'
+$grid.RowDefinitions.Add($FirstRow)
+# Create a label for the message
+$label = New-Object Windows.Controls.Label
+$label.Content = $Message
+$label.Margin = "5,5,5,5"
+$label.HorizontalAlignment = 'Left'
+$label.Measure($wpfSize)
+#add the label to Row 1
+$label.SetValue([Windows.Controls.Grid]::RowProperty,0)
+#prepare for button sizing
+$buttonHeights = @()
+$buttonWidths = @()
+if ($layout -eq 'Horizontal') {$label.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,$($choices.Count))}
+elseif ($layout -eq 'Vertical') {$buttonWidths += $label.DesiredSize.Width}
+#create the buttons and add them to the grid
+$buttonIndex = 0
+foreach ($pc in $possiblechoices)
+{
+    # Create a button to get running Processes
+    Set-Variable "buttonControl$buttonIndex" -Value (New-Object Windows.Controls.Button) -Scope local
+    $tempButton = Get-Variable -Name "buttonControl$buttonIndex" -ValueOnly
+    $tempButton.Name = "Choice$buttonIndex"
+    $tempButton.Content = $pc.ChoiceWithEnumerator
+    $tempButton.Tooltip = $pc.Description
+    $tempButton.HorizontalAlignment = 'Center'
+    $tempButton.VerticalAlignment = 'Top'
+    # Add an event on the Get Processes button
+    $tempButton.Add_Click({
+        [System.Object]$sender = $args[0]
+        [System.Windows.RoutedEventArgs]$e = $args[1]
+        $Script:UserChoice = $sender.content.tostring()
+        $Window.DialogResult = $true
+        $Window.Close()
+    })
+    switch ($layout)
+    {
+        'Vertical'
+        {
+            #Create additional row for each button
+            $Row = New-Object Windows.Controls.RowDefinition
+            $Row.Height = 'Auto'
+            $grid.RowDefinitions.Add($Row)
+            $RowIndex = $buttonIndex + 1
+            $tempButton.SetValue([Windows.Controls.Grid]::RowProperty,$RowIndex)
+        }
+        'Horizontal'
+        {
+            #Create additional row for the buttons
+            $Row = New-Object Windows.Controls.RowDefinition
+            $Row.Height = 'Auto'
+            $grid.RowDefinitions.Add($Row)
+            $RowIndex = 1
+            $tempButton.SetValue([Windows.Controls.Grid]::RowProperty,$RowIndex)
+            #create additional column for each button
+            $Column = New-Object Windows.Controls.ColumnDefinition
+            $Column.Width = 'Auto'
+            $grid.ColumnDefinitions.Add($Column)
+            $ColumnIndex = $buttonIndex
+            $tempButton.SetValue([Windows.Controls.Grid]::ColumnProperty,$ColumnIndex)
+        }
+    }
+    $tempButton.MinHeight = 10
+    $tempButton.Margin = "5,5,5,5"
+    $tempButton.Measure($wpfSize)
+    $buttonheights += $tempButton.desiredSize.Height
+    $buttonwidths += $tempButton.desiredSize.Width
+    $buttonIndex++
 }
+$buttonHeight = ($buttonHeights | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum)
+Write-Verbose -Message "Button Height is $buttonHeight"
+$buttonWidth = ($buttonWidths| Measure-Object -Maximum | Select-Object -ExpandProperty Maximum) + 10
+Write-Verbose -Message "Button Width is $buttonWidth"
+$buttons = Get-Variable 'buttonControl*' -Scope local -ValueOnly
+$buttonIndex = 0
+foreach ($button in $buttons)
+{
+    $button.Height = $buttonHeight
+    $button.Width = $buttonWidth
+    $grid.AddChild($button)
+    if ($buttonIndex -eq $DefaultChoice)
+    {
+        [void]$button.focus()
+    }
+    $buttonIndex++
+}
+# Add the elements to the relevant parent control
+$Grid.AddChild($label)
+$window.Content = $Grid
+#EndRegion BuildWPFWindow
+# Show the window
+    
+if ($window.ShowDialog())
+{
+    if ($ReturnChoice)
+    {
+        $cindex = Get-ArrayIndexForValue -array $possiblechoices -value $Script:UserChoice -property ChoiceWithEnumerator
+        $possiblechoices[$cindex].ChoiceText
+    } 
+    else
+    {
+        Get-ArrayIndexForValue -array $possiblechoices -value $Script:UserChoice -property ChoiceWithEnumerator
+    }
+}
+}#Read-Choice
+function Read-FolderBrowserDialog
+{# Show an Open Folder Dialog and return the directory selected by the user. 
+[cmdletbinding()]
+    Param(
+        [string]$Description
+        ,
+        [Parameter()]
+        [string]$InitialDirectory
+        ,
+        [string]$RootDirectory
+        ,
+        [switch]$NoNewFolderButton
+    )
+    Add-Type -AssemblyName System.Windows.Forms
+    $FolderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    if ($NoNewFolderButton) {$FolderBrowserDialog.ShowNewFolderButton = $false}
+    if ($PSBoundParameters.ContainsKey('Description')) {$FolderBrowserDialog.Description = $Description}
+    if ($PSBoundParameters.ContainsKey('InitialDirectory')) {$FolderBrowserDialog.SelectedPath = $InitialDirectory}
+    if ($PSBoundParameters.ContainsKey('RootDirectory')) {$FolderBrowserDialog.RootFolder = $RootDirectory}
+    $Result = $FolderBrowserDialog.ShowDialog()
+    switch ($Result)
+    {
+        'OK'
+        {
+            $folder = $FolderBrowserDialog.SelectedPath
+            Write-Output $folder
+        }
+        'Cancel'
+        {
+        }
+    }
+    $FolderBrowserDialog.Dispose()
+    Remove-Variable FolderBrowserDialog
+}#Read-FolderBrowswerDialog
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
@@ -1907,7 +2442,8 @@ if ($ModuleLoaded.count -eq 0)
     Write-Output $true
 }
 }# Function Import-RequiredModule
-Function Connect-Exchange {
+Function Connect-Exchange
+{
     [cmdletbinding(DefaultParameterSetName = 'Organization')]
     Param(
         [parameter(ParameterSetName='OnPremises')]
@@ -2058,7 +2594,10 @@ Function Connect-Exchange {
             $UseExistingSession = $false
         }#catch
         switch ($UseExistingSession) {
-            $true {}#$true
+            $true
+            {
+                Write-Output $true
+            }#$true
             $false {
                 $sessionParams = @{
                     ConfigurationName = 'Microsoft.Exchange'
@@ -2299,7 +2838,7 @@ Function Connect-Skype {
             $UseExistingSession = $false
         }#catch
         switch ($UseExistingSession) {
-            $true {}#$true
+            $true {Write-Output $true}#$true
             $false {
                 $sessionParams = @{
                     Credential = $Credential
@@ -2443,6 +2982,7 @@ Function Connect-AADSync {
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 $UseExistingSession = $true
+                Write-Output $true
             }#else
         }#try
         catch {
@@ -2600,6 +3140,7 @@ Function Connect-ADInstance {
                     If ($result.Count -ge 1) {
                         Write-Log -Message "Succeeded: Validate Operational Status of Drive $name."
                         $UseExistingDrive = $True
+                        Write-Output $True
                     }
                     else {
                         Remove-PSDrive -Name $name -ErrorAction Stop
@@ -2997,6 +3538,7 @@ Function Connect-PowerShellSystem {
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 $UseExistingSession = $true
+                Write-Output $true
             }#else
         }#try
         catch {
@@ -4288,8 +4830,8 @@ param(
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'OrgName')]
-    #add locations validation with Test-Path
-    [string[]]$Location = @("$env:ALLUSERSPROFILE\OneShell")
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
@@ -4314,7 +4856,7 @@ if ($PSCmdlet.ParameterSetName -eq 'Imported')
 {$OrgProfiles}
 else
 {
-foreach ($loc in $Location)
+foreach ($loc in $Path)
 {
     $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
     if ($JSONProfiles.Count -ge 1) {
@@ -4355,8 +4897,9 @@ Function Import-OrgProfile
 [cmdletbinding()]
 param
 (
-#Add validation for the path
-[string[]]$Location
+[Parameter()]
+[ValidateScript({Test-DirectoryPath -path $_})]
+[string[]]$Path
 ,
 [string]$OrgProfileType
 )
@@ -4364,8 +4907,8 @@ $GetOrgProfileParams=@{
     ErrorAction = 'Stop'
     Raw = $true
 }
-if ($PSBoundParameters.ContainsKey('Location'))
-{$GetOrgProfileParams.Location = $Location}
+if ($PSBoundParameters.ContainsKey('Path'))
+{$GetOrgProfileParams.Path = $Path}
 if ($PSBoundParameters.ContainsKey('OrgProfileType'))
 {$GetOrgProfileParams.OrgProfileType = $OrgProfileType}
 Try
@@ -4493,7 +5036,7 @@ Function Use-AdminUserProfile
 [cmdletbinding()]
 param(
     [parameter(ParameterSetName = 'Object',ValueFromPipeline=$true)]
-    $profile 
+    $AdminUserProfile 
     ,
     [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyname = $true, Mandatory = $true)]
     [string]$Identity
@@ -4518,39 +5061,47 @@ begin
             {
                 $GetAdminUserProfileParams.Path = $Path
             }
-            $profile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+            $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
         }
+    }
+    #Check Admin User Profile Version
+    $RequiredVersion = 1
+    if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion)
+    {
+        throw "The selected Admin User Profile $($AdminUserProfile.General.Name) is an older version. Please Run Set-AdminUserProfile -Identity $($AdminUserProfile.Identity) or Update-AdminUserProfileTypeVersion -Identity $($AdminUserProfile.Identity) to update it to version $RequiredVersion."
     }
 }#begin
 process{
     #check if there is already a "Current" admin profile and if it is different from the one being used/applied by this run of the function
     #need to add some clean-up functionality for sessions when there is a change, or make it always optional to reset all sessions with this function
-    if ($script:CurrentAdminUserProfile -and $profile.Identity -ne $script:CurrentAdminUserProfile.Identity) 
+    if (($script:CurrentAdminUserProfile -ne $null) -and $AdminUserProfile.Identity -ne $script:CurrentAdminUserProfile.Identity) 
     {
-        $script:CurrentAdminUserProfile = $profile
+        $script:CurrentAdminUserProfile = $AdminUserProfile
         Write-Warning "Admin User Profile has been changed to $($script:CurrentAdminUserProfile.Identity). Remove PSSessions and then re-establish connectivity using Connect-RemoteSystems."
     }
     else {
-        $script:CurrentAdminUserProfile = $profile
+        $script:CurrentAdminUserProfile = $AdminUserProfile
         Write-Verbose "Admin User Profile has been set to $($script:CurrentAdminUserProfile.Identity), $($script:CurrentAdminUserProfile.general.name)."
     }
     #Retrieve the systems from the current org profile
-    $systems = Get-OrgProfileSystem -OrganizationIdentity $script:CurrentAdminUserProfile.general.OrganizationIdentity
+    $systems = Get-OrgProfileSystem -OrganizationIdentity $AdminUserProfile.general.OrganizationIdentity
     #Build the autoconnect property and the mapped credentials for each system and store in the CurrentOrgAdminProfileSystems Script variable
     $Script:CurrentOrgAdminProfileSystems = 
     @(
         foreach ($sys in $systems) {
             $sys | Add-Member -MemberType NoteProperty -Name Autoconnect -Value $null
-            [boolean]$autoconnect = $script:CurrentAdminUserProfile.systems | Where-Object -FilterScript {$sys.Identity -eq $_.Identity} | foreach-Object {$_.autoconnect}
-            $sys.AutoConnect = $autoconnect
-            if (! $sys.Autoconnect) {$sys.Autoconnect = $false}
-            $sysPreCredential = $script:CurrentAdminUserProfile.Credentials | Where-Object -FilterScript {$_.systems -contains $sys.Identity} 
-            if (! $sysPreCredential) {$Credential = $null}
-            else {
-                $SSPassword = $sysPreCredential.password | ConvertTo-SecureString
-                $Credential = if ($sysPreCredential -and $SSPassword) {New-Object System.Management.Automation.PSCredential($sysPreCredential.Username,$SSPassword)} else {$null}
+            $sys | Add-Member -MemberType NoteProperty -Name Credential -value $null
+            $adminUserProfileSystem = $AdminUserProfile.systems | Where-Object -FilterScript {$sys.Identity -eq $_.Identity}
+            $sys.AutoConnect = $adminUserProfileSystem.AutoConnect
+            $PreCredential = @($AdminUserProfile.credentials | Where-Object -FilterScript {$_.Identity -eq $adminUserProfileSystem.Credential})
+            if ($PreCredential.count -eq 1)
+            {
+                $SSPassword = $PreCredential[0].password | ConvertTo-SecureString
+                $Credential = New-Object System.Management.Automation.PSCredential($PreCredential[0].Username,$SSPassword)
             }
-            $sys | Add-Member -MemberType NoteProperty -Name Credential -value $Credential
+            else
+            {$Credential = $null}
+            $sys.Credential = $Credential
             $sys
         }
     )
@@ -4562,7 +5113,7 @@ process{
     $Script:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations.log'
     $Script:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations-Errors.log'
     $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
-    Return $true
+    Write-Output $true
 }#process
 }
 Function Get-AdminUserProfile
@@ -4647,7 +5198,7 @@ else
     $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}},@{n='OrgIdentity';e={$_.general.organizationidentity}}
 }#else when not "Raw"
 }#else when not "Imported"
-}#function Get-AdminUserProfile
+}#Get-AdminUserProfile
 Function Import-AdminUserProfile
 {
 [cmdletbinding()]
@@ -4699,33 +5250,7 @@ catch
 {
     Write-Output $false
 }
-}
-Function Select-AdminUserProfile {
-    param(
-        [parameter()]
-        [validateset('Use','Edit')]
-        $purpose 
-    )
-    $MenuDefinition = [pscustomobject]@{
-        GUID = [guid]::NewGuid()
-        Title = "Select Admin User Profile to $purpose"
-        Initialization = ''
-        ParentGUID = $null
-        Choices = @()
-    }
-    foreach ($profile in $Script:AdminUserProfiles) {
-        $MenuDefinition.choices += [pscustomobject]@{
-            choice = $profile.general.Name
-            command = switch ($purpose) {
-                'Edit' {"Set-AdminUserProfile -Identity $($Profile.Identity)"} 
-                'Use' {"Use-AdminUserProfile -Identity $($profile.identity)"}
-            }#switch
-            exit = $true
-        }
-
-    }
-    Invoke-Menu -menudefinition $MenuDefinition 
-}
+}#Import-AdminUserProfile
 function New-AdminUserProfile
 {
 [cmdletbinding()]
@@ -4734,7 +5259,7 @@ param
     [parameter(Mandatory)]
     [string]$OrganizationIdentity
     ,
-    [string]$name
+    [switch]$Passthru
 )
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
     switch ($targetOrgProfile.Count)
@@ -4753,302 +5278,476 @@ param
     }
     Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
     #Build the basic Admin profile object
-    $newAdminUserProfile = [ordered]@{
-        Identity = [guid]::NewGuid()
-        ProfileType = 'OneShellAdminUserProfile'
-        General = [ordered]@{
-            Name = if ($name) {"$name-" + $targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME} else {$targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME}
-            Host = $env:COMPUTERNAME
-            OrganizationIdentity = $targetOrgProfile.identity
-            ProfileFolder = GetAdminUserProfileFolder
-            Default = if ((Read-Choice -Message "Should this be the default profile for Organization Profile $($targetorgprofile.general.name)?" -Choices 'Yes','No' -DefaultChoice 1 -Title 'Default Profile?') -eq 0) {$true} else {$false}
-        }
-        Systems = @()
-        Credentials = @()
-    }
-    #Get the Admin user's email address
-    $newAdminUserProfile.General.MailFrom = GetAdminUserProfileEmailAddress
-    #Get Org Profile Defined Systems
-    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-    #Select the mail relay endpoint for the profile to use
-    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
-    if ($MailRelayEndpoints.Count -gt 1)
+    $AdminUserProfile = GetGenericNewAdminsUserProfileObject -OrganizationIdentity $OrganizationIdentity
+    #Let user configure the profile
+    $quit = $false
+    $choices = 'Profile Name', 'Set Default', 'Profile Directory','Mail From Email Address','Mail Relay Endpoint','Credentials','Systems','Save','Save and Quit','Cancel'
+    do
     {
-        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
-        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
-    }
-    else
-    {
-        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
-    }
-    $newAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
-    #Get the admin User's Credentials
-    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems)
-    #Prepare Stored Credentials to associate with one or more systems
-    :SysCredAssociation foreach ($sys in $systems) #using the label just to make the use of Continue explicit in the code below
-    {
-        if ($sys.AuthenticationRequired -eq $false) {Continue SysCredAssociation}
-        if ($sys.SystemType -eq 'MailRelayEndpoints')
+        $Message = GetAdminUserProfileMenuMessage -AdminUserProfile $AdminUserProfile
+        $UserChoice = Read-Choice -Message $message -Choices $choices -Title 'New Admin User Profile' -Vertical
+        switch ($choices[$UserChoice])
         {
-            if ($sys.Identity -eq $MailRelayEndpointToUse) {$autoConnectChoice = 1}
-            else {Continue SysCredAssociation}
-        }
-        else
-        {
-            $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
-            $prompt = "Do you want to Auto Connect to this system with this admin profile: `n`n$label"
-            $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice 0 -Title 'Auto Connect?'
-        }
-        switch ($autoConnectChoice) {
-            0 {
-                $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $true}
-                $newAdminUserProfile.Systems += $SystemEntry
-                #associate a credential with the autoconnect system
-                $prompt = "Which Credential do you want to associate with this system: `n`n$label"
-                $choice = Read-Choice -Message $prompt -Choices $exportcredentials.Username -Title "Associate Credential:$label" -DefaultChoice 0
-                [array]$currentAssociatedSystems = @($exportcredentials[$choice].Systems)
-                $currentAssociatedSystems += $sys.Identity
-                $exportcredentials[$choice].Systems = $currentAssociatedSystems
-            }
-            1 {
-                $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $false}
-                $newAdminUserProfile.Systems += $SystemEntry
-                #ask if user still wants to associate a credential
-                $prompt = "Do you want to associate a credential for on demand connections to this system: `n`n$label"
-                $AssociateOnDemandCredentialChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -Title "Associate Credential:$label" -DefaultChoice 1
-                switch ($AssociateOnDemandCredentialChoice) {
-                    0 {
-                        #associate a credential with the non-autoconnect system for on demand connections via profile
-                        $prompt = "Which Credential do you want to associate with this system: `n`n$label"
-                        $choice = Read-Choice -Message $prompt -Choices $exportcredentials.Username -Title "Associate Credential:$label" -DefaultChoice 0
-                        [array]$currentAssociatedSystems = @($exportcredentials[$choice].Systems)
-                        $currentAssociatedSystems += $sys.Identity
-                        $exportcredentials[$choice].Systems = $currentAssociatedSystems
-                    }
-                    1 {}
-                }
-            }
-        }
-        Remove-Variable -Name SystemEntry
-    }
-    #add the stored and system associated credentials to the profile
-    $newAdminUserProfile.Credentials = @($exportcredentials)
-    #if necessary, create the Admin Profile File System Folders and export the JSON profile file
-    try
-    {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $newAdminUserProfile -path $newAdminUserProfile.General.profileFolder -ErrorAction Stop)
-        {
-            if (Export-AdminUserProfile -profile $newAdminUserProfile -ErrorAction Stop -path $newAdminUserProfile.General.profileFolder)
+            'Profile Name'
             {
-                if (Get-AdminUserProfile -Identity $newAdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $newAdminUserProfile.General.profileFolder)
+                $ProfileName = Read-InputBoxDialog -Message 'Configure Admin Profile Name' -WindowTitle 'Admin Profile Name' -DefaultText $AdminUserProfile.General.Name
+                if ($ProfileName -ne $AdminUserProfile.General.Name)
                 {
-                    Write-Log -Message "New Admin Profile with Name: $($newAdminUserProfile.General.Name) and Identity: $($newAdminUserProfile.Identity) was successfully configured, exported, and imported." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
-                    Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($newAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                    $AdminUserProfile.General.Name = $ProfileName
                 }
+            }
+            'Set Default'
+            {
+                $DefaultChoice = if ($AdminUserProfile.General.Default -eq $true) {0} elseif ($AdminUserProfile.General.Default -eq $null) {-1} else {1}
+                $Default = if ((Read-Choice -Message "Should this admin profile be the default admin profile for Organization Profile $($targetorgprofile.general.name)?" -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title 'Default Profile?') -eq 0) {$true} else {$false}
+                if ($Default -ne $AdminUserProfile.General.Default)
+                {
+                    $AdminUserProfile.General.Default = $Default
+                }
+            }
+            'Profile Directory'
+            {
+                if (-not [string]::IsNullOrEmpty($AdminUserProfile.General.ProfileFolder))
+                {
+                    $InitialDirectory = Split-Path $AdminUserProfile.General.ProfileFolder
+                    $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
+                } else 
+                {
+                    $ProfileDirectory = GetAdminUserProfileFolder
+                }
+                if ($ProfileDirectory -ne $AdminUserProfile.General.ProfileFolder)
+                {
+                    $AdminUserProfile.General.ProfileFolder = $ProfileDirectory
+                }
+            }
+            'Mail From Email Address'
+            {
+                $MailFromEmailAddress = GetAdminUserProfileEmailAddress -CurrentEmailAddress $AdminUserProfile.General.MailFrom
+                if ($MailFromEmailAddress -ne $AdminUserProfile.General.MailFrom)
+                {
+                    $AdminUserProfile.General.MailFrom = $MailFromEmailAddress
+                }
+            }
+            'Mail Relay Endpoint'
+            {
+                $MailRelayEndpointToUse = GetAdminUserProfileMailRelayEndpointToUse -OrganizationIdentity $OrganizationIdentity -CurrentMailRelayEndpoint $AdminUserProfile.General.MailRelayEndpointToUse
+                if ($MailRelayEndpointToUse -ne $AdminUserProfile.General.MailRelayEndpointToUse)
+                {
+                    $AdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+                }
+            }
+            'Credentials'
+            {
+                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+                if ($AdminUserProfile.Credentials.Count -ge 1)
+                {
+                    $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems -edit -Credentials $AdminUserProfile.Credentials)
+                }
+                else
+                {
+                    $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems)
+                }
+                $AdminUserProfile.Credentials = $exportcredentials
+            }
+            'Systems'
+            {
+                $AdminUserProfile.Systems = GetAdminUserProfileSystemEntries -OrganizationIdentity $OrganizationIdentity -AdminUserProfile $AdminUserProfile
+            }
+            'Save'
+            {
+                if ($AdminUserProfile.General.ProfileFolder -eq '')
+                {
+                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                }
+                else
+                {
+                    Try
+                    {
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
+                            Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
+                            Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
+                        }
+                    }
+                    Catch {
+                        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+            'Save and Quit'
+            {
+                if ($AdminUserProfile.General.ProfileFolder -eq '')
+                {
+                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                }
+                else
+                {
+                    Try
+                    {
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
+                            Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
+                            Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
+                        }
+                    }
+                    Catch {
+                        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                    }
+                    $quit = $true
+                }
+            }
+            'Cancel'
+            {
+                $quit = $true
             }
         }
     }
-    catch
-    {
-        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($newAdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
-        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
-    }
+    until ($quit)
     #return the admin profile raw object to the pipeline
-    Write-Output $newAdminUserProfile
-}# New-AdminUserProfile
+    if ($passthru) {Write-Output $AdminUserProfile}
+} #New-AdminUserProfile
 function Set-AdminUserProfile
 {
-    [cmdletbinding()]
-    param(
-        [parameter(ParameterSetName = 'Object')]
-        [psobject]$profile 
-        ,
-        [parameter(ParameterSetName = 'Identity',Mandatory = $true)]
-        [string]$Identity
-        ,
-        [parameter(ParameterSetName = 'Identity')]
-        [ValidateScript({Test-DirectoryPath -Path $_})]
-        [string[]]$Path 
-    )
-    switch ($PSCmdlet.ParameterSetName) {
-        'Object' {$editAdminUserProfile = $profile}
-        'Identity'
+[cmdletbinding()]
+param(
+    [parameter(ParameterSetName = 'Object')]
+    [psobject]$profile 
+    ,
+    [parameter(ParameterSetName = 'Identity',Mandatory = $true)]
+    [string]$Identity
+    ,
+    [parameter(ParameterSetName = 'Identity')]
+    [ValidateScript({Test-DirectoryPath -Path $_})]
+    [string[]]$Path
+    ,
+    [switch]$Passthru
+)
+switch ($PSCmdlet.ParameterSetName) {
+    'Object' {$AdminUserProfile = $profile}
+    'Identity'
+    {
+        $GetAdminUserProfileParams = @{
+            Identity = $Identity
+            Raw = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Path'))
         {
-            $GetAdminUserProfileParams = @{
-                Identity = $Identity
-                Raw = $true
-            }
-            if ($PSBoundParameters.ContainsKey('Path'))
+            $GetAdminUserProfileParams.Path = $Path
+        }
+        $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+    }
+}
+$OrganizationIdentity = $AdminUserProfile.General.OrganizationIdentity
+$targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
+#Check the Org Identity for validity (exists, not ambiguous)
+switch ($targetOrgProfile.Count)
+{
+    1 {}
+    0
+    {
+        $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+    Default
+    {
+        $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+    }
+}
+#Update the Admin User Profile if necessary
+$AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+   Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
+#Let user configure the profile
+    $quit = $false
+    $choices = 'Profile Name', 'Set Default', 'Profile Directory','Mail From Email Address','Mail Relay Endpoint','Credentials','Systems','Save','Save and Quit','Cancel'
+    do
+    {
+        $Message = GetAdminUserProfileMenuMessage -AdminUserProfile $AdminUserProfile
+        $UserChoice = Read-Choice -Message $message -Choices $choices -Title 'Edit Admin User Profile' -Vertical
+        switch ($choices[$UserChoice])
+        {
+            'Profile Name'
             {
-                $GetAdminUserProfileParams.Path = $Path
+                $ProfileName = Read-InputBoxDialog -Message 'Configure Admin Profile Name' -WindowTitle 'Admin Profile Name' -DefaultText $AdminUserProfile.General.Name
+                if ($ProfileName -ne $AdminUserProfile.General.Name)
+                {
+                    $AdminUserProfile.General.Name = $ProfileName
+                }
             }
-            $editAdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+            'Set Default'
+            {
+                $DefaultChoice = if ($AdminUserProfile.General.Default -eq $true) {0} elseif ($AdminUserProfile.General.Default -eq $null) {-1} else {1}
+                $Default = if ((Read-Choice -Message "Should this admin profile be the default admin profile for Organization Profile $($targetorgprofile.general.name)?" -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title 'Default Profile?') -eq 0) {$true} else {$false}
+                if ($Default -ne $AdminUserProfile.General.Default)
+                {
+                    $AdminUserProfile.General.Default = $Default
+                }
+            }
+            'Profile Directory'
+            {
+                if (-not [string]::IsNullOrEmpty($AdminUserProfile.General.ProfileFolder))
+                {
+                    $InitialDirectory = Split-Path $AdminUserProfile.General.ProfileFolder
+                    $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
+                } else 
+                {
+                    $ProfileDirectory = GetAdminUserProfileFolder
+                }
+                if ($ProfileDirectory -ne $AdminUserProfile.General.ProfileFolder)
+                {
+                    $AdminUserProfile.General.ProfileFolder = $ProfileDirectory
+                }
+            }
+            'Mail From Email Address'
+            {
+                $MailFromEmailAddress = GetAdminUserProfileEmailAddress -CurrentEmailAddress $AdminUserProfile.General.MailFrom
+                if ($MailFromEmailAddress -ne $AdminUserProfile.General.MailFrom)
+                {
+                    $AdminUserProfile.General.MailFrom = $MailFromEmailAddress
+                }
+            }
+            'Mail Relay Endpoint'
+            {
+                $MailRelayEndpointToUse = GetAdminUserProfileMailRelayEndpointToUse -OrganizationIdentity $OrganizationIdentity -CurrentMailRelayEndpoint $AdminUserProfile.General.MailRelayEndpointToUse
+                if ($MailRelayEndpointToUse -ne $AdminUserProfile.General.MailRelayEndpointToUse)
+                {
+                    $AdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
+                }
+            }
+            'Credentials'
+            {
+                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+                $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems -credentials $AdminUserProfile.Credentials -edit)
+                $AdminUserProfile.Credentials = $exportcredentials
+            }
+            'Systems'
+            {
+                $AdminUserProfile.Systems = GetAdminUserProfileSystemEntries -OrganizationIdentity $OrganizationIdentity -AdminUserProfile $AdminUserProfile
+            } 
+            'Save'
+            {
+                if ($AdminUserProfile.General.ProfileFolder -eq '')
+                {
+                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                }
+                else
+                {
+                    Try
+                    {
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
+                            Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
+                            Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
+                        }
+                    }
+                    Catch {
+                        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+            'Save and Quit'
+            {
+                if ($AdminUserProfile.General.ProfileFolder -eq '')
+                {
+                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                }
+                else
+                {
+                    Try
+                    {
+                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
+                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
+                            Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
+                            Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
+                        }
+                    }
+                    Catch {
+                        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                    }
+                    $quit = $true
+                }
+            }
+            'Cancel'
+            {
+                $quit = $true
+            }
         }
     }
-    $OrganizationIdentity = $editAdminUserProfile.General.OrganizationIdentity
-    $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
-    switch ($targetOrgProfile.Count)
+    until ($quit)
+    #return the admin profile raw object to the pipeline
+    if ($passthru) {Write-Output $AdminUserProfile}
+ }# Set-AdminUserProfile
+function Update-AdminUserProfileTypeVersion
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory=$true)]
+$Identity
+,
+$Path)
+$GetAdminUserProfileParams = @{
+    Identity = $Identity
+    errorAction = 'Stop'
+    raw = $true
+}
+if ($PSBoundParameters.ContainsKey('Path'))
+{
+    $GetAdminUserProfileParams.Path = $Path
+}
+$AdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams
+$BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the Admin User Profile $($AdminUserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes','No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
+if ($BackupProfileUserChoice -eq 'Yes')
+{
+    $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
+    if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
     {
-        1 {}
-        0
+        if ($Folder -ne $AdminUserProfile.General.ProfileFolder)
         {
-            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
-        }
-        Default
-        {
-            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
-        }
-    }
-    Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
-    #Set Admin Profile to Default or Not Default
-    if ($editAdminUserProfile.General.Default) {
-        $prompt = "This admin profile is currently the Default Admin Profile.`n`nShould this be the default profile for Organization Profile $($targetorgprofile.general.name)?"
-        $defaultChoiceDefault = 0
-    }
-    else {
-        $prompt = "This admin profile is currently NOT the Default Admin Profile.`n`nShould this be the default profile for Organization Profile $($targetorgprofile.general.name)?"
-        $defaultChoiceDefault = 1
-    }
-    $editAdminUserProfile.General.Default = if ((Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice $defaultChoiceDefault -Title 'Default Profile?') -eq 0) {$true} else {$false}
-    #Get the Admin user's email address
-    if (Test-Member -InputObject $editAdminUserProfile.General -Name MailFrom)
-    {
-        $currentEmailAddress = $editAdminUserProfile.General.MailFrom
-    }
-    else
-    {
-        $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
-    }
-    $editAdminUserProfile.General.MailFrom = GetAdminUserProfileEmailAddress -CurrentEmailAddress $currentEmailAddress
-    #Get Org Profile Defined Systems
-    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
-    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
-    if ($MailRelayEndpoints.Count -gt 1)
-    {
-        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice 1 -Title "Select Mail Relay Endpoint"
-        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
-    }
-    else
-    {
-        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
-    }
-    if (-not (Test-Member -InputObject $editAdminUserProfile.General -Name MailRelayEndpointToUse))
-    {
-        $editAdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $MailRelayEndpointToUse
-    }
-    $editAdminUserProfile.General.MailRelayEndpointToUse = $MailRelayEndpointToUse
-    #Get User's Credentials
-    $exportcredentials = @(Set-AdminUserProfileCredentials -systems $systems -credentials $editAdminUserProfile.Credentials -edit)
-    #Prepare Stored Credentials to associate with one or more systems
-    $exportcredentials | foreach {$_.systems=@()}
-    #Prepare Edited System Entries variable:
-    $EditedSystemEntries = @()
-    :SysCredAssociation foreach ($sys in $systems) {
-        if ($sys.AuthenticationRequired -eq $false) {Continue SysCredAssociation}
-        if ($sys.SystemType -eq 'MailRelayEndpoints')
-        {
-            if ($sys.Identity -eq $MailRelayEndpointToUse) {$autoConnectChoice = 1}
+            Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop | Out-Null
         }
         else
         {
-            $label = $sys | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}} | Select-Object -ExpandProperty Name
-            $currentAutoConnect = $editAdminUserProfile.Systems | Where-Object -FilterScript {$_.Identity -eq $Sys.Identity} | Foreach-Object {$_.Autoconnect}
-            [string]$currentCredential = $editAdminUserProfile.Credentials | Where-Object -FilterScript {$_.systems-contains $sys.Identity} | Foreach-Object {$_.UserName}
-            switch ($currentAutoConnect) {
-                $true {
-                    $prompt = "This system currently is set to Auto Connect in this profile.`n`nDo you want to Auto Connect to this system with this admin profile? `n`n$label"
-                    $DefaultChoiceAC = 0
-                }
-                $false {
-                    $prompt = "This system currently is NOT set to Auto Connect in this profile.`n`nDo you want to Auto Connect to this system with this admin profile? `n`n$label"
-                    $DefaultChoiceAC = 1
-                }
-                Default {
-                    $prompt = "Do you want to Auto Connect to this system with this admin profile? `n`n$label"
-                    $DefaultChoiceAC = -1
-                }
-            }
-            $autoConnectChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -DefaultChoice $DefaultChoiceAC -Title 'Auto Connect?'
+            throw "Choose a different directory."
         }
-        switch ($autoConnectChoice) {
-            0 {
-                $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $true}
-                $EditedSystemEntries += $SystemEntry
-                #associate a credential with the autoconnect system
-                if (-not [string]::IsNullOrWhiteSpace($currentCredential)) {
-                    $prompt = "This system is currently configured to use Credential: $currentCredential`n`nWhich Credential do you want to associate with this system: `n`n$label"
-                    $defaultchoicecred = Get-ArrayIndexForValue -array $exportcredentials -value $currentCredential -property UserName
-                }#if
-                else {
-                    $defaultchoicecred = -1
-                    $prompt = "Which Credential do you want to associate with this system: `n`n$label"
-                }
-                $choice = Read-Choice -Message $prompt -Choices $exportcredentials.Username -Title "Associate Credential:$label" -DefaultChoice $defaultchoicecred
-                [array]$currentAssociatedSystems = @($exportcredentials[$choice].Systems)
-                $currentAssociatedSystems += $sys.Identity
-                $exportcredentials[$choice].Systems = $currentAssociatedSystems
-            }
-            1 {
-                $SystemEntry = [ordered]@{'Identity' = $sys.Identity;'Autoconnect' = $false}
-                $EditedSystemEntries += $SystemEntry
-                #ask if user still wants to associate a credential
-                $prompt = "Do you want to associate a credential for on demand connections to this system: `n`n$label"
-                $AssociateOnDemandCredentialChoice = Read-Choice -Message $prompt -Choices 'Yes','No' -Title "Associate Credential:$label" -DefaultChoice 1
-                switch ($AssociateOnDemandCredentialChoice) {
-                    0 {
-                        #associate a credential with the autoconnect system
-                        if (-not [string]::IsNullOrWhiteSpace($currentCredential)) {
-                            $prompt = "This system is currently configured to use Credential: $currentCredential`n`nWhich Credential do you want to associate with this system: `n`n$label"                
-                            $defaultchoicecred = Get-ArrayIndexForValue -array $exportcredentials -value $currentCredential -property UserName
-                        }#if
-                        else {
-                            $defaultchoicecred = -1                
-                            $prompt = "Which Credential do you want to associate with this system: `n`n$label"
-                        }
-                        $choice = Read-Choice -Message $prompt -Choices $exportcredentials.Username -Title "Associate Credential:$label" -DefaultChoice $defaultchoicecred
-                        [string[]]$currentAssociatedSystems = @($exportcredentials[$choice].Systems)
-                        $currentAssociatedSystems += $sys.Identity
-                        $exportcredentials[$choice].Systems = $currentAssociatedSystems
-                    }
-                    1 {}
-                }
+    }
+}
+$UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.general.profilefolder | Out-Null
+}
+function GetAdminUserProfileMenuMessage
+{
+param($AdminUserProfile)
+$Message = @"
+Oneshell: Admin User Profile Menu
+
+    Identity: $($AdminUserProfile.Identity)
+    Host: $($AdminUserProfile.General.Host)
+    User: $($AdminUserProfile.General.User)
+    Profile Name: $($AdminUserProfile.General.Name)
+    Default: $($AdminUserProfile.General.Default)
+    Directory: $($AdminUserProfile.General.ProfileFolder)
+    Mail From: $($AdminUserProfile.General.MailFrom)
+    Credential Count: $($AdminUserProfile.Credentials.Count)
+    Credentials:
+    $(foreach ($c in $AdminUserProfile.Credentials) {"`t$($c.Username)`r`n"})
+    Count of Systems with Associated Credentials: $(@($AdminUserProfile.Systems | Where-Object -FilterScript {$_.credential -ne $null}).count)
+    Count of Systems Configured for AutoConnect: $(@($AdminUserProfile.Systems | Where-Object -FilterScript {$_.AutoConnect -eq $true}).count)
+
+"@
+$Message
+} #GetAdminUserProfileMenuMessage
+function GetGenericNewAdminsUserProfileObject
+{
+param(
+$OrganizationIdentity
+)
+[pscustomobject]@{
+        Identity = [guid]::NewGuid()
+        ProfileType = 'OneShellAdminUserProfile'
+        ProfileTypeVersion = 1.0
+        General = [pscustomobject]@{
+            Name = $targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
+            Host = $env:COMPUTERNAME
+            User = $env:USERNAME
+            OrganizationIdentity = $targetOrgProfile.identity
+            ProfileFolder = ''
+            MailFrom = ''
+            MailRelayEndpointToUse = ''
+            Default = $false
+        }
+        Systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity) | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}}
+        Credentials = @()
+    }
+} #GetGenericNewAdminsUserProfileObject
+function UpdateAdminUserProfileObjectVersion
+{
+param($AdminUserProfile)
+#Check Admin User Profile Version
+$RequiredVersion = 1
+if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion) {
+   #Profile Version Upgrades
+    #MailFrom
+    if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailFrom))
+    {
+        $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
+    }
+    #UserName
+    if (-not (Test-Member -InputObject $AdminUserProfile.General -Name User))
+    {
+        $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name User -Value $env:USERNAME
+    }
+    #MailRelayEndpointToUse
+    if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailRelayEndpointToUse))
+    {
+        $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $null
+    }
+    #ProfileTypeVersion
+    if (-not (Test-Member -InputObject $AdminUserProfile -Name ProfileTypeVersion))
+    {
+        $AdminUserProfile | Add-Member -MemberType NoteProperty -Name ProfileTypeVersion -Value 1.0
+    }
+    #Credentials add Identity
+    foreach ($Credential in $AdminUserProfile.Credentials)
+    {
+        if (-not (Test-Member -InputObject $Credential -Name Identity))
+        {
+            $Credential | Add-Member -MemberType NoteProperty -Name Identity -Value $(New-Guid).guid
+        }
+    }
+    #SystemEntries
+    foreach ($se in $AdminUserProfile.Systems)
+    {
+        if (-not (Test-Member -InputObject $se -Name Credential))
+        {
+            $se | Add-Member -MemberType NoteProperty -Name Credential -Value $null
+        }
+        foreach ($credential in $AdminUserProfile.Credentials)
+        {
+            if (Test-Member -InputObject $credential -Name Systems)
+            {
+                if ($se.Identity -in $credential.systems)
+                {$se.credential = $credential.Identity}
             }
         }
-        Remove-Variable -Name SystemEntry
     }
-    $editAdminUserProfile.Credentials = @($exportcredentials)
-    $editAdminUserProfile.Systems = $EditedSystemEntries
-    #<#
-    try {
-        if (Add-AdminUserProfileFolders -AdminUserProfile $editAdminUserProfile -ErrorAction Stop -path $editAdminUserProfile.General.ProfileFolder) {
-            if (Export-AdminUserProfile -profile $editAdminUserProfile -ErrorAction Stop -path $editAdminUserProfile.General.ProfileFolder) {
-                if (Get-AdminUserProfile -Identity $editAdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $editAdminUserProfile.General.ProfileFolder) {
-                    Write-Log -Message "Edited Admin Profile with Name: $($editAdminUserProfile.General.Name) and Identity: $($editAdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
-                    Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($editAdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
-                }
+    #Credentials Remove Systems
+    $UpdatedCredentialObjects = @(
+        foreach ($Credential in $AdminUserProfile.Credentials)
+        {
+            if (Test-Member -InputObject $Credential -Name Systems)
+            {
+                $UpdatedCredential = $Credential | Select-Object -Property Identity,Username,Password
+                $UpdatedCredential
+            }
+            else
+            {
+                $Credential
             }
         }
-        $editAdminUserProfile    
-    }
-    catch {
-        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($editAdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
-        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
-    }
-    ##>
-}# Set-AdminUserProfile
+    )
+    $AdminUserProfile.Credentials = $UpdatedCredentialObjects
+}
+Write-Output $AdminUserProfile
+} #UpdateAdminUserProfileObjectVersion
 #supporting functions for AdminUserProfile Editing
 function GetAdminUserProfileFolder
 {
+Param(
+    $InitialDirectory = 'MyComputer'
+)
+    if ([string]::IsNullOrEmpty($InitialDirectory)) {$InitialDirectory = 'MyComputer'}
     $message = "Select a location for your admin user profile directory. A sub-directory named 'OneShell' will be created in the selected directory if one does not already exist. The user profile $($env:UserProfile) is the recommended location.  Additionally, under the OneShell directory, sub-directories for Logs, Input, and Export files will be created."
     Do
     {
-        $UserChosenPath = Read-FolderBrowserDialog -Message $message  -InitialDirectory 'MyComputer' 
+        $UserChosenPath = Read-FolderBrowserDialog -Description $message -InitialDirectory $InitialDirectory
         if (Test-IsWriteableDirectory -Path $UserChosenPath)
         {
             $ProfileFolderToCreate = Join-Path $UserChosenPath 'OneShell'
@@ -5059,7 +5758,7 @@ function GetAdminUserProfileFolder
     (
         $IsWriteableFilesystemDirectory
     )
-    $ProfileFolderToCreate
+    Write-Output $ProfileFolderToCreate
 }#function GetAdminUserProfileFolder
 function GetAdminUserProfileEmailAddress
 {
@@ -5083,7 +5782,152 @@ until
 (Test-EmailAddress -EmailAddress $address)
 $address
 }
-function Add-AdminUserProfileFolders {
+function GetAdminUserProfileMailRelayEndpointToUse
+{
+param(
+$OrganizationIdentity
+,
+$CurrentMailRelayEndpoint
+)
+    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+    $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
+    if ($MailRelayEndpoints.Count -gt 1)
+    {
+        $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
+        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
+        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title "Select Mail Relay Endpoint"
+        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
+    }
+    else
+    {
+        $choice = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+        Read-AnyKey -prompt "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice."
+        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
+    }
+    Write-Output $MailRelayEndpointToUse
+}
+function GetAdminUserProfileSystemEntries
+{
+[cmdletbinding()]
+param(
+$OrganizationIdentity
+,
+$AdminUserProfile
+)
+
+$systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+#Preserve existing entries and add any new ones from the Org Profile
+$existingSystemEntriesIdentities = $AdminUserProfile.systems | Select-Object -ExpandProperty Identity
+$OrgProfileSystemEntriesIdentities = $systems | Select-Object -ExpandProperty Identity
+$SystemEntries = @($systems | Where-Object -FilterScript {$_.Identity -notin $existingSystemEntriesIdentities} | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}})
+$SystemEntries = @($AdminUserProfile.systems + $SystemEntries)
+#filters out systems that have been removed from the OrgProfile
+$SystemEntries = @($SystemEntries | Where-Object -FilterScript {$_.Identity -in $OrgProfileSystemEntriesIdentities})
+#Build the system labels for use in the read-choice dialog
+$SystemLabels = @(
+    foreach ($s in $SystemEntries)
+    {
+        $system = $systems | Where-Object -FilterScript {$_.Identity -eq $s.Identity}
+        "$($system.SystemType):$($system.Name)"
+    } 
+)
+$SystemLabels += 'Done'
+$SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
+$SystemChoiceTitle = 'Configure Systems'
+$SystemsDone = $false
+Do {
+    $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $SystemLabels -Vertical
+    if ($SystemLabels[$SystemChoice] -eq 'Done')
+    {
+        $SystemsDone = $true
+    } else
+    {
+        Do {
+            $EditTypePrompt = @"
+Edit AutoConnect or Associated Credential for this system: $($SystemLabels[$SystemChoice])
+Current Settings
+AutoConnect: $($SystemEntries[$SystemChoice].AutoConnect)
+Credential: $($AdminUserProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $SystemEntries[$SystemChoice].Credential} | Select-Object -ExpandProperty UserName)
+"@
+            $EditTypes = 'AutoConnect','Associate Credential','Done'
+            $EditTypeChoice = $null
+            $EditTypeChoice = Read-Choice -Message $EditTypePrompt -Choices $editTypes -DefaultChoice -1 -Title "Edit System $($SystemLabels[$SystemChoice])"
+            switch ($editTypes[$EditTypeChoice])
+            {
+                'AutoConnect'
+                {
+                    Write-Verbose -Message "Running AutoConnect Prompt"
+                    $AutoConnectPrompt = "Do you want to Auto Connect to this system: $($SystemLabels[$SystemChoice])?"
+                    $DefaultChoice = if ($SystemEntries[$SystemChoice].AutoConnect -eq $true) {0} elseif ($SystemEntries[$SystemChoice].AutoConnect -eq $null) {-1} else {1}
+                    $AutoConnectChoice = Read-Choice -Message $AutoConnectPrompt -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title "AutoConnect System $($SystemLabels[$SystemChoice])?"
+                    switch ($AutoConnectChoice)
+                    {
+                        0
+                        {
+                            $SystemEntries[$SystemChoice].AutoConnect = $true
+                        }
+                        1
+                        {
+                            $SystemEntries[$SystemChoice].AutoConnect = $false
+                        }
+                    }
+                    $EditsDone = $false
+                }
+                'Associate Credential'
+                {
+                    if ($AdminUserProfile.Credentials.Count -ge 1)
+                    {
+                        $CredPrompt = "Which Credential do you want to associate with this system: $($SystemLabels[$SystemChoice])?"
+                        $DefaultChoice = if ($SystemEntries[$SystemChoice].Credential -eq $null) {-1} else {Get-ArrayIndexForValue -value $SystemEntries[$SystemChoice].Credential -array $AdminUserProfile.Credentials -property Identity}
+                        $CredentialChoice = Read-Choice -Message $CredPrompt -Choices $AdminUserProfile.Credentials.Username -Title "Associate Credential to System $($SystemLabels[$SystemChoice])" -DefaultChoice $DefaultChoice -Vertical
+                        $SystemEntries[$SystemChoice].Credential = $AdminUserProfile.Credentials[$CredentialChoice].Identity
+                    } else
+                    {
+                        Write-Error -Message "No Credentials exist in the Admin User Profile.  Please add one or more credentials." -Category InvalidData -ErrorId 0
+                    }
+                    $EditsDone = $false
+                }
+                'Done'
+                {
+                    $EditsDone = $true
+                }
+            }
+        }
+        Until
+        ($EditsDone -eq $true)
+    }
+}
+Until
+($SystemsDone)
+$SystemEntries
+}
+function SaveAdminUserProfile
+{
+param(
+$AdminUserProfile
+)
+    try
+    {
+        if (AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -path $AdminUserProfile.General.profileFolder -ErrorAction Stop)
+        {
+            if (Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.profileFolder)
+            {
+                if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.profileFolder)
+                {
+                    Write-Log -Message "New Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully saved to $($AdminUserProfile.General.ProfileFolder)." -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                    Write-Log -Message "To initialize the new profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                }
+            }
+        }
+    }
+    catch
+    {
+        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+    }
+}
+function AddAdminUserProfileFolders {
     [cmdletbinding()]
     param(
         $AdminUserProfile
@@ -5103,7 +5947,7 @@ function Add-AdminUserProfileFolders {
     }
     $true
 }
-function Set-AdminUserProfileCredentials {
+function SetAdminUserProfileCredentials {
     [cmdletbinding(DefaultParameterSetName='New')]
     param(
         [parameter(ParameterSetName='New',Mandatory = $true)]
@@ -5118,11 +5962,11 @@ function Set-AdminUserProfileCredentials {
     )
     switch ($PSCmdlet.ParameterSetName) {
         'Edit' {
-            $editableCredentials = @($Credentials | Select-Object @{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
+            $editableCredentials = @($Credentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
         }
         'New' {$editableCredentials = @()}
     }
-    $systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
+    #$systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
     $labels = $systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}}
     do {
         $prompt = @"
@@ -5139,17 +5983,28 @@ Would you like to add, edit, or remove a credential?"
 "@
         $response = Read-Choice -Message $prompt -Choices 'Add','Edit','Remove','Done' -DefaultChoice 0 -Title 'Add/Remove Credential?'
         switch ($response) {
-            0 {#Add
-                $editableCredentials += $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+            0
+            {#Add
+                $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+                if ($NewCredential -ne $null)
+                {
+                    $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
+                    $editableCredentials += $NewCredential
+                }
             }
             1 {#Edit
                 if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to edit'}
                 else {
                     $CredChoices = @($editableCredentials.UserName)
                     $whichcred = Read-Choice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'
-                    $editableCredentials[$whichcred] = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
+                    $OriginalCredential = $editableCredentials[$whichcred]
+                    $NewCredential = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
+                    if ($NewCredential -ne $null)
+                    {
+                        $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
+                        $editableCredentials[$whichcred] = $NewCredential
+                    }
                 }
-                
             }
             2 {#Remove
                 if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to remove'}
@@ -5164,7 +6019,7 @@ Would you like to add, edit, or remove a credential?"
         }
     }
     until ($noMoreCreds -eq $true)
-    $exportcredentials = $editableCredentials | Select-Object @{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}},@{n='Systems';e={[string[]]@()}}
+    $exportcredentials = @($editableCredentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
     Write-Output $exportcredentials
 }
 Function Export-AdminUserProfile
@@ -5208,18 +6063,40 @@ param(
     [switch]$ShowMenu
     ,
     [parameter(ParameterSetName = 'SpecifiedProfile')]
-    $OrgProfile
+    $OrgProfileIdentity
     ,
     [parameter(ParameterSetName = 'SpecifiedProfile')]
-    $AdminProfile
+    $AdminUserProfileIdentity
+    ,
+    [parameter()]
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$OrgProfilePath
+    ,
+    [parameter()]
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$AdminProfilePath
 )
 Process
 {
+$ImportOrgProfileParams = @{
+    ErrorAction = 'Stop'
+}
+$ImportAdminUserProfileParams = @{
+    ErrorAction = 'Stop'
+}
+if ($PSBoundParameters.ContainsKey('OrgProfilePath'))
+{
+    $ImportOrgProfileParams.Path = $OrgProfilePath
+}
+if ($PSBoundParameters.ContainsKey('AdminProfilePath'))
+{
+    $ImportAdminUserProfileParams.Path = $AdminProfilePath
+}
 Switch ($PSCmdlet.ParameterSetName)
 {
     'AutoConnect'
     {
-        if (Import-OrgProfile)
+        if (Import-OrgProfile @ImportOrgProfileParams)
         {
             $DefaultOrgProfile = @($script:OrgProfiles | Where-Object {$_.General.Default -eq $true})
             switch ($DefaultOrgProfile.Count)
@@ -5240,7 +6117,7 @@ Switch ($PSCmdlet.ParameterSetName)
         }#If Get-OrgProfile
         if ($OrgProfileLoaded)
         {
-            if (Import-AdminUserProfile -OrgIdentity CurrentOrg)
+            if (Import-AdminUserProfile -OrgIdentity CurrentOrg @ImportAdminUserProfileParams)
             {
                 $DefaultAdminUserProfile = @($script:AdminUserProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
             }
@@ -5250,7 +6127,7 @@ Switch ($PSCmdlet.ParameterSetName)
                 {
                     $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
                     Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
-                    [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -Profile $DefaultAdminUserProfile
+                    [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
                     if ($AdminUserProfileLoaded)
                     {
                         Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
@@ -5267,7 +6144,7 @@ Switch ($PSCmdlet.ParameterSetName)
                     Write-Warning "No Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity)"
                     switch ($Script:AdminUserProfiles.count)
                     {
-                        {$_ -ge 1}
+                        {$_ -eq 1}
                         {
                             Use-AdminUserProfile -Identity (Select-AdminUserProfile -purpose Use)
                         }
@@ -5282,20 +6159,93 @@ Switch ($PSCmdlet.ParameterSetName)
     }#AutoConnect
     'ShowMenu'
     {
-        Start-Sleep -Seconds 2
-        $menudefinition = [pscustomobject]@{
-            GUID = 'ac4ce63e-8b76-4381-a1d5-ad19510f47c7'
-            Title = 'OneShell Module Startup Menu'
-            Initialization = $Null
-            Choices = @(
-                #[pscustomobject]@{choice='Connect to Autoconnect Remote Systems from Initialized Profile (Runs command Connect-RemoteSystems)';command='Connect-RemoteSystems';exit=$true}
-                [pscustomobject]@{choice='Manage Organization and/or Admin User Profiles';command='Invoke-Menu -menuGUID 9e7ff8e1-afbb-418d-a31f-9c07bce3ab33'}
-                [pscustomobject]@{choice='Exit to Command Line';command='';exit=$true}
-            )
-            ParentGUID = $Null
+        try
+        {
+            $Message = 'Importing Organization Profile(s) using Import-OrgProfile'
+            Write-Log -Message $message -EntryType Attempting
+            Import-OrgProfile @ImportOrgProfileParams | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+            if ($script:OrgProfiles.Count -eq 0) {
+                throw "No OrgProfile(s) found in the specified location"
+            }
         }
-        Invoke-Menu -menudefinition $menudefinition
-    }#ShowMenu
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        try
+        {
+            $message = 'Get the User Organization Profile Choice'
+            Write-Log -Message $message -EntryType Attempting 
+            $Choices = @($script:OrgProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+            $UserChoice = Read-Choice -Title "Select OrgProfile" -Message "Select an organization profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+            Use-OrgProfile -profile $script:OrgProfiles[$UserChoice] -ErrorAction Stop | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        Try
+        {
+            $message = 'Importing Admin User Profiles for Current Org Profile'
+            Write-Log -Message $message -EntryType Attempting
+            Import-AdminUserProfile -OrgIdentity CurrentOrg @ImportAdminUserProfileParams | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        Try
+        {
+            switch ($script:AdminUserProfiles.Count) 
+            {
+                {$_ -ge 1}
+                {
+                    $message = 'Get the User Admin User Profile Choice'
+                    Write-Log -Message $message -EntryType Attempting
+                    $Choices = @($script:AdminUserProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+                    $UserChoice = Read-Choice -Title "Select AdminUserProfile" -Message "Select an Admin User Profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+                    $AdminUserProfile = $script:AdminUserProfiles[$UserChoice]
+                    Write-Log -Message $message -EntryType Succeeded
+                }
+                {$_ -lt 1}
+                    {
+                        $AdminUserProfile = New-AdminUserProfile -OrganizationIdentity $CurrentOrgProfile.Identity
+                    }
+            }#Switch
+        }#Try
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        Try
+        {
+            $message = 'Load User Selected Admin User Profile'
+            Write-Log -Message $message -EntryType Attempting
+            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        if ($AdminUserProfileLoaded)
+        {
+            Connect-RemoteSystems
+        }
+    }
 }#Switch
 }#Process
 }
@@ -5359,7 +6309,7 @@ function Set-OneShellVariables
     [string]$Script:K1_SkuPartNumber = 'DESKLESSPACK' 
     $Script:LogPreference = $True
     #AdvancedOneShell needs updated for the following:
-    $Script:ScalarADAttributesToRetrieve = @(
+    $Script:ScalarADAttributes = @(
         'altRecipient'
         'forwardingAddress'
         'msExchGenericForwardingAddress'
@@ -5417,7 +6367,7 @@ function Set-OneShellVariables
         'country'
         'physicalDeliveryOfficeName'
     )#Scalar Attributes to Retrieve
-    $Script:MultiValuedADAttributesToRetrieve = @(
+    $Script:MultiValuedADAttributes = @(
         'proxyAddresses'
         'msexchextensioncustomattribute1'
         'msexchextensioncustomattribute2'
@@ -5427,8 +6377,11 @@ function Set-OneShellVariables
         'memberof'
         'msExchPoliciesExcluded'
     )#MultiValuedADAttributesToRetrieve
-    $Script:AllADAttributesToRetrieve = @($ScalarADAttributesToRetrieve + $MultiValuedADAttributesToRetrieve)
-    $Script:AllADContactAttributesToRetrieve = $script:AllADAttributesToRetrieve | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADUserAttributes = @($script:ScalarADAttributes + $Script:MultiValuedADAttributes)
+    $Script:ADContactAttributes = $script:ADUserAttributes | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
     $Script:Stamp = Get-TimeStamp
     #Module Menu Definitions
     $menudefinition = [pscustomobject]@{
@@ -5440,7 +6393,6 @@ function Set-OneShellVariables
         ParentGUID = $null
     }
     Add-MenuDefinition -MenuDefinition $menudefinition
-
     $menudefinition = [pscustomobject]@{
         GUID = '9e7ff8e1-afbb-418d-a31f-9c07bce3ab33'
         Title = 'OneShell Admin User Profile Maintenance'
@@ -5454,7 +6406,6 @@ function Set-OneShellVariables
         ParentGUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
     }
     Add-MenuDefinition -MenuDefinition $menudefinition
-
     $menudefinition = [pscustomobject]@{
     GUID = 'bfbcf228-1e2e-4289-a7cd-eae003cc3740'
     Title = 'OneShell Organization Profile Maintenance'
@@ -5474,9 +6425,4 @@ function Set-OneShellVariables
 ##########################################################################################################
 Set-OneShellVariables
 #Do one of the following in your profile or run script:
-#Initialize-AdminEnvironment
-# OR
-#Get-OrgProfile
-#Select-OrgProfile -purpose Use
-#Get-AdminUserProfile -OrgIdentity CurrentOrg
-#Use-AdminUserProfile -Identity [GUID]
+#Initialize-AdminEnvironment -showmenu or Initialize-AdminEnvironment -OrgProfileIdentity <value> -AdminUserProfileIdentity <value>
