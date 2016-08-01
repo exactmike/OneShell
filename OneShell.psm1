@@ -4789,6 +4789,172 @@ $ADInstance
 ##########################################################################################################
 #Profile and Environment Initialization Functions
 ##########################################################################################################
+Function Initialize-AdminEnvironment
+{
+[cmdletbinding(defaultparametersetname = 'AutoConnect')]
+param(
+    [parameter(ParameterSetName = 'AutoConnect')]
+    [switch]$AutoConnect
+    ,
+    [parameter(ParameterSetName = 'ShowMenu')]
+    [switch]$ShowMenu
+    ,
+    [parameter(ParameterSetName = 'SpecifiedProfile')]
+    $OrgProfileIdentity
+    ,
+    [parameter(ParameterSetName = 'SpecifiedProfile')]
+    $AdminUserProfileIdentity
+    ,
+    [parameter()]
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$OrgProfilePath
+    ,
+    [parameter()]
+    [ValidateScript({Test-DirectoryPath -path $_})]
+    [string[]]$AdminProfilePath
+)
+Process
+{
+$GetOrgProfileParams = @{
+    ErrorAction = 'Stop'
+    Raw = $true
+}
+$GetAdminUserProfileParams = @{
+    ErrorAction = 'Stop'
+    Raw = $true
+}
+if ($PSBoundParameters.ContainsKey('OrgProfilePath'))
+{
+    $GetOrgProfileParams.Path = $OrgProfilePath
+}
+if ($PSBoundParameters.ContainsKey('AdminProfilePath'))
+{
+    $GetAdminUserProfileParams.Path = $AdminProfilePath
+}
+Switch ($PSCmdlet.ParameterSetName)
+{
+    'AutoConnect'
+    {
+        $DefaultOrgProfile = Get-OrgProfile @GetOrgProfileParams -GetDefault
+        [boolean]$OrgProfileLoaded = Use-OrgProfile -Profile $DefaultOrgProfile -ErrorAction Stop
+        if ($OrgProfileLoaded)
+        {
+            $DefaultAdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams -GetDefault
+            $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
+            Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
+            if ($AdminUserProfileLoaded)
+            {
+                Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                Connect-RemoteSystems
+            }#if
+        }#If $OrgProfileLoaded
+    }#AutoConnect
+    'ShowMenu'
+    {
+        #Getting Organization Profile(s)
+        try
+        {
+            $Message = 'Getting Organization Profile(s)'
+            Write-Log -Message $message -EntryType Attempting
+            $OrgProfiles = Get-OrgProfile @GetOrgProfileParams
+            Write-Log -Message $message -EntryType Succeeded
+            if ($OrgProfiles.Count -eq 0) {
+                throw "No OrgProfile(s) found in the specified location(s) $($OrgProfilePath -join ';')"
+            }
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        #Get the User Organization Profile Choice
+        try
+        {
+            $message = 'Get the User Organization Profile Choice'
+            Write-Log -Message $message -EntryType Attempting 
+            $Choices = @($OrgProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+            $UserChoice = Read-Choice -Title "Select OrgProfile" -Message "Select an organization profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+            $OrgProfile = $OrgProfiles[$UserChoice]
+            Use-OrgProfile -profile $OrgProfile -ErrorAction Stop | Out-Null
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        #Get Admin User Profiles for Current Org Profile
+        Try
+        {
+            $message = 'Get Admin User Profiles for Current Org Profile'
+            Write-Log -Message $message -EntryType Attempting
+            $AdminUserProfiles = Get-AdminUserProfile @GetAdminUserProfileParams -OrgIdentity $OrgProfile.Identity
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        #Get the User Admin User Profile Choice OR Create a new Admin User Profile if none exists
+        Try
+        {
+            switch ($AdminUserProfiles.Count) 
+            {
+                {$_ -ge 1}
+                {
+                    $message = 'Get the User Admin User Profile Choice'
+                    Write-Log -Message $message -EntryType Attempting
+                    $Choices = @($AdminUserProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+                    $UserChoice = Read-Choice -Title "Select AdminUserProfile" -Message "Select an Admin User Profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+                    $AdminUserProfile = $AdminUserProfiles[$UserChoice]
+                    Write-Log -Message $message -EntryType Succeeded
+                }
+                {$_ -lt 1}
+                {
+                    $ShouldCreateNewProfile = Read-Choice -Title "Create new profile?" -Message "No Admin User profile exists for the following Org Profile:`r`nIdentity:$($OrgProfile.Identity)`r`nName$($OrgProfile.General.Name)" -Choices 'Yes','No' -ReturnChoice
+                    switch ($ShouldCreateNewProfile)
+                    {
+                        'Yes'
+                        {$AdminUserProfile = New-AdminUserProfile -OrganizationIdentity $CurrentOrgProfile.Identity}
+                        'No'
+                        {throw "No Admin User Profile exists for auto connection to Org Profile with Identity $($OrgProfile.Identity) and Name $($OrgProfile.General.Name)"}
+                    }
+                }
+            }#Switch
+        }#Try
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        #Load/"Use" User Selected Admin User Profile
+        Try
+        {
+            $message = 'Load User Selected Admin User Profile'
+            Write-Log -Message $message -EntryType Attempting
+            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_ 
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        if ($AdminUserProfileLoaded)
+        {
+            Connect-RemoteSystems
+        }
+    }
+}#Switch
+}#Process
+}
 Function Export-OrgProfile
 {
     [cmdletbinding()]
@@ -4830,17 +4996,21 @@ param(
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'OrgName')]
+    [parameter(ParameterSetName = 'GetDefault')]
     [ValidateScript({Test-DirectoryPath -path $_})]
     [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'OrgName')]
+    [parameter(ParameterSetName = 'GetDefault')]
     $OrgProfileType = 'OneShellOrgProfile'
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'OrgName')]
+    [parameter(ParameterSetName = 'GetDefault')]
+    [parameter(ParameterSetName = 'GetCurrent')]
     [switch]$raw
     ,
     [parameter(ParameterSetName = 'Identity')]
@@ -4849,79 +5019,80 @@ param(
     [parameter(ParameterSetName = 'OrgName')]
     $OrgName
     ,
-    [parameter(ParameterSetName = 'Imported')]
-    [switch]$Imported
+    [parameter(ParameterSetName = 'GetCurrent')]
+    [switch]$GetCurrent
+    ,
+    [parameter(ParameterSetName = 'GetDefault')]
+    [switch]$GetDefault
 )
-if ($PSCmdlet.ParameterSetName -eq 'Imported')
-{$OrgProfiles}
+$outputprofiles = @(
+switch ($PSCmdlet.ParameterSetName)
+{
+    'GetCurrent'
+    {
+        $Script:CurrentOrgProfile
+    }
+    Default
+    {
+        foreach ($loc in $Path)
+        {
+            $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
+            if ($JSONProfiles.Count -ge 1)
+            {
+                $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+                $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
+                switch ($PSCmdlet.ParameterSetName)
+                {
+                    'Identity'
+                    {
+                        $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity})
+                        $OrgProfiles
+                    }#Identity
+                    'OrgName'
+                    {
+                        $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName})
+                        $OrgProfiles
+                    }#OrgName
+                    'All'
+                    {
+                        $OrgProfiles = @($FoundOrgProfiles)
+                        $OrgProfiles
+                    }#All
+                    'GetDefault'
+                    {
+                        $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
+                        switch ($OrgProfiles.Count)
+                        {
+                            {$_ -eq 1}
+                            {
+                                $OrgProfiles[0]
+                            }
+                            {$_ -gt 1}
+                            {
+                                throw "FAILED: Multiple Org Profiles Are Set as Default: $($OrgProfiles.Identity -join ',')"
+                            }
+                            {$_ -lt 1}
+                            {
+                                throw 'FAILED: No Org Profiles Are Set as Default'
+                            }
+                        }#Switch $DefaultOrgProfile.Count
+                    }
+                }#switch
+            }#if
+        }#foreach
+    }#Default
+}#switch
+)
+#output the profiles
+if ($raw)
+{
+    $outputprofiles
+}
 else
 {
-foreach ($loc in $Path)
-{
-    $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
-    if ($JSONProfiles.Count -ge 1) {
-        $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
-        $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
-        switch ($PSCmdlet.ParameterSetName)
-        {
-            'Identity'
-            {
-                $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity})
-            }
-            'OrgName'
-            {
-                $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName})
-            }
-            'All'
-            {$OrgProfiles = @($FoundOrgProfiles)}
-        }
-        if ($OrgProfiles.Count -ge 1) {
-            if ($raw)
-            {
-                $OrgProfiles
-            }
-            else
-            {
-                $OrgProfiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}}
-            }
-        }
-        else {
-            Write-Log -message "No valid Organization Profiles Were Found in $loc" -EntryType Notification -Verbose
-        }
-    }
+    $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}}
 }
-}#else
 }#Function Get-OrgProfile
-Function Import-OrgProfile
-{
-[cmdletbinding()]
-param
-(
-[Parameter()]
-[ValidateScript({Test-DirectoryPath -path $_})]
-[string[]]$Path
-,
-[string]$OrgProfileType
-)
-$GetOrgProfileParams=@{
-    ErrorAction = 'Stop'
-    Raw = $true
-}
-if ($PSBoundParameters.ContainsKey('Path'))
-{$GetOrgProfileParams.Path = $Path}
-if ($PSBoundParameters.ContainsKey('OrgProfileType'))
-{$GetOrgProfileParams.OrgProfileType = $OrgProfileType}
-Try
-{
-    $OrgProfilesToImport = @(Get-OrgProfile @GetOrgProfileParams) 
-    Set-OneShellVariable -Name OrgProfiles -Value $OrgProfilesToImport
-    Write-Output $True
-}
-catch
-{
-    Write-Output $false
-}
-}#function Import-OrgProfile
 Function Use-OrgProfile
 {
 param
@@ -4966,42 +5137,6 @@ begin
         $Script:CurrentOrgAdminProfileSystems = @()
         Write-Output $true
     }#process
-}
-Function Select-OrgProfile
-{
-param(
-    [parameter(Mandatory=$true)]
-    [validateset('Use','Edit')]
-    $purpose
-)
-$MenuDefinition = 
-[pscustomobject]@{
-    GUID = [guid]::NewGuid()
-    Title = "Select Organization Profile to $purpose"
-    Initialization = ''
-    ParentGUID = $null
-    Choices = @()
-}
-foreach ($profile in Get-OrgProfile)
-{
-    $MenuDefinition.choices += 
-    [pscustomobject]@{
-        choice=$profile.general.Name
-        command=switch ($purpose)
-        {
-            'Edit'
-            {
-                "Set-OrgProfile -Identity $($Profile.Identity)"
-            }
-            'Use'
-            {
-                "Use-OrgProfile -Identity $($profile.identity)"
-            }
-        }#switch
-        exit = $true
-    }
-}
-    Invoke-Menu -menudefinition $MenuDefinition 
 }
 function Get-OrgProfileSystem
 {
@@ -5124,17 +5259,20 @@ param(
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
+    [parameter(ParameterSetName='GetDefault')]
     [ValidateScript({Test-DirectoryPath -Path $_})]
     [string[]]$Path = "$env:UserProfile\OneShell\"
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
+    [parameter(ParameterSetName='GetDefault')]    
     $ProfileType = 'OneShellAdminUserProfile'
     ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
+    [parameter(ParameterSetName='GetDefault')]    
     $OrgIdentity
     ,
     [parameter(ParameterSetName = 'Identity')]
@@ -5143,43 +5281,64 @@ param(
     [parameter(ParameterSetName = 'Name')]
     $Name
     ,
-    [parameter(ParameterSetName='Imported')]
-    [switch]$Imported
-    ,
     [parameter(ParameterSetName = 'All')]
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
+    [parameter(ParameterSetName='GetCurrent')]
+    [parameter(ParameterSetName='GetDefault')]
     [switch]$raw
+    ,
+    [parameter(ParameterSetName='GetCurrent')]
+    [switch]$GetCurrent
+    ,
+    [parameter(ParameterSetName='GetDefault')]
+    [switch]$GetDefault
 )
-if ($PSCmdlet.ParameterSetName -eq 'Imported')
-{$outputprofiles = $AdminUserProfiles}
-else
-{
 $outputprofiles = @(
-    foreach ($loc in $Path)
+switch ($PSCmdlet.ParameterSetName) {
+    'GetCurrent'
     {
-        $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
-        if ($JSONProfiles.Count -ge 1) {
-            $PotentialAdminUserProfiles = foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json}
-            $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType})
-            if ($FoundAdminUserProfiles.Count -ge 1) {
-                switch ($PSCmdlet.ParameterSetName) {
-                    'All'
-                    {
-                        $FoundAdminUserProfiles
-                    }
-                    'Identity'
-                    {
-                        $FoundAdminUserProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity}
-                    }
-                    'Name'
-                    {
-                        $FoundAdminUserProfiles | Where-Object -FilterScript {$_.General.Name -eq $Name}
+        $script:CurrentAdminUserProfile
+    }
+    'GetDefault'
+    {
+        if ($PSBoundParameters.ContainsKey('OrgIdentity'))
+        {$OrgProfile = Get-OrgProfile -Identity $OrgIdentity -raw}
+        else
+        {
+            $OrgProfile = Get-OrgProfile -GetDefault
+            $DefaultAdminUserProfile = GetDefaultAdminUserProfile -OrgIdentity $OrgProfile.Identity -path $path
+            $DefaultAdminUserProfile
+        }
+    }
+    Default
+    {
+        foreach ($loc in $Path)
+        {
+            $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
+            if ($JSONProfiles.Count -ge 1) {
+                $PotentialAdminUserProfiles = foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json}
+                $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType})
+                if ($FoundAdminUserProfiles.Count -ge 1) {
+                    switch ($PSCmdlet.ParameterSetName) {
+                        'All'
+                        {
+                            $FoundAdminUserProfiles
+                        }
+                        'Identity'
+                        {
+                            $FoundAdminUserProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                        }
+                        'Name'
+                        {
+                            $FoundAdminUserProfiles | Where-Object -FilterScript {$_.General.Name -eq $Name}
+                        }
                     }
                 }
             }
-        }
-    }#foreach
+        }#foreach
+    }
+}
 )#outputprofiles
 #filter the found profiles for OrgIdentity if specified
 if (-not [string]::IsNullOrWhiteSpace($OrgIdentity))
@@ -5195,62 +5354,9 @@ if ($raw)
 }#if Raw
 else
 {
-    $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}},@{n='OrgIdentity';e={$_.general.organizationidentity}}
+    $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}},@{n='OrgIdentity';e={$_.general.organizationidentity}},@{n='ProfileTypeVersion';e={$_.ProfileTypeVersion.tostring()}}
 }#else when not "Raw"
-}#else when not "Imported"
 }#Get-AdminUserProfile
-Function Import-AdminUserProfile
-{
-[cmdletbinding()]
-param
-(
-[parameter()]
-[ValidateScript({Test-DirectoryPath -Path $_})]
-[string[]]$Path
-,
-$ProfileType
-,
-$OrgIdentity
-,
-$Identity
-,
-$Name
-)
-$getAdminUserProfileParams=
-@{
-    raw = $true
-    ErrorAction = 'stop'
-}
-if ($PSBoundParameters.ContainsKey('Path'))
-{
-    $getAdminUserProfileParams.Location = $Path
-}
-if ($PSBoundParameters.ContainsKey('ProfileType'))
-{
-    $getAdminUserProfileParams.ProfileType = $ProfileType
-}
-if ($PSBoundParameters.ContainsKey('Identity'))
-{
-    $getAdminUserProfileParams.Identity = $Identity
-}
-if ($PSBoundParameters.ContainsKey('Name'))
-{
-    $getAdminUserProfileParams.Name = $Name
-}
-if ($PSBoundParameters.ContainsKey('OrgIdentity'))
-{
-    $getAdminUserProfileParams.OrgIdentity = $OrgIdentity
-}
-try
-{
-    $Script:AdminUserProfiles = @(Get-AdminUserProfile @getAdminUserProfileParams)
-    Write-Output $True
-}
-catch
-{
-    Write-Output $false
-}
-}#Import-AdminUserProfile
 function New-AdminUserProfile
 {
 [cmdletbinding()]
@@ -5414,24 +5520,48 @@ function Set-AdminUserProfile
 {
 [cmdletbinding()]
 param(
-    [parameter(ParameterSetName = 'Object')]
-    [psobject]$profile 
+    [Parameter(ParameterSetName = 'Object',ValueFromPipeline,Mandatory)]
+    [ValidateScript({$_.ProfileType -eq 'OneShellAdminUserProfile'})]
+    [psobject]$ProfileObject 
     ,
     [parameter(ParameterSetName = 'Identity',Mandatory = $true)]
     [string]$Identity
+    , 
+    [parameter(ParameterSetName = 'Name')]
+    $Name
     ,
     [parameter(ParameterSetName = 'Identity')]
+    [parameter(ParameterSetName = 'Name')]
     [ValidateScript({Test-DirectoryPath -Path $_})]
     [string[]]$Path
     ,
+    [parameter(ParameterSetName = 'Identity')]
+    [parameter(ParameterSetName = 'Name')]
     [switch]$Passthru
 )
+Process {
 switch ($PSCmdlet.ParameterSetName) {
-    'Object' {$AdminUserProfile = $profile}
+    'Object'
+    {
+        #validate the object
+        $AdminUserProfile = $ProfileObject
+    }
     'Identity'
     {
         $GetAdminUserProfileParams = @{
             Identity = $Identity
+            Raw = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Path'))
+        {
+            $GetAdminUserProfileParams.Path = $Path
+        }
+        $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+    }
+    'Name'
+    {
+        $GetAdminUserProfileParams = @{
+            Name = $Name
             Raw = $true
         }
         if ($PSBoundParameters.ContainsKey('Path'))
@@ -5584,7 +5714,8 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
     until ($quit)
     #return the admin profile raw object to the pipeline
     if ($passthru) {Write-Output $AdminUserProfile}
- }# Set-AdminUserProfile
+}#Process
+}# Set-AdminUserProfile
 function Update-AdminUserProfileTypeVersion
 {
 [cmdletbinding()]
@@ -5622,6 +5753,37 @@ if ($BackupProfileUserChoice -eq 'Yes')
 $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
 Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.general.profilefolder | Out-Null
 }
+Function Export-AdminUserProfile
+{
+[cmdletbinding()]
+param(
+    [parameter(Mandatory=$true)]
+    $profile
+    ,
+    $path = "$($Env:USERPROFILE)\OneShell\"
+)
+    if ($profile.Identity -is 'GUID')
+    {$name = $($profile.Identity.Guid) + '.JSON'} 
+    else
+    {$name = $($profile.Identity) + '.JSON'}
+    $fullpath = Join-Path $path $name
+    $ConvertToJsonParams =@{
+        InputObject = $profile
+        ErrorAction = 'Stop'
+        Depth = 4
+    }
+    try
+    {
+        ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
+        Write-Output $true
+    }#try
+    catch
+    {
+        $_
+        throw "FAILED: Could not write Admin User Profile data to $path"
+    }#catch
+}
+#Admin Profile Helper Functions - not exported
 function GetAdminUserProfileMenuMessage
 {
 param($AdminUserProfile)
@@ -5927,27 +6089,33 @@ $AdminUserProfile
         Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
     }
 }
-function AddAdminUserProfileFolders {
-    [cmdletbinding()]
-    param(
-        $AdminUserProfile
-        ,
-        $path = $env:USERPROFILE + '\OneShell'
-    )
-    $AdminUserJSONProfileFolder = $path
-    if (-not (Test-Path -Path $AdminUserJSONProfileFolder)) {
-        New-Item -Path $AdminUserJSONProfileFolder -ItemType Directory -ErrorAction Stop
-    }
-    $profilefolder = $AdminUserProfile.General.ProfileFolder 
-    $profilefolders =  $($profilefolder + '\Logs'), $($profilefolder + '\Export'),$($profilefolder + '\InputFiles')
-    foreach ($folder in $profilefolders) {
-        if (-not (Test-Path $folder)) {
-            New-Item -Path $folder -ItemType Directory -ErrorAction Stop
-        }
-    }
-    $true
+function AddAdminUserProfileFolders
+{
+[cmdletbinding()]
+param
+(
+    $AdminUserProfile
+    ,
+    $path = $env:USERPROFILE + '\OneShell'
+)
+$AdminUserJSONProfileFolder = $path
+if (-not (Test-Path -Path $AdminUserJSONProfileFolder))
+{
+    New-Item -Path $AdminUserJSONProfileFolder -ItemType Directory -ErrorAction Stop
 }
-function SetAdminUserProfileCredentials {
+$profilefolder = $AdminUserProfile.General.ProfileFolder 
+$profilefolders =  $($profilefolder + '\Logs'), $($profilefolder + '\Export'),$($profilefolder + '\InputFiles')
+foreach ($folder in $profilefolders)
+{
+    if (-not (Test-Path $folder))
+    {
+        New-Item -Path $folder -ItemType Directory -ErrorAction Stop
+    }
+}
+$true
+}
+function SetAdminUserProfileCredentials
+{
     [cmdletbinding(DefaultParameterSetName='New')]
     param(
         [parameter(ParameterSetName='New',Mandatory = $true)]
@@ -5960,7 +6128,8 @@ function SetAdminUserProfileCredentials {
         [parameter(ParameterSetName='Edit',Mandatory = $true)]
         [psobject[]]$Credentials
     )
-    switch ($PSCmdlet.ParameterSetName) {
+    switch ($PSCmdlet.ParameterSetName)
+    {
         'Edit' {
             $editableCredentials = @($Credentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
         }
@@ -5986,7 +6155,7 @@ Would you like to add, edit, or remove a credential?"
             0
             {#Add
                 $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
-                if ($NewCredential -ne $null)
+                if ($NewCredential -is [PSCredential])
                 {
                     $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
                     $editableCredentials += $NewCredential
@@ -5999,7 +6168,7 @@ Would you like to add, edit, or remove a credential?"
                     $whichcred = Read-Choice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'
                     $OriginalCredential = $editableCredentials[$whichcred]
                     $NewCredential = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
-                    if ($NewCredential -ne $null)
+                    if ($NewCredential -is [PSCredential])
                     {
                         $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
                         $editableCredentials[$whichcred] = $NewCredential
@@ -6022,237 +6191,49 @@ Would you like to add, edit, or remove a credential?"
     $exportcredentials = @($editableCredentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
     Write-Output $exportcredentials
 }
-Function Export-AdminUserProfile
+Function GetDefaultAdminUserProfile
 {
 [cmdletbinding()]
 param(
-    [parameter(Mandatory=$true)]
-    $profile
-    ,
-    $path = "$($Env:USERPROFILE)\OneShell\"
+[string[]]$path
+,
+$OrgIdentity
 )
-    if ($profile.Identity -is 'GUID')
-    {$name = $($profile.Identity.Guid) + '.JSON'} 
-    else
-    {$name = $($profile.Identity) + '.JSON'}
-    $fullpath = Join-Path $path $name
-    $ConvertToJsonParams =@{
-        InputObject = $profile
-        ErrorAction = 'Stop'
-        Depth = 4
-    }
-    try
-    {
-        ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
-        Write-Output $true
-    }#try
-    catch
-    {
-        $_
-        throw "FAILED: Could not write Admin User Profile data to $path"
-    }#catch
-}
-Function Initialize-AdminEnvironment
-{
-[cmdletbinding(defaultparametersetname = 'AutoConnect')]
-param(
-    [parameter(ParameterSetName = 'AutoConnect')]
-    [switch]$AutoConnect
-    ,
-    [parameter(ParameterSetName = 'ShowMenu')]
-    [switch]$ShowMenu
-    ,
-    [parameter(ParameterSetName = 'SpecifiedProfile')]
-    $OrgProfileIdentity
-    ,
-    [parameter(ParameterSetName = 'SpecifiedProfile')]
-    $AdminUserProfileIdentity
-    ,
-    [parameter()]
-    [ValidateScript({Test-DirectoryPath -path $_})]
-    [string[]]$OrgProfilePath
-    ,
-    [parameter()]
-    [ValidateScript({Test-DirectoryPath -path $_})]
-    [string[]]$AdminProfilePath
-)
-Process
-{
-$ImportOrgProfileParams = @{
+$GetAdminUserProfileParams=@{
     ErrorAction = 'Stop'
+    Raw = $true
 }
-$ImportAdminUserProfileParams = @{
-    ErrorAction = 'Stop'
-}
-if ($PSBoundParameters.ContainsKey('OrgProfilePath'))
+if ($PSBoundParameters.ContainsKey('OrgIdentity')) {$GetAdminUserProfileParams.OrgIdentity = $OrgIdentity}
+if ($PSBoundParameters.ContainsKey('path')) {$GetAdminUserProfileParams.path = $path}
+$AdminUserProfiles = @(Get-AdminUserProfile @GetAdminUserProfileParams)
+if ($AdminUserProfiles.count -ge 1)
 {
-    $ImportOrgProfileParams.Path = $OrgProfilePath
-}
-if ($PSBoundParameters.ContainsKey('AdminProfilePath'))
-{
-    $ImportAdminUserProfileParams.Path = $AdminProfilePath
-}
-Switch ($PSCmdlet.ParameterSetName)
-{
-    'AutoConnect'
+    $DefaultAdminUserProfiles = @($AdminUserProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
+    switch ($DefaultAdminUserProfiles.Count) 
     {
-        if (Import-OrgProfile @ImportOrgProfileParams)
+        {$_ -eq 1}
         {
-            $DefaultOrgProfile = @($script:OrgProfiles | Where-Object {$_.General.Default -eq $true})
-            switch ($DefaultOrgProfile.Count)
-            {
-                {$_ -eq 1}
-                {
-                    [boolean]$OrgProfileLoaded = Use-OrgProfile -Profile $DefaultOrgProfile
-                }
-                {$_ -gt 1}
-                {
-                    Write-Error "FAILED: Multiple Org Profiles Are Set as Default: $($DefaultOrgProfile.Identity -join ',')"
-                }
-                {$_ -lt 1}
-                {
-                    Write-Error 'FAILED: No Org Profiles Are Set as Default'
-                }
-            }#Switch $DefaultOrgProfile.Count
-        }#If Get-OrgProfile
-        if ($OrgProfileLoaded)
-        {
-            if (Import-AdminUserProfile -OrgIdentity CurrentOrg @ImportAdminUserProfileParams)
-            {
-                $DefaultAdminUserProfile = @($script:AdminUserProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
-            }
-            switch ($DefaultAdminUserProfile.Count) 
-            {
-                {$_ -eq 1}
-                {
-                    $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
-                    Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
-                    [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
-                    if ($AdminUserProfileLoaded)
-                    {
-                        Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
-                        Connect-RemoteSystems
-                    }#if
-                }
-                {$_ -gt 1}
-                {
-                    Write-Error "FAILED: Multiple Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity): $($DefaultAdminUserProfile.Identity -join ',')"
-                    Use-AdminUserProfile -Identity (Select-AdminUserProfile -purpose Use)
-                }
-                {$_ -lt 1}
-                {
-                    Write-Warning "No Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity)"
-                    switch ($Script:AdminUserProfiles.count)
-                    {
-                        {$_ -eq 1}
-                        {
-                            Use-AdminUserProfile -Identity (Select-AdminUserProfile -purpose Use)
-                        }
-                        {$_ -lt 1}
-                        {
-                            $newAdminUserProfile = New-AdminUserProfile -OrganizationIdentity $CurrentOrgProfile.Identity
-                        }
-                    }
-                }
-            }#Switch
-        }#If $OrgProfileLoaded
-    }#AutoConnect
-    'ShowMenu'
-    {
-        try
-        {
-            $Message = 'Importing Organization Profile(s) using Import-OrgProfile'
-            Write-Log -Message $message -EntryType Attempting
-            Import-OrgProfile @ImportOrgProfileParams | Out-Null
-            Write-Log -Message $message -EntryType Succeeded
-            if ($script:OrgProfiles.Count -eq 0) {
-                throw "No OrgProfile(s) found in the specified location"
-            }
+            $DefaultAdminUserProfile = $DefaultAdminUserProfiles[0]
+            $DefaultAdminUserProfile
         }
-        catch
+        {$_ -gt 1}
         {
-            $myError = $_ 
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            $PSCmdlet.ThrowTerminatingError($myError)
+            throw "FAILED: Multiple Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity): $($DefaultAdminUserProfile.Identity -join ',')"
         }
-        try
+        {$_ -lt 1}
         {
-            $message = 'Get the User Organization Profile Choice'
-            Write-Log -Message $message -EntryType Attempting 
-            $Choices = @($script:OrgProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
-            $UserChoice = Read-Choice -Title "Select OrgProfile" -Message "Select an organization profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
-            Use-OrgProfile -profile $script:OrgProfiles[$UserChoice] -ErrorAction Stop | Out-Null
-            Write-Log -Message $message -EntryType Succeeded
+            throw "FAILED: No Admin User Profiles Are Set as Default for $($CurrentOrgProfile.Identity)"
         }
-        catch
-        {
-            $myError = $_ 
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            $PSCmdlet.ThrowTerminatingError($myError)
-        }
-        Try
-        {
-            $message = 'Importing Admin User Profiles for Current Org Profile'
-            Write-Log -Message $message -EntryType Attempting
-            Import-AdminUserProfile -OrgIdentity CurrentOrg @ImportAdminUserProfileParams | Out-Null
-            Write-Log -Message $message -EntryType Succeeded
-        }
-        catch
-        {
-            $myError = $_ 
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            $PSCmdlet.ThrowTerminatingError($myError)
-        }
-        Try
-        {
-            switch ($script:AdminUserProfiles.Count) 
-            {
-                {$_ -ge 1}
-                {
-                    $message = 'Get the User Admin User Profile Choice'
-                    Write-Log -Message $message -EntryType Attempting
-                    $Choices = @($script:AdminUserProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
-                    $UserChoice = Read-Choice -Title "Select AdminUserProfile" -Message "Select an Admin User Profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
-                    $AdminUserProfile = $script:AdminUserProfiles[$UserChoice]
-                    Write-Log -Message $message -EntryType Succeeded
-                }
-                {$_ -lt 1}
-                    {
-                        $AdminUserProfile = New-AdminUserProfile -OrganizationIdentity $CurrentOrgProfile.Identity
-                    }
-            }#Switch
-        }#Try
-        catch
-        {
-            $myError = $_ 
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            $PSCmdlet.ThrowTerminatingError($myError)
-        }
-        Try
-        {
-            $message = 'Load User Selected Admin User Profile'
-            Write-Log -Message $message -EntryType Attempting
-            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
-            Write-Log -Message $message -EntryType Succeeded
-        }
-        catch
-        {
-            $myError = $_ 
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            $PSCmdlet.ThrowTerminatingError($myError)
-        }
-        if ($AdminUserProfileLoaded)
-        {
-            Connect-RemoteSystems
-        }
-    }
-}#Switch
-}#Process
+    }#Switch
+}
+else
+{
+    throw "FAILED: Find Default Admin User Profile Set as Default for $($CurrentOrgProfile.Identity)"
+}
 }
 ##########################################################################################################
 #Module Variables and Variable Functions
 ##########################################################################################################
-#Import-Module PsMenu -Global #moved to module manifest - remove comment later
 function Get-OneShellVariable 
 {
 param
@@ -6383,42 +6364,6 @@ function Set-OneShellVariables
     $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
     $Script:Stamp = Get-TimeStamp
-    #Module Menu Definitions
-    $menudefinition = [pscustomobject]@{
-        GUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
-        Title = 'OneShell Profile Maintenance'
-        Initialization = $null
-        Choices = @(
-        )
-        ParentGUID = $null
-    }
-    Add-MenuDefinition -MenuDefinition $menudefinition
-    $menudefinition = [pscustomobject]@{
-        GUID = '9e7ff8e1-afbb-418d-a31f-9c07bce3ab33'
-        Title = 'OneShell Admin User Profile Maintenance'
-        Initialization = $Null
-        Choices = @(
-            [pscustomobject]@{choice='View Existing Admin User Profiles';command='Get-AdminUserProfile -OrgIdentity CurrentOrg; Read-Host -Prompt "Press enter to Continue"'}
-            [pscustomobject]@{choice='Edit an existing Admin User Profile';command='Select-AdminUserProfile -purpose Edit'}
-            [pscustomobject]@{choice='Use an existing Admin User Profile';command='Select-AdminUserProfile -purpose Use';exit = $true}
-            [pscustomobject]@{choice='Create a new Admin User Profile';command='$prompt = "Enter a short descriptive name for this profile";New-AdminUserProfile -OrganizationIdentity $($CurrentOrgProfile.Identity) -name (read-host -Prompt $prompt)'}
-        )
-        ParentGUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
-    }
-    Add-MenuDefinition -MenuDefinition $menudefinition
-    $menudefinition = [pscustomobject]@{
-    GUID = 'bfbcf228-1e2e-4289-a7cd-eae003cc3740'
-    Title = 'OneShell Organization Profile Maintenance'
-    Initialization = $Null
-    Choices = @(
-        [pscustomobject]@{choice='View Existing Organization Profiles';command='Get-OrgProfile; Read-Host -Prompt "Press enter to Continue"'}
-        #[pscustomobject]@{choice='Edit an existing Organization Profile';command='Select-AdminUserProfile -purpose Edit'}
-        [pscustomobject]@{choice='Use an existing Organization Profile';command='Select-OrgProfile -purpose Use'; exit = $true}
-        #[pscustomobject]@{choice='Create a new Organization Profile';command='$prompt = "Enter a short descriptive name for this profile";New-AdminUserProfile -OrganizationIdentity $($CurrentOrgProfile.Identity) -name (read-host -Prompt $prompt)'}
-    )
-    ParentGUID = '14aee7c9-6e2a-48bd-bdff-93be72bfc65a'
-    }
-    Add-MenuDefinition -MenuDefinition $menudefinition
 }
 ##########################################################################################################
 #Initialization

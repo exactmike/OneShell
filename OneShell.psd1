@@ -63,7 +63,7 @@ PowerShellVersion = '3.0'
 # FormatsToProcess = @()
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-NestedModules = @('PSMenu.psm1')
+#NestedModules = @('PSMenu.psm1')
 
 # Functions to export from this module
 #FunctionsToExport = '*'
