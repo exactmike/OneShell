@@ -4799,10 +4799,10 @@ param(
     [parameter(ParameterSetName = 'ShowMenu')]
     [switch]$ShowMenu
     ,
-    [parameter(ParameterSetName = 'SpecifiedProfile')]
+    [parameter(ParameterSetName = 'SpecifiedProfile',Mandatory)]
     $OrgProfileIdentity
     ,
-    [parameter(ParameterSetName = 'SpecifiedProfile')]
+    [parameter(ParameterSetName = 'SpecifiedProfile',Mandatory)]
     $AdminUserProfileIdentity
     ,
     [parameter()]
@@ -4865,7 +4865,7 @@ Switch ($PSCmdlet.ParameterSetName)
         }
         catch
         {
-            $myError = $_ 
+            $myError = $_
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             $PSCmdlet.ThrowTerminatingError($myError)
         }
@@ -4882,7 +4882,7 @@ Switch ($PSCmdlet.ParameterSetName)
         }
         catch
         {
-            $myError = $_ 
+            $myError = $_
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             $PSCmdlet.ThrowTerminatingError($myError)
         }
@@ -4896,7 +4896,7 @@ Switch ($PSCmdlet.ParameterSetName)
         }
         catch
         {
-            $myError = $_ 
+            $myError = $_
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             $PSCmdlet.ThrowTerminatingError($myError)
         }
@@ -4929,7 +4929,7 @@ Switch ($PSCmdlet.ParameterSetName)
         }#Try
         catch
         {
-            $myError = $_ 
+            $myError = $_
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             $PSCmdlet.ThrowTerminatingError($myError)
         }
@@ -4943,7 +4943,81 @@ Switch ($PSCmdlet.ParameterSetName)
         }
         catch
         {
-            $myError = $_ 
+            $myError = $_
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        if ($AdminUserProfileLoaded)
+        {
+            Connect-RemoteSystems
+        }
+    }
+    'SpecifiedProfile'
+    {
+        #Getting Organization Profile(s)
+        try
+        {
+            $GetOrgProfileParams.Identity = $OrgProfileIdentity
+            $Message = 'Getting Organization Profile'
+            Write-Log -Message $message -EntryType Attempting
+            $OrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
+            Write-Log -Message $message -EntryType Succeeded
+            switch ($OrgProfile.Count)
+            {
+                0
+                {throw "No OrgProfile(s) found in the specified location(s) $($OrgProfilePath -join ';')"}
+                1
+                {
+                    $OrgProfile = $OrgProfile[0]
+                    Use-OrgProfile -profile $OrgProfile -ErrorAction Stop | Out-Null
+                }
+                Default
+                {throw "Multiple OrgProfile(s) with Identity $OrgProfileIdentity found in the specified location(s) $($OrgProfilePath -join ';')"}
+            }
+        }
+        catch
+        {
+            $myError = $_
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        #Get Admin User Profile
+        Try
+        {
+            $GetAdminUserProfileParams.Identity = $AdminUserProfileIdentity
+            $message = 'Get Admin User Profile specified for Current Org Profile'
+            Write-Log -Message $message -EntryType Attempting
+            $AdminUserProfile = @(Get-AdminUserProfile @GetAdminUserProfileParams -OrgIdentity $OrgProfile.Identity)
+            Write-Log -Message $message -EntryType Succeeded
+            switch ($AdminUserProfile.Count)
+            {
+                0
+                {throw "No AdminUserProfile(s) found in the specified location(s) $($AdminProfilePath -join ';')"}
+                1
+                {
+                    $AdminUserProfile = $AdminUserProfile[0]
+                }
+                Default
+                {throw "Multiple OrgProfile(s) with Identity $OrgProfileIdentity found in the specified location(s) $($OrgProfilePath -join ';')"}
+            }
+        }
+        catch
+        {
+            $myError = $_
+            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+            $PSCmdlet.ThrowTerminatingError($myError)
+        }
+        #Load/"Use" User Selected Admin User Profile
+        Try
+        {
+            $message = 'Load User Selected Admin User Profile'
+            Write-Log -Message $message -EntryType Attempting
+            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myError = $_
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             $PSCmdlet.ThrowTerminatingError($myError)
         }
@@ -5138,7 +5212,7 @@ begin
         Write-Output $true
     }#process
 }
-function Get-OrgProfileSystem
+function GetOrgProfileSystem
 {
 param(
     $OrganizationIdentity
@@ -5219,7 +5293,7 @@ process{
         Write-Verbose "Admin User Profile has been set to $($script:CurrentAdminUserProfile.Identity), $($script:CurrentAdminUserProfile.general.name)."
     }
     #Retrieve the systems from the current org profile
-    $systems = Get-OrgProfileSystem -OrganizationIdentity $AdminUserProfile.general.OrganizationIdentity
+    $systems = GetOrgProfileSystem -OrganizationIdentity $AdminUserProfile.general.OrganizationIdentity
     #Build the autoconnect property and the mapped credentials for each system and store in the CurrentOrgAdminProfileSystems Script variable
     $Script:CurrentOrgAdminProfileSystems = 
     @(
@@ -5444,7 +5518,7 @@ param
             }
             'Credentials'
             {
-                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+                $systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
                 if ($AdminUserProfile.Credentials.Count -ge 1)
                 {
                     $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems -edit -Credentials $AdminUserProfile.Credentials)
@@ -5650,7 +5724,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
             }
             'Credentials'
             {
-                $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+                $systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
                 $exportcredentials = @(SetAdminUserProfileCredentials -systems $systems -credentials $AdminUserProfile.Credentials -edit)
                 $AdminUserProfile.Credentials = $exportcredentials
             }
@@ -5825,7 +5899,7 @@ $OrganizationIdentity
             MailRelayEndpointToUse = ''
             Default = $false
         }
-        Systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity) | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}}
+        Systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity) | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}}
         Credentials = @()
     }
 } #GetGenericNewAdminsUserProfileObject
@@ -5899,7 +5973,6 @@ if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion) {
 }
 Write-Output $AdminUserProfile
 } #UpdateAdminUserProfileObjectVersion
-#supporting functions for AdminUserProfile Editing
 function GetAdminUserProfileFolder
 {
 Param(
@@ -5951,7 +6024,7 @@ $OrganizationIdentity
 ,
 $CurrentMailRelayEndpoint
 )
-    $systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+    $systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
     $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
     if ($MailRelayEndpoints.Count -gt 1)
     {
@@ -5978,7 +6051,7 @@ $OrganizationIdentity
 $AdminUserProfile
 )
 
-$systems = @(Get-OrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
+$systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
 #Preserve existing entries and add any new ones from the Org Profile
 $existingSystemEntriesIdentities = $AdminUserProfile.systems | Select-Object -ExpandProperty Identity
 $OrgProfileSystemEntriesIdentities = $systems | Select-Object -ExpandProperty Identity
@@ -6278,7 +6351,6 @@ param
 )
     Remove-Variable -Scope Script -Name $name
 }
-#Global Variables to be replaced with Module/Script Level Variables in a coming release
 function Set-OneShellVariables
 {
     #Write-Log -message 'Setting OneShell Module Variables'
