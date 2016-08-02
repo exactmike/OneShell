@@ -2527,7 +2527,7 @@ Function Connect-Exchange
                 $Server =  $orgobj.Server
                 $AuthMethod = $orgobj.authmethod
                 $ProxyEnabled = $orgobj.ProxyEnabled
-                $SessionName = "$orgName-Exchange"
+                $SessionName = $orgobj.Identity
                 $PreferredDomainControllers = if (-not [string]::IsNullOrWhiteSpace($orgobj.PreferredDomainControllers)) {@($orgobj.PreferredDomainControllers)} else {$null}
             }
             'Online'{
@@ -2752,7 +2752,7 @@ Function Connect-Skype {
                 $Server =  $orgobj.Server
                 $AuthMethod = $orgobj.authmethod
                 $ProxyEnabled = $orgobj.ProxyEnabled
-                $SessionName = "$orgName-Skype"
+                $SessionName = $orgobj.Identity
                 $PreferredDomainControllers = if (-not [string]::IsNullOrWhiteSpace($orgobj.PreferredDomainControllers)) {@($orgobj.PreferredDomainControllers)} else {$null}
             }
             'Online'{
@@ -2960,7 +2960,7 @@ Function Connect-AADSync {
                 $SelectedProfile = $PSBoundParameters[$ParameterName]
                 $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'AADSyncServers' | Where-Object {$_.name -eq $selectedProfile}
                 $CommandPrefix = $Profile.Name
-                $SessionName = "$commandPrefix-AADSync"
+                $SessionName = $Profile.Identity
                 $Server = $Profile.Server
                 $Credential = $Profile.Credential
             }#Profile
@@ -3120,7 +3120,7 @@ Function Connect-ADInstance {
                 $name = $ADIobj.Name
                 $server = $ADIobj.Server
                 $Credential = $ADIobj.credential
-                $Description = $ADIobj.description
+                $Description = "OneShell $($ADIobj.Identity): $($ADIobj.description)"
                 $GlobalCatalog = $ADIobj.GlobalCatalog
             }#instance
             'Manual' {
@@ -3408,7 +3408,7 @@ Function Connect-SQLDatabase {
                 $Instance = $SQLDatabaseObj.Instance
                 $Database = $SQLDatabaseObj.Database
                 $Credential = $SQLDatabaseObj.credential
-                $Description = $SQLDatabaseObj.description
+                $Description = "OneShell $($SQLDatabaseObj.Identity): $($SQLDatabaseObj.description)"
                 $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' {
@@ -3514,7 +3514,7 @@ Function Connect-PowerShellSystem {
             'Profile' {
                 $SelectedProfile = $PSBoundParameters[$ParameterName]
                 $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'PowerShellSystems' | Where-Object {$_.name -eq $selectedProfile}
-                $SessionName = "$($Profile.Name)"
+                $SessionName = "$($Profile.Identity)"
                 $System = $Profile.System
                 $Credential = $Profile.Credential
                 $ManagementGroups = $Profile.SessionManagementGroups
@@ -3613,10 +3613,11 @@ begin
     switch ($PSCmdlet.ParameterSetName) {
         'Account' 
         {
-            $Identity = $PSBoundParameters[$ParameterName]
-            $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Identity}
-            $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
+            $Name = $PSBoundParameters[$ParameterName]
+            $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Name}
+            $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
             $Name = $MigrationWizAccountObj.Name
+            $Identity = $MigrationWizAccountObj.Identity
         }#Account
         'Manual' 
         {
@@ -3632,7 +3633,7 @@ process
         $ModuleStatus = Import-RequiredModule -ModuleName MigrationPowerShell -ErrorAction Stop
         #May eliminate the Script/Module variable later (dropping $Script:) in favor of the MigrationWizTickets Hashtable
         $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop
-        Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket
+        Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket #-Identity $Identity
         Write-Log -Message $message -EntryType Succeeded
         Write-Output $true
     }
