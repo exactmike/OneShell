@@ -4066,8 +4066,8 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
     New-Variable -Name NotesDatabaseConnections -Value @{}
 }
 
-[null]`$NotesSessions.$($Identity) = New-Object -ComObject Lotus.NotesSession
-[null]`$NotesDatabaseConnections.$($Name) = `$NotesSessions.$Identity.GetDatabase($ComputerName,$Database)
+[null]`$NotesSessions.$({$Identity}) = New-Object -ComObject Lotus.NotesSession
+[null]`$NotesDatabaseConnections.$($Name) = `$NotesSessions.{$Identity}.GetDatabase($ComputerName,$Database)
 "@
 $ScriptBlock = [scriptblock]::Create($Script)
 Invoke-Command -Session $ClientIdentity -ScriptBlock $Script -ErrorAction Stop
