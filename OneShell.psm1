@@ -4055,6 +4055,7 @@ $Identity
 )
 #verify required powershell session is available
 Connect-PowerShellSystem -PowerShellSystem $Client -ErrorAction Stop
+$SessionIdentity = $Identity.Replace('-','')
 $Password = $Credential.Password | Convert-SecureStringToString
 $Script =@"
 if (-not (Test-Path variable:NotesSessions))
@@ -4066,8 +4067,8 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
     New-Variable -Name NotesDatabaseConnections -Value @{}
 }
 
-`$NotesSessions.{$Identity} = New-Object -ComObject Lotus.NotesSession
-`$NotesDatabaseConnections.$Name = `$NotesSessions.{$Identity}.GetDatabase(`'$ComputerName`',`'$Database`')
+`$NotesSessions.$SessionIdentity = New-Object -ComObject Lotus.NotesSession
+`$NotesDatabaseConnections.$Name = `$NotesSessions.$Identity.GetDatabase(`'$ComputerName`',`'$Database`')
 "@
 $ScriptBlock = [scriptblock]::Create($Script)
 $ClientSession = Get-PSSession -Name $ClientIdentity
