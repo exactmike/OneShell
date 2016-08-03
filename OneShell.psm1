@@ -3986,7 +3986,7 @@ Function Connect-LotusNotesDatabase {
                 $Name = $PSBoundParameters[$ParameterName]
                 $LotusNotesDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Where-Object {$_.name -eq $Name}
                 $NotesServer = $LotusNotesDatabaseObj.Server
-                $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowerShellSystems' | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client} | Select-Object -ExpandProperty Name
+                $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client} | Select-Object -ExpandProperty Name
                 $Database = $LotusNotesDatabaseObj.Database
                 $Credential = $LotusNotesDatabaseObj.credential
                 $Description = $LotusNotesDatabaseObj.description
@@ -4000,7 +4000,7 @@ Function Connect-LotusNotesDatabase {
     {
         try 
         {
-            $message = "Verify Connection to Lotus Notes Client PowerShell Session"
+            $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $Client"
             Write-Log -Message $message -EntryType Attempting
             Connect-PowerShellSystem -PowerShellSystem $Client -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
