@@ -4022,9 +4022,9 @@ Function Connect-LotusNotesDatabase
             Write-Warning -Message "Connect-LotusNotesDatabase currently uses the client's configured Notes User and ignores the supplied username.  It does use the supplied password from the Notes credential, however."
             $NotesDatabaseConnection = New-NotesDatabaseConnection -ComputerName $NotesServer -database $Database -ErrorAction Stop -Credential $Credential -Client $ClientName -ClientIdentity $ClientIdentity -Name $Name -Identity $Identity
             Write-Log -Message $message -EntryType Succeeded
-            $NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
-            $NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
-            Update-NotesDatabaseConnections -ConnectionName $Name -NotesDatabaseConnection $NotesDatabaseConnection
+            #$NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
+            #$NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
+            #Update-NotesDatabaseConnections -ConnectionName $Name -NotesDatabaseConnection $NotesDatabaseConnection
             Write-Output $true
         }
         catch 
