@@ -4070,7 +4070,8 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
 [null]`$NotesDatabaseConnections.$($Name) = `$NotesSessions.{$Identity}.GetDatabase(`'$ComputerName`',`'$Database`')
 "@
 $ScriptBlock = [scriptblock]::Create($Script)
-Invoke-Command -Session $ClientIdentity -ScriptBlock $Script -ErrorAction Stop
+$ClientSession = Get-PSSession -Name $ClientIdentity
+Invoke-Command -Session $ClientSession -ScriptBlock $Script -ErrorAction Stop
 }
 function Invoke-ExchangeCommand {
     [cmdletbinding(DefaultParameterSetName = 'String')]
