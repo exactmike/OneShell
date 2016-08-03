@@ -4067,9 +4067,9 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
     New-Variable -Name NotesDatabaseConnections -Value @{}
 }
 
-`$NotesSessions.$SessionIdentity = New-Object -ComObject 'Lotus.NotesSession'
-`$NotesSessions.$SessionIdentity.Initialize(`'$Password`')
-`$NotesDatabaseConnections.$Name = `$NotesSessions.$SessionIdentity.GetDatabase(`'$ComputerName`',`'$Database`')
+`$NotesSessions.`'$SessionIdentity`' = New-Object -ComObject 'Lotus.NotesSession'
+`$NotesSessions.`'$SessionIdentity`'.Initialize(`'$Password`')
+`$NotesDatabaseConnections.$Name = `$NotesSessions.`'$SessionIdentity`'.GetDatabase(`'$ComputerName`',`'$Database`')
 "@
 $ScriptBlock = [scriptblock]::Create($Script)
 $ClientSession = Get-PSSession -Name $ClientIdentity
