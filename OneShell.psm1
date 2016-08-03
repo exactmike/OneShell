@@ -4068,7 +4068,7 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
 }
 
 `$NotesSessions.$SessionIdentity = New-Object -ComObject Lotus.NotesSession
-`$NotesDatabaseConnections.$Name = `$NotesSessions.$Identity.GetDatabase(`'$ComputerName`',`'$Database`')
+`$NotesDatabaseConnections.$Name = `$NotesSessions.$SessionIdentity.GetDatabase(`'$ComputerName`',`'$Database`')
 "@
 $ScriptBlock = [scriptblock]::Create($Script)
 $ClientSession = Get-PSSession -Name $ClientIdentity
