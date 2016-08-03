@@ -4067,7 +4067,7 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
     New-Variable -Name NotesDatabaseConnections -Value @{}
 }
 
-`$NotesSessions.$SessionIdentity = New-Object -ComObject Lotus.NotesSession
+`$NotesSessions.$SessionIdentity = New-Object -ComObject 'Lotus.NotesSession'
 `$NotesSessions.$SessionIdentity.Initialize(`'$Password`')
 `$NotesDatabaseConnections.$Name = `$NotesSessions.$SessionIdentity.GetDatabase(`'$ComputerName`',`'$Database`')
 "@
