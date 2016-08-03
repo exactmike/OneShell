@@ -4057,11 +4057,11 @@ $Identity
 Connect-PowerShellSystem -PowerShellSystem $Client -ErrorAction Stop
 $Password = $Credential.Password | Convert-SecureStringToString
 $Script =@"
-if (-not Test-Path variable:NotesSessions)
+if (-not (Test-Path variable:NotesSessions))
 {
     New-Variable -Name NotesSessions -Value @{}
 }
-if (-not Test-Path variable:NotesDatabaseConnections)
+if (-not (Test-Path variable:NotesDatabaseConnections))
 {
     New-Variable -Name NotesDatabaseConnections -Value @{}
 }
