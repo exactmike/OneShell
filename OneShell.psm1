@@ -4005,7 +4005,7 @@ Function Connect-LotusNotesDatabase
         {
             $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $ClientName"
             Write-Log -Message $message -EntryType Attempting
-            Connect-PowerShellSystem -PowerShellSystem $ClientName -ErrorAction Stop
+            $ClientConnectionStatus = Connect-PowerShellSystem -PowerShellSystem $ClientName -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
