@@ -3932,7 +3932,8 @@ Function Connect-RemoteSystems
         Write-Output $ProcessStatus.Connections
     }
 }
-Function Connect-LotusNotesDatabase {
+Function Connect-LotusNotesDatabase
+{
     [cmdletbinding(DefaultParameterSetName = 'LotusNotesDatabase')]
     Param(
         [parameter(ParameterSetName='Manual')]
@@ -3986,7 +3987,9 @@ Function Connect-LotusNotesDatabase {
                 $Name = $PSBoundParameters[$ParameterName]
                 $LotusNotesDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Where-Object {$_.name -eq $Name}
                 $NotesServer = $LotusNotesDatabaseObj.Server
-                $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client} | Select-Object -ExpandProperty Name
+                $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client}
+                $ClientName = $Client.Name
+                $ClientIdentity = $Client.Identity
                 $Database = $LotusNotesDatabaseObj.Database
                 $Credential = $LotusNotesDatabaseObj.credential
                 $Description = $LotusNotesDatabaseObj.description
@@ -4000,9 +4003,9 @@ Function Connect-LotusNotesDatabase {
     {
         try 
         {
-            $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $Client"
+            $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $ClientName"
             Write-Log -Message $message -EntryType Attempting
-            Connect-PowerShellSystem -PowerShellSystem $Client -ErrorAction Stop
+            Connect-PowerShellSystem -PowerShellSystem $ClientName -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -4017,7 +4020,7 @@ Function Connect-LotusNotesDatabase {
             $message = "Connect to $Description on $NotesServer as User $($Credential.username)."
             Write-Log -Message $message -EntryType Attempting
             Write-Warning -Message "Connect-LotusNotesDatabase currently uses the client's configured Notes User and ignores the supplied username.  It does use the supplied password from the Notes credential, however."
-            $NotesDatabaseConnection = New-NotesDatabaseConnection -ComputerName $NotesServer -database $Database -ErrorAction Stop -user $credential.username -password $($Credential.password | Convert-SecureStringToString) -Client $Client -Name $Name -Identity $Identity
+            $NotesDatabaseConnection = New-NotesDatabaseConnection -ComputerName $NotesServer -database $Database -ErrorAction Stop -Credential $Credential -Client $ClientName -ClientIdentity $ClientIdentity -Name $Name -Identity $Identity
             Write-Log -Message $message -EntryType Succeeded
             $NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
             $NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
