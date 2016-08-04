@@ -3837,6 +3837,11 @@ Function Connect-RemoteSystems
                 $Status = $false
                 $ProcessStatus.Connections += [pscustomobject]@{Type='Azure AD';Name=$DefaultTenant.Name;ConnectionStatus=$Status}
             }
+        }
+        # Connect to default Azure AD RMS
+        $DefaultTenant = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AzureADRMS' | Where-Object -FilterScript {$_.autoconnect -eq $true} | Select-Object -First 1)
+        if ($DefaultTenant.Count -eq 1) 
+        {
             try
             {
                 $message = "Connect to Azure AD RMS Tenant $sys"
