@@ -1417,10 +1417,10 @@ Function Write-Log
 }
 Function Write-EndFunctionStatus {
     param($CallingFunction)
-Write-Log -Message "$CallingFunction completed."}
+Write-Log -Message "$CallingFunction completed." -EntryType Notification}
 Function Write-StartFunctionStatus {
     param($CallingFunction)
-Write-Log -Message "$CallingFunction starting."}
+Write-Log -Message "$CallingFunction starting." -EntryType Notification}
 Function Export-Data
 {
 [cmdletbinding(DefaultParameterSetName='delimited')]
