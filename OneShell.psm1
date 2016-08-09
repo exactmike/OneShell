@@ -582,7 +582,7 @@ if ($SuppressCommonADProperties) {$CSVExportPropertySet += ($ScalarAttributes | 
 else {$CSVExportPropertySet += $ScalarAttributes}
 $CSVExportPropertySet
 }#get-CSVExportPropertySet
-function Get-ADdrive {get-psdrive -PSProvider ActiveDirectory}
+function Get-ADDrive {get-psdrive -PSProvider ActiveDirectory}
 function Start-WindowsSecurity
 {
 #useful in RDP sessions especially on Windows 2012
@@ -971,18 +971,36 @@ function Test-CurrentPrincipalIsAdmin
     $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
     $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator") 
 }
-Function Test-ForLocalModule
+Function Test-ForInstalledModule
 {
-    Param(
-        [parameter(Mandatory=$True)]
-        [string]$Name
-    )
-    If ((Get-Module -Name $Name -ListAvailable -ErrorAction SilentlyContinue) `
-        -or (Get-PSSnapin -Name $Name -ErrorAction SilentlyContinue) `
-    -or (Get-PSSnapin -Name $Name -Registered -ErrorAction SilentlyContinue)) {
-        $True
-    }
-    Else {$False}
+Param(
+    [parameter(Mandatory=$True)]
+    [string]$Name
+)
+If 
+(
+    (Get-Module -Name $Name -ListAvailable -ErrorAction SilentlyContinue) `
+    -or (Get-PSSnapin -Name $Name -ErrorAction SilentlyContinue) `
+    -or (Get-PSSnapin -Name $Name -Registered -ErrorAction SilentlyContinue)
+)
+{$True}
+Else
+{$False}
+}
+Function Test-ForImportedModule
+{
+Param(
+    [parameter(Mandatory=$True)]
+    [string]$Name
+)
+If
+(
+    (Get-Module -Name $Name -ErrorAction SilentlyContinue) `
+    -or (Get-PSSnapin -Name $Name -Registered -ErrorAction SilentlyContinue)
+)
+{$True}
+Else
+{$False}
 }
 Function Test-CommandExists
 {
@@ -4784,33 +4802,105 @@ function Get-AdObjectDomain {
     [string]$domain=$adobject.canonicalname.split('/')[0]
     Write-Output $domain
 }
-Function Get-ADAttributeSchema {
-    param(
-        [parameter(Mandatory=$true)]
-        $attribute
-        ,
-        [parameter(Mandatory=$true)]
-        $ADForest
-        ,
-        [string[]]$properties
-    )
-    if (-not $properties) {$properties = '*'}
-    try {
-        $forest = Get-ADForest -Identity $ADForest -ErrorAction Stop
+Function Get-ADAttributeSchema
+{
+[cmdletbinding()]
+param
+(
+    [parameter(Mandatory=$true,ParameterSetName = 'LDAPDisplayName')]
+    [string]$LDAPDisplayName
+    ,
+    [parameter(Mandatory=$true,ParameterSetName = 'CommonName')]
+    [string]$CommonName
+    ,
+    [string[]]$properties = @()
+)
+if (-not ((Test-ForInstalledModule -Name ActiveDirectory) -and (Test-ForImportedModule -Name ActiveDirectory))) 
+{throw "Module ActiveDirectory must be installed and imported to use $($MyInvocation.MyCommand)."}
+if ((Get-ADDrive).count -lt 1) {throw "An ActiveDirectory PSDrive must be connected to use $($MyInvocation.MyCommand)."}
+try
+{
+    if (-not (Test-Path -path variable:script:LoggedOnUserActiveDirectoryForest))
+    {$script:LoggedOnUserActiveDirectoryForest = Get-ADForest -Current LoggedOnUser -ErrorAction Stop}
+}
+catch
+{
+    $_
+    throw "Could not find AD Forest"
+}
+$schemalocation = "CN=Schema,$($script:LoggedOnUserActiveDirectoryForest.PartitionsContainer.split(',',2)[1])"
+$GetADObjectParams = @{
+    ErrorAction = 'Stop'
+}
+if ($properties.count -ge 1) {$GetADObjectParams.Properties = $properties}
+switch ($PSCmdlet.ParameterSetName) 
+{
+    'LDAPDisplayName'
+    {
+        $GetADObjectParams.Filter = "lDAPDisplayName -eq `'$LDAPDisplayName`'"
+        $GetADObjectParams.SearchBase = $schemalocation
     }
-    catch {
-        $_
-        throw "Could not find AD Forest $ADForest"
+    'CommonName'
+    {
+        $GetADObjectParams.Identity = "CN=$CommonName,$schemalocation"
     }
-    $schemalocation = "CN=Schema,$($forest.PartitionsContainer.split(',',2)[1])"
-    $attributelocation = "cn=$attribute,$schemalocation"
-    try {
-        Get-ADObject $attributelocation -Properties $properties -ErrorAction Stop
+}
+try {
+    $ADObjects = @(Get-ADObject @GetADObjectParams)
+    if ($ADObjects.Count -eq 0)
+    {Write-Warning "Failed: Find AD Attribute with name/Identifier: $($LDAPDisplayName,$GetADObjectParams.Identity)"}
+    else
+    {
+        Write-Output $ADObjects[0]
     }
-    catch {
-        $_
-        throw "Could not find AD Object for $attribute in $attributelocation"
+}
+catch {
+}
+}
+function Get-ADAttributeRangeUpper
+{
+[cmdletbinding()]
+param
+(
+    [parameter(Mandatory=$true,ParameterSetName = 'LDAPDisplayName')]
+    [string]$LDAPDisplayName
+    ,
+    [parameter(Mandatory=$true,ParameterSetName = 'CommonName')]
+    [string]$CommonName
+)
+$GetADAttributeSchemaParams = @{
+    ErrorAction = 'Stop'
+    Properties = 'RangeUpper'
+}
+switch ($PSCmdlet.ParameterSetName) 
+{
+    'LDAPDisplayName'
+    {
+        $GetADAttributeSchemaParams.lDAPDisplayName = $LDAPDisplayName
     }
+    'CommonName'
+    {
+        $GetADAttributeSchemaParams.CommonName = $CommonName
+    }
+}
+try
+{
+    $AttributeSchema = @(Get-ADAttributeSchema @GetADAttributeSchemaParams)
+    if ($AttributeSchema.Count -eq 1)
+    {
+        if ($AttributeSchema[0].RangeUpper -eq $null) {Write-Output 'Unlimited'}
+        else {Write-Output $AttributeSchema[0].RangeUpper}
+    }
+    else
+    {
+        Write-Warning "AD Attribute Not Found"
+    }
+}
+catch
+{
+    $myerror = $_
+    Write-Error $myerror
+}
 }
 function Get-MsolUserLicenseDetail {
     [cmdletbinding()]
@@ -5068,7 +5158,7 @@ Switch ($PSCmdlet.ParameterSetName)
         {
             $message = 'Get Admin User Profiles for Current Org Profile'
             Write-Log -Message $message -EntryType Attempting
-            $AdminUserProfiles = Get-AdminUserProfile @GetAdminUserProfileParams -OrgIdentity $OrgProfile.Identity
+            $AdminUserProfiles = @(Get-AdminUserProfile @GetAdminUserProfileParams -OrgIdentity $OrgProfile.Identity)
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
