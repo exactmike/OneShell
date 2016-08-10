@@ -3672,6 +3672,146 @@ process
     }
 } 
 }#function Connect-MigrationWiz
+Function Connect-LotusNotesDatabase
+{
+    [cmdletbinding(DefaultParameterSetName = 'LotusNotesDatabase')]
+    Param(
+        [parameter(ParameterSetName='Manual')]
+        $Credential
+    )#param
+    DynamicParam {
+        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
+        # Set the dynamic parameters' name
+        $ParameterName = 'LotusNotesDatabase'
+            
+        # Create the dictionary 
+        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+
+        # Create the collection of attributes
+        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+            
+        # Create and set the parameters' attributes
+        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
+        $ParameterAttribute.Mandatory = $true
+        $ParameterAttribute.Position = 2
+        $ParameterAttribute.ParameterSetName = 'LotusNotesDatabase'
+
+        # Add the attributes to the attributes collection
+        $AttributeCollection.Add($ParameterAttribute)
+
+        # Generate and set the ValidateSet 
+        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Select-Object -ExpandProperty Name)
+        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
+
+        # Add the ValidateSet to the attributes collection
+        $AttributeCollection.Add($ValidateSetAttribute)
+
+        # Add an Alias 
+        #$AliasSet = @('Org','ExchangeOrg')
+        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
+        #$AttributeCollection.Add($AliasAttribute)
+
+        # Create and return the dynamic parameter
+        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
+        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
+        Write-Output $RuntimeParameterDictionary
+    }#DynamicParam
+    begin{
+        $ProcessStatus = @{
+            Command = $MyInvocation.MyCommand.Name
+            BoundParameters = $MyInvocation.BoundParameters
+            Outcome = $null
+        }
+        switch ($PSCmdlet.ParameterSetName) {
+            'LotusNotesDatabase' {
+                $Name = $PSBoundParameters[$ParameterName]
+                $LotusNotesDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Where-Object {$_.name -eq $Name}
+                $NotesServer = $LotusNotesDatabaseObj.Server
+                $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client}
+                $ClientName = $Client.Name
+                $ClientIdentity = $Client.Identity
+                $Database = $LotusNotesDatabaseObj.Database
+                $Credential = $LotusNotesDatabaseObj.credential
+                $Description = $LotusNotesDatabaseObj.description
+                $Identity = $LotusNotesDatabaseObj.Identity
+            }#tenant
+            'Manual' {
+            }#manual
+        }#switch
+    }#begin
+    process 
+    {
+        #Verify the required PSSession is available (has to a a x86 session due to Notes com object limitations, ugh)
+        try 
+        {
+            $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $ClientName"
+            Write-Log -Message $message -EntryType Attempting
+            $ClientConnectionStatus = Connect-PowerShellSystem -PowerShellSystem $ClientName -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myerror = $_
+            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
+            Write-Log -Message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror)
+        }
+        #Create the required functions in the Client PSSession 
+        try
+        {
+            $message = "Export the required Notes related functions into the client PSSession"
+            Write-Log -Message $message -EntryType Attempting
+            $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name)
+            $NotesFunctionNames += 'Convert-SecureStringToString'
+            Export-FunctionsToPSSession -Name $ClientIdentity -FunctionNames $NotesFunctionNames
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myerror = $_
+            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
+            Write-Log -Message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror)
+        }
+        #and then import the session with just those functions available to bring them into the local session
+        try
+        {
+            $message = "Import the Client PSSession importing only the Notes functions"
+            Write-Log -Message $message -EntryType Attempting
+            Get-PSSession -Name $ClientIdentity | Import-PSSession -CommandName $NotesFunctionNames
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myerror = $_
+            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
+            Write-Log -Message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror)
+        }
+        #Run the New-NotesDatabaseConnection Function in the Client PSSession
+        try
+        {
+            $message = "Connect to $Description on $NotesServer as User $($Credential.username)."
+            Write-Log -Message $message -EntryType Attempting
+            $WarningMessage = "Connect-LotusNotesDatabase currently uses the client's configured Notes User and ignores the supplied username.  It does use the supplied password for the Notes credential, however."
+            Write-Warning -Message $WarningMessage
+            Write-Log -Message $WarningMessage -EntryType Notification -ErrorLog
+            $NotesDatabaseConnection = New-NotesDatabaseConnection -ComputerName $NotesServer -database $Database -ErrorAction Stop -Credential $Credential -Name $Name -Identity $Identity
+            Write-Log -Message $message -EntryType Succeeded
+            #$NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
+            #$NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
+            #Update-NotesDatabaseConnections -ConnectionName $Name -NotesDatabaseConnection $NotesDatabaseConnection
+            Write-Output $true
+        }
+        catch 
+        {
+            $myerror = $_
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $myerror.tostring() -ErrorLog
+            $PSCmdlet.ThrowTerminatingError($myerror) 
+        }
+    }#process
+}#function Connect-LotusNotesDatabase 
 Function Update-SessionManagementGroups {
 [cmdletbinding(DefaultParameterSetName = 'Profile')]
 Param(
@@ -3955,151 +4095,6 @@ Function Connect-RemoteSystems
         Write-Output $ProcessStatus.Connections
     }
 }
-Function Connect-LotusNotesDatabase
-{
-    [cmdletbinding(DefaultParameterSetName = 'LotusNotesDatabase')]
-    Param(
-        [parameter(ParameterSetName='Manual')]
-        $Credential
-    )#param
-    DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'LotusNotesDatabase'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'LotusNotesDatabase'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('Org','ExchangeOrg')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
-    }#DynamicParam
-    begin{
-        $ProcessStatus = @{
-            Command = $MyInvocation.MyCommand.Name
-            BoundParameters = $MyInvocation.BoundParameters
-            Outcome = $null
-        }
-        switch ($PSCmdlet.ParameterSetName) {
-            'LotusNotesDatabase' {
-                $Name = $PSBoundParameters[$ParameterName]
-                $LotusNotesDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Where-Object {$_.name -eq $Name}
-                $NotesServer = $LotusNotesDatabaseObj.Server
-                $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client}
-                $ClientName = $Client.Name
-                $ClientIdentity = $Client.Identity
-                $Database = $LotusNotesDatabaseObj.Database
-                $Credential = $LotusNotesDatabaseObj.credential
-                $Description = $LotusNotesDatabaseObj.description
-                $Identity = $LotusNotesDatabaseObj.Identity
-            }#tenant
-            'Manual' {
-            }#manual
-        }#switch
-    }#begin
-    process 
-    {
-        try 
-        {
-            $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $ClientName"
-            Write-Log -Message $message -EntryType Attempting
-            $ClientConnectionStatus = Connect-PowerShellSystem -PowerShellSystem $ClientName -ErrorAction Stop
-            Write-Log -Message $message -EntryType Succeeded
-        }
-        catch
-        {
-            $myerror = $_
-            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
-            Write-Log -Message $myerror.tostring() -ErrorLog
-            $PSCmdlet.ThrowTerminatingError($myerror)
-        }
-        try
-        {
-            $message = "Connect to $Description on $NotesServer as User $($Credential.username)."
-            Write-Log -Message $message -EntryType Attempting
-            $WarningMessage = "Connect-LotusNotesDatabase currently uses the client's configured Notes User and ignores the supplied username.  It does use the supplied password from the Notes credential, however."
-            Write-Warning -Message $WarningMessage
-            Write-Log -Message $WarningMessage -EntryType Notification -ErrorLog
-            $NotesDatabaseConnection = New-NotesDatabaseConnection -ComputerName $NotesServer -database $Database -ErrorAction Stop -Credential $Credential -Client $ClientName -ClientIdentity $ClientIdentity -Name $Name -Identity $Identity
-            Write-Log -Message $message -EntryType Succeeded
-            #$NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
-            #$NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
-            #Update-NotesDatabaseConnections -ConnectionName $Name -NotesDatabaseConnection $NotesDatabaseConnection
-            Write-Output $true
-        }
-        catch 
-        {
-            $myerror = $_
-            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
-            Write-Log -Message $myerror.tostring() -ErrorLog
-            $PSCmdlet.ThrowTerminatingError($myerror) 
-        }
-    }#process
-}#function Connect-LotusNotesDatabase 
-function New-NotesDatabaseConnection
-{[cmdletbinding()]
-param(
-$ComputerName
-,
-$Database
-,
-$Credential
-,
-$Client
-,
-$ClientIdentity
-,
-$Name
-,
-$Identity
-)
-#verify required powershell session is available
-Connect-PowerShellSystem -PowerShellSystem $Client -ErrorAction Stop
-$SessionIdentity = $Identity.Replace('-','')
-$Password = $Credential.Password | Convert-SecureStringToString
-$Script =@"
-if (-not (Test-Path variable:NotesSessions))
-{
-    New-Variable -Name NotesSessions -Value @{}
-}
-if (-not (Test-Path variable:NotesDatabaseConnections))
-{
-    New-Variable -Name NotesDatabaseConnections -Value @{}
-}
-
-`$NotesSessions.`'$SessionIdentity`' = New-Object -ComObject 'Lotus.NotesSession'
-`$NotesSessions.`'$SessionIdentity`'.Initialize(`'$Password`')
-`$NotesDatabaseConnections.$Name = `$NotesSessions.`'$SessionIdentity`'.GetDatabase(`'$ComputerName`',`'$Database`')
-"@
-$ScriptBlock = [scriptblock]::Create($Script)
-$ClientSession = Get-PSSession -Name $ClientIdentity
-Invoke-Command -Session $ClientSession -ScriptBlock $ScriptBlock -ErrorAction Stop
-}
 function Invoke-ExchangeCommand {
     [cmdletbinding(DefaultParameterSetName = 'String')]
     param(
@@ -4256,6 +4251,65 @@ function Invoke-SkypeCommand {
     }#Process
 
 }#Function Invoke-SkypeCommand
+function Export-FunctionsToPSSession
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[string[]]$FunctionNames
+,
+[parameter(ParameterSetName = 'SessionID',Mandatory,ValuefromPipelineByPropertyName)]
+[int]$ID
+,
+[parameter(ParameterSetName = 'SessionName',Mandatory,ValueFromPipelineByPropertyName)]
+[string]$Name
+,
+[parameter(ParameterSetName = 'SessionObject',Mandatory,ValueFromPipeline)]
+[System.Management.Automation.Runspaces.PSSession]$PSSession
+)
+#Find the session
+$GetPSSessionParams=@{
+    ErrorAction = 'Stop'
+}
+switch ($PSCmdlet.ParameterSetName)
+{
+    'SessionID'
+    {
+        $GetPSSessionParams.ID = $ID
+        $PSSession = Get-PSSession @GetPSSessionParams
+    }
+    'SessionName'
+    {
+        $GetPSSessionParams.Name = $Name
+        $PSSession = Get-PSSession @GetPSSessionParams
+    }
+    'SessionObject'
+    {
+        #nothing required here
+    }
+}
+#Verify the session availability
+if (-not $PSSession.Availability -eq 'Available')
+{
+    throw "Availability Status for PSSession $($PSSession.Name) is $($PSSession.Availability).  It must be Available."
+}
+#Verify the function availiability
+$Functions = @(
+    foreach ($FN in $FunctionNames)
+    {
+        Get-Command -ErrorAction Stop -Name $FN -CommandType Function
+    }
+)
+#build functions text to initialize in PsSession 
+$FunctionsText = ''
+foreach ($Function in $Functions) {
+    $FunctionText = 'function ' + $Function.Name + "{`r`n" + $Function.Definition + "`r`n}`r`n"
+    $FunctionsText = $FunctionsText + $FunctionText
+}
+#convert functions text to scriptblock
+$ScriptBlock = [scriptblock]::Create($FunctionsText)
+Invoke-Command -Session $PSSession -ScriptBlock $ScriptBlock -ErrorAction Stop
+}
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
 ##########################################################################################################
@@ -5052,6 +5106,99 @@ $ADInstance
     $AllMailEnabledADObjects = $AllMailEnabledGroups + $AllMailEnabledContacts + $AllMailEnabledUsers + $AllMailEnabledPublicFolders
     if ($Passthrough) {$AllMailEnabledADObjects}
     if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
+}
+##########################################################################################################
+#Lotus Notes Helper and Get Functions
+##########################################################################################################
+function New-NotesDatabaseConnection
+{[cmdletbinding()]
+param(
+[string]$NotesServerName
+,
+[string]$Database #the Notes nsf file name to be accessed
+,
+$Credential
+,
+[string]$Name # An arbitrary friendly name for the notes database
+,
+[string]$Identity #An arbitrary session name for the Notes Session
+)
+#verify required powershell session is available
+$SessionIdentity = $Identity.Replace('-','')
+$Password = $Credential.Password | Convert-SecureStringToString
+if (-not (Test-Path variable:NotesSessions))
+{
+    New-Variable -Name NotesSessions -Value @{} -Scope Global
+}
+if (-not (Test-Path variable:NotesDatabaseConnections))
+{
+    New-Variable -Name NotesDatabaseConnections -Value @{} -Scope Global
+}
+if (-not ($NotesSessions.ContainsKey($SessionIdentity)))
+{
+    $NotesSessions.'$SessionIdentity' = New-Object -ComObject 'Lotus.NotesSession'
+    $NotesSessions.'$SessionIdentity'.Initialize('$Password')
+    if (-not ($NotesDatabaseConnections.ContainsKey($Name)))
+    {
+        $NotesDatabaseConnections.$Name = $NotesSessions.'$SessionIdentity'.GetDatabase('$ComputerName','$Database')
+    }
+}
+Write-Output $NotesDatabaseConnections.$Name
+}
+function Get-NotesUser
+{
+[cmdletbinding()]
+param(
+[string[]]$NotesDatabase
+,
+[string]$PrimarySMTPAddress
+)
+if (-not (Test-Path variable:Global:NotesViews))
+{
+    New-Variable -Name NotesViews -Value @{} -Scope Global
+}
+$userdocs = @()
+foreach ($ND in $NotesDatabase)
+{
+    $DatabaseView = "$($ND)Users"
+    if (-not ($NotesViews.ContainsKey($DatabaseView)))
+    {
+        $NotesViews.$DatabaseView = $NotesDatabaseConnections.$ND.GetView('($Users)')
+    }
+    $userdoc = @($NotesViews.$ND.GetDocumentByKey($PrimarySMTPAddress))
+    switch ($userdoc.Count)
+    {
+        1
+        {
+            $userdocs += `$userdoc
+        }
+        0
+        {}
+        default
+        {
+            throw "$PrimarySMTPAddress is ambiguous in `$ND"
+        }
+    }
+}
+switch ($userdocs.Count)
+{
+    1
+    {
+        $rawNotesUserdoc = $userdocs[0]
+        $NotesUserObject = [pscustomobject]@{}
+        foreach ($item in $($rawNotesUserdoc.Items | Sort-Object -Property Name))
+        {
+            $NotesUserObject.$($item.name) = if ($item.values.count -gt 1) {$item.text} else {$item.values}
+        }
+        Write-Output $NoteUserObject
+    }
+    0
+    {Write-Warning "No Notes User for $PrimarySMTPAddress was found"}
+    default
+    {
+        throw "$PrimarySMTPAddress is ambiguous among Notes Databases: $($NotesDatabase -join ',')"
+    }
+}
 }
 ##########################################################################################################
 #Profile and Environment Initialization Functions
