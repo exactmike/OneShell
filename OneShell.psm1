@@ -3762,7 +3762,7 @@ Function Connect-LotusNotesDatabase
             $message = "Export the required Notes related functions into the client PSSession"
             Write-Log -Message $message -EntryType Attempting
             $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name)
-            Export-FunctionsToPSSession -Name $ClientIdentity -FunctionNames @($NotesFunctionNames + 'Convert-SecureStringToString')
+            Export-FunctionToPSSession -Name $ClientIdentity -FunctionNames @($NotesFunctionNames + 'Convert-SecureStringToString')
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -3796,7 +3796,7 @@ Function Connect-LotusNotesDatabase
             $WarningMessage = "Connect-LotusNotesDatabase currently uses the client's configured Notes User and ignores the supplied username.  It does use the supplied password for the Notes credential, however."
             Write-Warning -Message $WarningMessage
             Write-Log -Message $WarningMessage -EntryType Notification -ErrorLog
-            $NotesDatabaseConnection = New-NotesDatabaseConnection -ComputerName $NotesServer -database $Database -ErrorAction Stop -Credential $Credential -Name $Name -Identity $Identity
+            $NotesDatabaseConnection = New-NotesDatabaseConnection -NotesServerName $NotesServer -database $Database -ErrorAction Stop -Credential $Credential -Name $Name -Identity $Identity
             Write-Log -Message $message -EntryType Succeeded
             #$NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
             #$NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
@@ -4251,7 +4251,7 @@ function Invoke-SkypeCommand {
     }#Process
 
 }#Function Invoke-SkypeCommand
-function Export-FunctionsToPSSession
+function Export-FunctionToPSSession
 {
 [cmdletbinding()]
 param(
@@ -4266,6 +4266,8 @@ param(
 ,
 [parameter(ParameterSetName = 'SessionObject',Mandatory,ValueFromPipeline)]
 [System.Management.Automation.Runspaces.PSSession]$PSSession
+,
+[switch]$Refresh
 )
 #Find the session
 $GetPSSessionParams=@{
@@ -4293,13 +4295,22 @@ if (-not $PSSession.Availability -eq 'Available')
 {
     throw "Availability Status for PSSession $($PSSession.Name) is $($PSSession.Availability).  It must be Available."
 }
-#Verify the function availiability
+#Verify the local function availiability
 $Functions = @(
     foreach ($FN in $FunctionNames)
     {
         Get-Command -ErrorAction Stop -Name $FN -CommandType Function
     }
 )
+#Verify if the functions already exist in the PSSession unless Refresh
+foreach ($FN in $FunctionNames)
+{
+    $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock {Get-Command -Name $FN -ErrorAction Stop} -ErrorAction Stop
+    if ($remoteFunction.CommandType -ne $null -and -not $Refresh)
+    {
+        $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
+    }
+}
 #build functions text to initialize in PsSession 
 $FunctionsText = ''
 foreach ($Function in $Functions) {
