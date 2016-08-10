@@ -3717,6 +3717,7 @@ Function Connect-LotusNotesDatabase
         Write-Output $RuntimeParameterDictionary
     }#DynamicParam
     begin{
+        Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3759,7 +3760,7 @@ Function Connect-LotusNotesDatabase
         #Create the required functions in the Client PSSession 
         try
         {
-            $message = "Export the required Notes related functions into the client PSSession"
+            $message = "Export the required Notes related functions into the client PSSession $ClientIdentity"
             Write-Log -Message $message -EntryType Attempting
             $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name)
             Export-FunctionToPSSession -Name $ClientIdentity -FunctionNames @($NotesFunctionNames + 'Convert-SecureStringToString')
@@ -3811,6 +3812,10 @@ Function Connect-LotusNotesDatabase
             $PSCmdlet.ThrowTerminatingError($myerror) 
         }
     }#process
+    end
+    {
+        Write-EndFunctionStatus -CallingFunction $MyInvocation.MyCommand
+    }
 }#function Connect-LotusNotesDatabase 
 Function Update-SessionManagementGroups {
 [cmdletbinding(DefaultParameterSetName = 'Profile')]
