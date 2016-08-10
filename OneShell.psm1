@@ -4303,7 +4303,7 @@ $Functions = @(
 #build functions text to initialize in PsSession 
 $FunctionsText = ''
 foreach ($Function in $Functions) {
-    $FunctionText = 'function ' + $Function.Name + "{`r`n" + $Function.Definition + "`r`n}`r`n"
+    $FunctionText = 'function ' + $Function.Name + "`r`n {`r`n" + $Function.Definition + "`r`n}`r`n"
     $FunctionsText = $FunctionsText + $FunctionText
 }
 #convert functions text to scriptblock
@@ -5136,11 +5136,11 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
 }
 if (-not ($NotesSessions.ContainsKey($SessionIdentity)))
 {
-    $NotesSessions.$SessionIdentity = New-Object -ComObject 'Lotus.NotesSession'
-    $NotesSessions.$SessionIdentity.Initialize($Password)
+    $NotesSessions.'$SessionIdentity' = New-Object -ComObject 'Lotus.NotesSession'
+    $NotesSessions.'$SessionIdentity'.Initialize('$Password')
     if (-not ($NotesDatabaseConnections.ContainsKey($Name)))
     {
-        $NotesDatabaseConnections.$Name = $NotesSessions.$SessionIdentity.GetDatabase($ComputerName,$Database)
+        $NotesDatabaseConnections.$Name = $NotesSessions.'$SessionIdentity'.GetDatabase('$ComputerName','$Database')
     }
 }
 Write-Output $NotesDatabaseConnections.$Name
