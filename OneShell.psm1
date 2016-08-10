@@ -4310,7 +4310,7 @@ $Functions = @(
 #Verify if the functions already exist in the PSSession unless Refresh
 foreach ($FN in $FunctionNames)
 {
-    $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock {Get-Command -Name $FN -ErrorAction Stop} -ErrorAction Stop
+    $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock {Get-Command -Name $args[0] -ErrorAction Stop} -ErrorAction Stop -ArgumentList $FN
     if ($remoteFunction.CommandType -ne $null -and -not $Refresh)
     {
         $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
