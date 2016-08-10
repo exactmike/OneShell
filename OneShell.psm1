@@ -5242,6 +5242,8 @@ param(
     [parameter()]
     [ValidateScript({Test-DirectoryPath -path $_})]
     [string[]]$AdminProfilePath
+    ,
+    [switch]$NoConnections
 )
 Process
 {
@@ -5275,8 +5277,13 @@ Switch ($PSCmdlet.ParameterSetName)
             [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
             if ($AdminUserProfileLoaded)
             {
-                Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
-                Connect-RemoteSystems
+                if ($NoConnections)
+                {}
+                else
+                {
+                    Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                    Connect-RemoteSystems
+                }
             }#if
         }#If $OrgProfileLoaded
     }#AutoConnect
@@ -5379,7 +5386,13 @@ Switch ($PSCmdlet.ParameterSetName)
         }
         if ($AdminUserProfileLoaded)
         {
-            Connect-RemoteSystems
+                if ($NoConnections)
+                {}
+                else
+                {
+                    Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                    Connect-RemoteSystems
+                }
         }
     }
     'SpecifiedProfile'
@@ -5453,7 +5466,13 @@ Switch ($PSCmdlet.ParameterSetName)
         }
         if ($AdminUserProfileLoaded)
         {
-            Connect-RemoteSystems
+                if ($NoConnections)
+                {}
+                else
+                {
+                    Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                    Connect-RemoteSystems
+                }
         }
     }
 }#Switch
