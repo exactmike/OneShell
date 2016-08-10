@@ -3762,8 +3762,7 @@ Function Connect-LotusNotesDatabase
             $message = "Export the required Notes related functions into the client PSSession"
             Write-Log -Message $message -EntryType Attempting
             $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name)
-            $NotesFunctionNames += 'Convert-SecureStringToString'
-            Export-FunctionsToPSSession -Name $ClientIdentity -FunctionNames $NotesFunctionNames
+            Export-FunctionsToPSSession -Name $ClientIdentity -FunctionNames @($NotesFunctionNames + 'Convert-SecureStringToString')
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
