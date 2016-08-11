@@ -4303,12 +4303,15 @@ if (-not $PSSession.Availability -eq 'Available')
 #Verify if the functions already exist in the PSSession unless Refresh
 foreach ($FN in $FunctionNames)
 {
-    $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock {Get-Command -Name "$args[0]" -ErrorAction Stop} -ErrorAction Stop -ArgumentList $FN
+    $script = "Get-Command -Name '$FN' -ErrorAction SilentlyContinue"
+    $scriptblock = [scriptblock]::Create($script)
+    $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock $scriptblock -ErrorAction SilentlyContinue
     if ($remoteFunction.CommandType -ne $null -and -not $Refresh)
     {
         $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
     }
 }
+Write-Verbose "Functions remaining: $($FunctionNames -join ',')"
 #Verify the local function availiability
 $Functions = @(
     foreach ($FN in $FunctionNames)
