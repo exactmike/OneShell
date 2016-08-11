@@ -4300,13 +4300,6 @@ if (-not $PSSession.Availability -eq 'Available')
 {
     throw "Availability Status for PSSession $($PSSession.Name) is $($PSSession.Availability).  It must be Available."
 }
-#Verify the local function availiability
-$Functions = @(
-    foreach ($FN in $FunctionNames)
-    {
-        Get-Command -ErrorAction Stop -Name $FN -CommandType Function
-    }
-)
 #Verify if the functions already exist in the PSSession unless Refresh
 foreach ($FN in $FunctionNames)
 {
@@ -4316,6 +4309,13 @@ foreach ($FN in $FunctionNames)
         $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
     }
 }
+#Verify the local function availiability
+$Functions = @(
+    foreach ($FN in $FunctionNames)
+    {
+        Get-Command -ErrorAction Stop -Name $FN -CommandType Function
+    }
+)
 #build functions text to initialize in PsSession 
 $FunctionsText = ''
 foreach ($Function in $Functions) {
