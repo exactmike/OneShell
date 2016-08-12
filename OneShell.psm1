@@ -4483,7 +4483,7 @@ function Find-ADUser {
         ,
         [switch]$DoNotPreserveLocation #use this switch when you are already running the commands from the correct AD Drive
         ,
-        $properties = $AllADAttributesToRetrieve
+        $properties = $ADUserAttributes
         ,
         [parameter(ParameterSetName='FirstLast',Mandatory = $true)]
         [string]$GivenName
@@ -4682,7 +4682,7 @@ function Find-ADContact {
 
         [switch]$DoNotPreserveLocation #use this switch when you are already running the commands from the correct AD Drive
         ,
-        $properties = $AllADContactAttributesToRetrieve
+        $properties = $ADContactAttributes
         ,
         [switch]$AmbiguousAllowed
         ,
@@ -6821,12 +6821,14 @@ function Set-OneShellVariables
         'cn'
         'co'
         'country'
+        'company'
         'deliverandRedirect'
         'department'
         'displayName'
         'DistinguishedName'
         'employeeID'
         'employeeNumber'
+        'enabled'
         'extensionattribute1'
         'extensionattribute10'
         'extensionattribute11'
@@ -6863,12 +6865,20 @@ function Set-OneShellVariables
         'msExchUsageLocation'
         'msExchUserCulture'
         'msExchVersion'
+        'msExchWhenMailboxCreated'
+        'msRTCSIP-UserEnabled'
         'ObjectGUID'
         'physicalDeliveryOfficeName'
         'SamAccountName'
         'SurName'
         'targetAddress'
         'userPrincipalName'
+        'whenChanged'
+        'whenCreated'
+        'AccountExpirationDate'
+        'LastLogonDate'
+        'createTimeStamp'
+        'modifyTimeStamp'
     )#Scalar Attributes to Retrieve
     $Script:MultiValuedADAttributes = @(
         'memberof'
