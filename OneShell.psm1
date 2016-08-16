@@ -27,6 +27,7 @@ function Get-ArrayIndexForValue
 function Get-TimeStamp
 {
     [string]$Stamp = Get-Date -Format yyyyMMdd-HHmm
+    #$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToShortTimeString()) #check if this is faster to use than Get-Date
     $Stamp
 }#Get-TimeStamp
 function Get-DateStamp
@@ -6867,6 +6868,7 @@ function Set-OneShellVariables
         'msExchUserCulture'
         'msExchVersion'
         'msExchWhenMailboxCreated'
+        'notes'
         'ObjectGUID'
         'physicalDeliveryOfficeName'
         'SamAccountName'
