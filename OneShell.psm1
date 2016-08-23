@@ -3780,7 +3780,7 @@ Function Connect-LotusNotesDatabase
             $message = "Import the Client PSSession importing only the Notes functions"
             Write-Log -Message $message -EntryType Attempting
             $ClientPSSession = Get-PSSession -Name $ClientIdentity 
-            Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession
+            Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession > $null
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
