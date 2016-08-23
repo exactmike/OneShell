@@ -5156,11 +5156,11 @@ if (-not (Test-Path variable:NotesDatabaseConnections))
 }
 if (-not ($NotesSessions.ContainsKey($SessionIdentity)))
 {
-    $NotesSessions.'$SessionIdentity' = New-Object -ComObject 'Lotus.NotesSession'
-    $NotesSessions.'$SessionIdentity'.Initialize("$Password")
+    $NotesSessions.$SessionIdentity = New-Object -ComObject 'Lotus.NotesSession'
+    $NotesSessions.$SessionIdentity.Initialize("$Password")
     if (-not ($NotesDatabaseConnections.ContainsKey($Name)))
     {
-        $NotesDatabaseConnections.$Name = $NotesSessions.'$SessionIdentity'.GetDatabase('$ComputerName','$Database')
+        $NotesDatabaseConnections.$Name = $NotesSessions.$SessionIdentity.GetDatabase("$NotesServerName","$Database")
     }
 }
 Write-Output $NotesDatabaseConnections.$Name
