@@ -3780,7 +3780,7 @@ Function Connect-LotusNotesDatabase
             $message = "Import the Client PSSession importing only the Notes functions"
             Write-Log -Message $message -EntryType Attempting
             $ClientPSSession = Get-PSSession -Name $ClientIdentity 
-            Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession > $null
+            Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession | Out-Null
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -5208,9 +5208,9 @@ switch ($userdocs.Count)
         $NotesUserObject = [pscustomobject]@{}
         foreach ($item in $($rawNotesUserdoc.Items | Sort-Object -Property Name))
         {
-            $NotesUserObject.$($item.name) = if ($item.values.count -gt 1) {$item.text} else {$item.values}
+            $NotesUserObject | Add-Member -Name $($item.name) -value $(if ($item.values.count -gt 1) {$item.text} else {$item.values}) -MemberType NoteProperty
         }
-        Write-Output $NoteUserObject
+        Write-Output $NotesUserObject
     }
     0
     {Write-Warning "No Notes User for $PrimarySMTPAddress was found"}
