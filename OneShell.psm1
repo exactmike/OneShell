@@ -5185,12 +5185,12 @@ foreach ($ND in $NotesDatabase)
     {
         $NotesViews.$DatabaseView = $NotesDatabaseConnections.$ND.GetView('($Users)')
     }
-    $userdoc = @($NotesViews.$ND.GetDocumentByKey($PrimarySMTPAddress))
+    $userdoc = @($NotesViews.$DatabaseView.GetDocumentByKey($PrimarySMTPAddress) | Where-Object -FilterScript {$_ -ne $null})
     switch ($userdoc.Count)
     {
         1
         {
-            $userdocs += `$userdoc
+            $userdocs += $userdoc
         }
         0
         {}
