@@ -2472,14 +2472,17 @@ Function Connect-Exchange
         [ValidateSet('Basic','Kerberos','Negotiate','Default','CredSSP','Digest','NegotiateWithImplicitCredential')]
         [string]$AuthMethod
         ,
+        [parameter(ParameterSetName='ComplianceCenter')]
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
         $Credential
         ,
+        [parameter(ParameterSetName='ComplianceCenter')]
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
         [string]$CommandPrefix
         ,
+        [parameter(ParameterSetName='ComplianceCenter')]
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
         [string]$SessionNamePrefix
@@ -2487,6 +2490,10 @@ Function Connect-Exchange
         [parameter(ParameterSetName='Online')]
         [switch]$online
         ,
+        [parameter(ParameterSetName='ComplianceCenter')]
+        [switch]$ComplianceCenter
+        ,
+        [parameter(ParameterSetName='ComplianceCenter')]
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
         [boolean]$ProxyEnabled = $False
@@ -2549,12 +2556,20 @@ Function Connect-Exchange
                 $SessionName = $orgobj.Identity
                 $PreferredDomainControllers = if (-not [string]::IsNullOrWhiteSpace($orgobj.PreferredDomainControllers)) {@($orgobj.PreferredDomainControllers)} else {$null}
             }
-            'Online'{
+            'Online'
+            {
                 $orgtype = $PSCmdlet.ParameterSetName
                 $SessionName = "$SessionNamePrefix-Exchange"
                 $orgName = $SessionNamePrefix
             }
-            'OnPremises'{
+            'OnPremises'
+            {
+                $orgtype = $PSCmdlet.ParameterSetName
+                $SessionName = "$SessionNamePrefix-Exchange"
+                $orgName = $SessionNamePrefix
+            }
+            'ComplianceCenter'
+            {
                 $orgtype = $PSCmdlet.ParameterSetName
                 $SessionName = "$SessionNamePrefix-Exchange"
                 $orgName = $SessionNamePrefix
@@ -2579,32 +2594,56 @@ Function Connect-Exchange
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 switch ($orgtype){
-                    'OnPremises'{
-                        try {
+                    'OnPremises'
+                    {
+                        try
+                        {
                             $Global:ErrorActionPreference = 'Stop'
                             Invoke-ExchangeCommand -cmdlet Set-AdServerSettings -ExchangeOrganization $orgName -string '-viewentireforest $true -erroraction Stop -WarningAction SilentlyContinue' -WarningAction SilentlyContinue
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
-                        catch {
+                        catch
+                        {
                             $Global:ErrorActionPreference = 'Continue'
                             Remove-PSSession -Name $SessionName
                             $UseExistingSession = $false
                         }#catch
                     }#OnPremises
-                    'Online' {
-                        try {
+                    'Online'
+                    {
+                        try
+                        {
+                            $splat = @{Identity = $Credential.UserName;ErrorAction = 'Stop'}
                             $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Get-AddressBookPolicy -ExchangeOrganization $orgName -string '-erroraction Stop'
+                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
-                        catch {
+                        catch
+                        {
                             $Global:ErrorActionPreference = 'Continue'
                             Remove-PSSession -Name $SessionName
                             $UseExistingSession = $false
                         }#catch
                     }#Online
+                    'ComplianceCenter'
+                    {
+                        try
+                        {
+                            $splat = @{Identity = $Credential.UserName;ErrorAction = 'Stop'}
+                            $Global:ErrorActionPreference = 'Stop'
+                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat
+                            $Global:ErrorActionPreference = 'Continue'
+                            $UseExistingSession = $true
+                        }#try
+                        catch
+                        {
+                            $Global:ErrorActionPreference = 'Continue'
+                            Remove-PSSession -Name $SessionName
+                            $UseExistingSession = $false
+                        }#catch
+                    }#ComplianceCenter
                 }#switch $orgtype
             }#else
         }#try
@@ -2626,6 +2665,15 @@ Function Connect-Exchange
                 switch ($orgtype) {
                     'Online' {
                         $sessionParams.ConnectionURI = 'https://outlook.office365.com/powershell-liveid/'
+                        $sessionParams.Authentication = 'Basic'
+                        $sessionParams.AllowRedirection = $true
+                        If ($ProxyEnabled) {
+                            $sessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig -ProxyAuthentication basic
+                            Write-Log -message 'Using Proxy Configuration'
+                        }
+                    }
+                    'ComplianceCenter' {
+                        $sessionParams.ConnectionURI = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
                         $sessionParams.Authentication = 'Basic'
                         $sessionParams.AllowRedirection = $true
                         If ($ProxyEnabled) {
