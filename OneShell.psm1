@@ -3763,7 +3763,7 @@ Function Connect-LotusNotesDatabase
         {
             $message = "Export the required Notes related functions into the client PSSession $ClientIdentity"
             Write-Log -Message $message -EntryType Attempting
-            $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name)
+            $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name | Select-Object -Unique)
             Export-FunctionToPSSession -Name $ClientIdentity -FunctionNames @($NotesFunctionNames + 'Convert-SecureStringToString')
             Write-Log -Message $message -EntryType Succeeded
         }
@@ -3779,8 +3779,9 @@ Function Connect-LotusNotesDatabase
         {
             $message = "Import the Client PSSession importing only the Notes functions"
             Write-Log -Message $message -EntryType Attempting
+            $NotesFunctionNames | ForEach-Object {Remove-Item -Path "function:\$_" -Force -ErrorAction Stop}
             $ClientPSSession = Get-PSSession -Name $ClientIdentity 
-            Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession | Out-Null
+            Import-Module (Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession -ErrorAction Stop) -Scope Global
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
