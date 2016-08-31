@@ -16,11 +16,11 @@ function Get-ArrayIndexForValue
         $property
     )
     if ([string]::IsNullOrWhiteSpace($Property)) {
-        Write-Verbose -Message "Using Simple Match for Index"
+        Write-Verbose -Message 'Using Simple Match for Index'
         [array]::indexof($array,$value)
     }#if
     else {
-        Write-Verbose -Message "Using Property Match for Index"
+        Write-Verbose -Message 'Using Property Match for Index'
         [array]::indexof($array.$property,$value)
     }#else
 }#Get-ArrayIndexForValue
@@ -63,17 +63,17 @@ function New-ErrorRecord
 {
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [System.String]
+    [string]
     $Exception
     ,
     [Parameter(Mandatory = $true, Position = 1)]
     [Alias('ID')]
-    [System.String]
+    [string]
     $ErrorId
     ,
     [Parameter(Mandatory = $true, Position = 2)]
     [Alias('Category')]
-    [System.Management.Automation.ErrorCategory]
+    [Management.Automation.ErrorCategory]
     [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
             'DeadlockDetected', 'InvalidArgument', 'InvalidData', 'InvalidOperation',
             'InvalidResult', 'InvalidType', 'MetadataError', 'NotImplemented',
@@ -84,20 +84,18 @@ param(
     $ErrorCategory
     ,
     [Parameter(Mandatory = $true, Position = 3)]
-    [System.Object]
     $TargetObject
     ,
-    [Parameter()]
-    [System.String]
+    [string]
     $Message
     ,
-    [Parameter()]
-    [System.Exception]
+    [Exception]
     $InnerException
 )
 begin
 {
-    if (-not (Test-Path variable:script:AvailableExceptionsList))
+    Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
+if (-not (Test-Path -Path variable:script:AvailableExceptionsList))
     {$script:AvailableExceptionsList = Get-AvailableExceptionsList}
     if (-not $Exception -in $script:AvailableExceptionsList)
     {
@@ -275,7 +273,7 @@ function Get-CallerPreference
         $Cmdlet,
 
         [Parameter(Mandatory = $true)]
-        [System.Management.Automation.SessionState]
+        [Management.Automation.SessionState]
         $SessionState,
 
         [Parameter(ParameterSetName = 'Filtered', ValueFromPipeline = $true)]
@@ -394,15 +392,17 @@ function Compare-ComplexObject
 {
 [cmdletbinding()]
 param(
-    $ReferenceObject
-    ,
-    $DifferenceObject
-    ,
-    [string[]]$SuppressedProperties
-    ,
-    [parameter()]
-    [validateset('All','EqualOnly','DifferentOnly')]
-    [string]$Show = 'All'
+	[Parameter(Mandatory)]
+	$ReferenceObject
+	,
+	[Parameter(Mandatory)]
+	$DifferenceObject
+	,
+	[string[]]$SuppressedProperties
+	,
+	[parameter()]
+	[validateset('All','EqualOnly','DifferentOnly')]
+	[string]$Show = 'All'
 )#param
 #setup properties to compare
 #get properties from the Reference Object
@@ -509,7 +509,7 @@ param
     #build functions to initialize in job 
     $JobFunctionsText = ''
     foreach ($Function in $JobFunctions) {
-        $FunctionText = 'function ' + (Get-Command $Function).Name + "{`r`n" + (Get-Command $Function).Definition + "`r`n}`r`n"
+        $FunctionText = 'function ' + (Get-Command -Name $Function).Name + "{`r`n" + (Get-Command -Name $Function).Definition + "`r`n}`r`n"
         $JobFunctionsText = $JobFunctionsText + $FunctionText
     }
     $ExecutionScript = $JobFunctionsText + $Script
@@ -608,23 +608,23 @@ function Convert-HashtableToObject
     PROCESS {
         if($recurse) {
             $keys = $hashtable.Keys | ForEach-Object { $_ }
-            Write-Verbose "Recursing $($Keys.Count) keys"
+            Write-Verbose -Message "Recursing $($Keys.Count) keys"
             foreach($key in $keys) {
                 if($hashtable.$key -is [HashTable]) {
-                    $hashtable.$key = Convert-HashtableToObject $hashtable.$key -Recurse # -Combine:$combine
+                    $hashtable.$key = Convert-HashtableToObject -hashtable $hashtable.$key -Recurse # -Combine:$combine
                 }
             }
         }
         if($combine) {
-            $output += @(New-Object PSObject -Property $hashtable)
-            Write-Verbose "Combining Output = $($Output.Count) so far"
+            $output += @(New-Object -TypeName PSObject -Property $hashtable)
+            Write-Verbose -Message "Combining Output = $($Output.Count) so far"
         } else {
-            New-Object PSObject -Property $hashtable
+            New-Object -TypeName PSObject -Property $hashtable
         }
     }
     END {
         if($combine -and $output.Count -gt 1) {
-            Write-Verbose "Combining $($Output.Count) cached outputs"
+            Write-Verbose -Message "Combining $($Output.Count) cached outputs"
             $output | Join-Object
         } else {
             $output
@@ -702,9 +702,9 @@ Function Convert-ObjectToHashTable
 
     Param(
         [Parameter(Position=0,Mandatory=$True,
-        HelpMessage="Please specify an object",ValueFromPipeline=$True)]
+        HelpMessage='Please specify an object',ValueFromPipeline=$True)]
         [ValidateNotNullorEmpty()]
-        [object]$InputObject,
+        $InputObject,
         [switch]$NoEmpty,
         [string[]]$Exclude
     )
@@ -713,8 +713,8 @@ Function Convert-ObjectToHashTable
         #get type using the [Type] class because deserialized objects won't have
         #a GetType() method which is what we would normally use.
 
-        $TypeName = [system.type]::GetTypeArray($InputObject).name
-        Write-Verbose "Converting an object of type $TypeName"
+        $TypeName = [type]::GetTypeArray($InputObject).name
+        Write-Verbose -Message "Converting an object of type $TypeName"
     
         #get property names using Get-Member
         $names = $InputObject | Get-Member -MemberType properties | 
@@ -729,19 +729,19 @@ Function Convert-ObjectToHashTable
             if ($Exclude -notcontains $_) {
                 #only add if -NoEmpty is not called and property has a value
                 if ($NoEmpty -AND -Not ($inputobject.$_)) {
-                    Write-Verbose "Skipping $_ as empty"
+                    Write-Verbose -Message "Skipping $_ as empty"
                 }
                 else {
-                    Write-Verbose "Adding property $_"
+                    Write-Verbose -Message "Adding property $_"
                     $hash.Add($_,$inputobject.$_)
                 }
             } #if exclude notcontains
             else {
-                Write-Verbose "Excluding $_"
+                Write-Verbose -Message "Excluding $_"
             }
         } #foreach
-        Write-Verbose "Writing the result to the pipeline"
-        Write-Output $hash
+        Write-Verbose -Message 'Writing the result to the pipeline'
+        Write-Output -InputObject $hash
     }#close process
 
 }
@@ -770,12 +770,12 @@ function Convert-SecureStringToString
     [cmdletbinding()]
     param (
         [parameter(Mandatory=$True,ValueFromPipeline=$True)]
-        [System.Security.SecureString]$SecureString
+        [securestring]$SecureString
     )
     
     BEGIN {}
     PROCESS {
-        [System.Runtime.InteropServices.marshal]::PtrToStringAuto([System.Runtime.InteropServices.marshal]::SecureStringToBSTR($securestring))
+        [Runtime.InteropServices.marshal]::PtrToStringAuto([Runtime.InteropServices.marshal]::SecureStringToBSTR($securestring))
     }
     END {}
 }
@@ -791,14 +791,14 @@ function Get-ImmutableIDFromGUID
     param(
         [guid]$Guid
     )
-    [System.Convert]::ToBase64String($Guid.ToByteArray())
+    [Convert]::ToBase64String($Guid.ToByteArray())
 }
 function Get-GUIDFromImmutableID
 {
     param(
         $ImmutableID
     )
-    [GUID][system.convert]::frombase64string($ImmutableID) 
+    [GUID][convert]::frombase64string($ImmutableID) 
 }
 function Get-Checksum
 {
@@ -807,14 +807,14 @@ function Get-Checksum
         [ValidateScript({Test-FilePath -path $_})]
         [string]$File
         ,
-        [ValidateSet("sha1","md5")]
-        [string]$Algorithm="sha1"
+        [ValidateSet('sha1','md5')]
+        [string]$Algorithm='sha1'
     )
     $FileObject = Get-Item -Path $File
-    $fs = new-object System.IO.FileStream $($FileObject.FullName), "Open"
+    $fs = new-object System.IO.FileStream $($FileObject.FullName), 'Open'
     $algo = [type]"System.Security.Cryptography.$Algorithm"
     $crypto = $algo::Create()
-    $hash = [BitConverter]::ToString($crypto.ComputeHash($fs)).Replace("-", "")
+    $hash = [BitConverter]::ToString($crypto.ComputeHash($fs)).Replace('-', '')
     $fs.Close()
     $hash
 }
@@ -827,26 +827,26 @@ function Test-Member
     [CmdletBinding()] 
     param( 
         [Parameter(ValueFromPipeline=$true)] 
-        [System.Management.Automation.PSObject] 
-        ${InputObject}, 
+        [psobject] 
+        $InputObject, 
 
         [Parameter(Position=0)] 
         [ValidateNotNullOrEmpty()] 
-        [System.String[]] 
-        ${Name}, 
+        [String[]] 
+        $Name, 
 
         [Alias('Type')] 
-        [System.Management.Automation.PSMemberTypes] 
-        ${MemberType}, 
+        [Management.Automation.PSMemberTypes] 
+        $MemberType, 
 
-        [System.Management.Automation.PSMemberViewTypes] 
-        ${View}, 
-
-        [Switch] 
-        ${Static}, 
+        [Management.Automation.PSMemberViewTypes] 
+        $View, 
 
         [Switch] 
-        ${Force} 
+        $Static, 
+
+        [Switch] 
+        $Force 
     ) 
     begin { 
         try { 
@@ -855,7 +855,7 @@ function Test-Member
             { 
                 $PSBoundParameters['OutBuffer'] = 1 
             } 
-            $wrappedCmd = $ExecutionContext.InvokeCommand.GetCommand('Get-Member', [System.Management.Automation.CommandTypes]::Cmdlet) 
+            $wrappedCmd = $ExecutionContext.InvokeCommand.GetCommand('Get-Member', [Management.Automation.CommandTypes]::Cmdlet) 
             $scriptCmd = {& $wrappedCmd @PSBoundParameters | ForEach-Object -Begin {$members = @()} -Process {$members += $_} -End {$members.Count -ne 0}} 
             $steppablePipeline = $scriptCmd.GetSteppablePipeline($myInvocation.CommandOrigin) 
             $steppablePipeline.Begin($PSCmdlet) 
@@ -903,12 +903,12 @@ if (Test-Path -Path $path)
 {
     $item = Get-Item -Path $path
     if ($item.GetType().fullname -eq 'System.IO.FileInfo')
-    {Write-Output $true}
+    {Write-Output -InputObject $true}
     else
-    {Write-Output $false}
+    {Write-Output -InputObject $false}
 }
 else
-{Write-Output $false}
+{Write-Output -InputObject $false}
 }
 Function Test-DirectoryPath
 {
@@ -921,12 +921,12 @@ if (Test-Path -Path $path)
 {
     $item = Get-Item -Path $path
     if ($item.GetType().fullname -eq 'System.IO.DirectoryInfo')
-    {Write-Output $true}
+    {Write-Output -InputObject $true}
     else
-    {Write-Output $false}
+    {Write-Output -InputObject $false}
 }
 else
-{Write-Output $false}
+{Write-Output -InputObject $false}
 }
 function Test-IsWriteableDirectory
 {
@@ -958,19 +958,19 @@ param (
     [string]$Path
 )
 try {
-    $testPath = Join-Path $Path ([IO.Path]::GetRandomFileName())
+    $testPath = Join-Path -Path $Path -ChildPath ([IO.Path]::GetRandomFileName())
         New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
     $true
 } catch {
     $false
 } finally {
-    Remove-Item $testPath -ErrorAction SilentlyContinue
+    Remove-Item -Path $testPath -ErrorAction SilentlyContinue
 }
 }
 function Test-CurrentPrincipalIsAdmin
 {
     $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
-    $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator") 
+    $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator') 
 }
 Function Test-ForInstalledModule
 {
@@ -1006,7 +1006,7 @@ Else
 Function Test-CommandExists
 {
  Param ([string]$command)
- Try {if(Get-Command $command -ErrorAction Stop){$true}}
+ Try {if(Get-Command -Name $command -ErrorAction Stop){$true}}
  Catch {$false}
 } #end function Test-CommandExists
 function Get-UninstallEntry
@@ -1036,9 +1036,9 @@ param(
     #Select-Object DisplayName, Publisher, InstallDate, DisplayVersion, HelpLink, UninstallString |
     # and finally sort by name
     #Sort-Object DisplayName
-    if ($raw) {$UninstallEntries | Sort-Object DisplayName}
+    if ($raw) {$UninstallEntries | Sort-Object -Property DisplayName}
     else {
-        $UninstallEntries | Sort-Object DisplayName | Select-Object -Property $property
+        $UninstallEntries | Sort-Object -Property DisplayName | Select-Object -Property $property
     }
 } 
 function New-TestExchangeAlias
@@ -1086,13 +1086,13 @@ if (Test-Path -Path variable:Script:TestExchangeAlias)
 {
     if ($RefreshAliasData) 
     {
-        Write-Log -message "Running New-TestExchangeAlias"
+        Write-Log -message 'Running New-TestExchangeAlias'
         New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
     }
 }
 else 
 {
-    Write-Log -message "Running New-TestExchangeAlias"
+    Write-Log -message 'Running New-TestExchangeAlias'
     New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
 }
 #Test the Alias
@@ -1104,18 +1104,18 @@ if ($Script:TestExchangeAlias.ContainsKey($Alias))
             Return $ConflictingGUIDs
         }
         else {
-            Write-Output $false
+            Write-Output -InputObject $false
         }
     }
     else {
-        Write-Output $true
+        Write-Output -InputObject $true
     }
 }
 else {
-    Write-Output $true
+    Write-Output -InputObject $true
 }
 }
-Function Add-ExchangeAliasToTestExchangeAlias 
+Function Add-ExchangeAliasToTestExchangeAlias
 {
 [cmdletbinding()]
 param(
@@ -1125,8 +1125,8 @@ param(
 )
     if ($Script:TestExchangeAlias.ContainsKey($alias))
     {
-        Write-Log -Message "Alias already exists in the TestExchangeAlias Table" -EntryType Failed
-        Write-Output $false
+        Write-Log -Message 'Alias already exists in the TestExchangeAlias Table' -EntryType Failed
+        Write-Output -InputObject $false
     }
     else
     {
@@ -1169,7 +1169,7 @@ param
     }
     Write-Progress @writeProgressParams -Completed
 }
-Function Test-ExchangeProxyAddress 
+Function Test-ExchangeProxyAddress
 {
 [cmdletbinding()]
 param(
@@ -1193,13 +1193,13 @@ if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
 {
     if ($RefreshProxyAddressData)
     {
-        Write-Log -message "Running New-TestExchangeProxyAddress"
+        Write-Log -message 'Running New-TestExchangeProxyAddress'
         New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
     }
 }
 else
 {
-    Write-Log -message "Running New-TestExchangeProxyAddress"
+    Write-Log -message 'Running New-TestExchangeProxyAddress'
     New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
 }
 #Fix the ProxyAddress if needed
@@ -1218,15 +1218,15 @@ if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
             Return $ConflictingGUIDs
         }
         else {
-            Write-Output $false
+            Write-Output -InputObject $false
         }
     }
     else {
-        Write-Output $true
+        Write-Output -InputObject $true
     }
 }
 else {
-    Write-Output $true
+    Write-Output -InputObject $true
 }
 }
 Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
@@ -1251,7 +1251,7 @@ if ($ProxyAddress -notlike "{$proxyaddresstype}:*")
 if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
 {
     Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
-    Write-Output $false
+    Write-Output -InputObject $false
 }
 else
 {
@@ -1296,11 +1296,11 @@ Process {
     $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $ExchangeOrganization -string "-Identity $Identity -ErrorAction SilentlyContinue" -ErrorAction SilentlyContinue
     if ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue) {
         Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Succeeded  
-        Write-Output $true
+        Write-Output -InputObject $true
     }
     elseif ($InitiateSynchronization) {
         Write-Log -Message "Initiating Directory Synchronization and Checking/Waiting for a maximum of $MaxSyncWaitMinutes minutes." -EntryType Notification
-        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $stopwatch = [Diagnostics.Stopwatch]::StartNew()
         $minutes = 0
         Start-DirectorySynchronization
         do {
@@ -1318,15 +1318,15 @@ Process {
         until ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue -or $stopwatch.Elapsed.Minutes -ge $MaxSyncWaitMinutes)
         $stopwatch.Stop()
         if ($stopwatch.Elapsed.Minutes -ge $MaxSyncWaitMinutes) {
-            Write-Log -Message "Maximum Synchronization Wait Time Met or Exceeded" -EntryType Notification -ErrorLog
+            Write-Log -Message 'Maximum Synchronization Wait Time Met or Exceeded' -EntryType Notification -ErrorLog
         }
         if ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue) {
             Write-Log -Message "Checking $identity for value $RecipientAttributeValue in attribute $RecipientAttributeToCheck." -EntryType Succeeded
-            Write-Output $true
+            Write-Output -InputObject $true
         }
-        else {Write-Output $false}
+        else {Write-Output -InputObject $false}
     }
-    else {Write-Output $false}
+    else {Write-Output -InputObject $false}
 }#Process
 End {}
 }
@@ -1341,7 +1341,7 @@ Param(
 [int]$timeout = 500 #In Milliseconds
 )
 $scope = 0
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+$stopwatch = [Diagnostics.Stopwatch]::StartNew()
 do {
     Try {
         $value = Get-Variable -Name $VariableName -ValueOnly -Scope $scope -ErrorAction SilentlyContinue
@@ -1351,7 +1351,7 @@ do {
     $scope++
 }
 until (-not [string]::IsNullOrWhiteSpace($value) -or $stopwatch.ElapsedMilliseconds -ge $timeout -or $scope -ge $ScopeLevels)
-Write-Output $value
+Write-Output -InputObject $value
 }
 Function Write-Log
 {
@@ -1361,16 +1361,16 @@ Function Write-Log
         [ValidateNotNullOrEmpty()]
         [string]$Message
         ,
-        [Parameter(Mandatory=$false,Position=1)]
+        [Parameter(Position=1)]
         [string]$LogPath
         ,
         [Parameter(Position=2)]
         [switch]$ErrorLog
         ,
-        [Parameter(Mandatory=$false,Position=3)]
+        [Parameter(Position=3)]
         [string]$ErrorLogPath
         ,
-        [Parameter(Mandatory=$false,Position=4)]
+        [Parameter(Position=4)]
         [ValidateSet('Attempting','Succeeded','Failed','Notification')]
         [string]$EntryType
     )
@@ -1510,7 +1510,7 @@ $stamp = Get-TimeStamp
                 else {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop}#else
             }#csv
         }
-        if ($ReturnExportFilePath) {Write-Output $ExportFilePath}
+        if ($ReturnExportFilePath) {Write-Output -InputObject $ExportFilePath}
         Write-Log -Message $message -EntryType Succeeded
     }#try
     Catch
@@ -1539,7 +1539,7 @@ function Export-Credential
         UserName = $ExportUserName
         Password = $ExportPassword
     }
-    Write-Output $exportCredential
+    Write-Output -InputObject $exportCredential
 }
 Function Remove-AgedFiles
 {
@@ -1738,7 +1738,7 @@ if ($showprogress) {
         Write-Progress @writeprogressparams
 }
 
-do { 
+do {
     if ($nextsecond) {
         $nextsecond = $nextsecond.AddSeconds(1)
     }
@@ -1760,9 +1760,9 @@ do {
             if ($voice -and ($secondsremaining % $seconds -eq 0)) {
                 if ($Frequency -lt 3) {
                     $speak.Rate = 5
-                    $speak.SpeakAsync("$secondsremaining")| Out-Null}
+                    $speak.SpeakAsync("$secondsremaining") > $null}
                 else {
-                    $speak.SpeakAsync("$secondsremaining seconds remaining") | Out-Null
+                    $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
                 }
             }
         }
@@ -1771,11 +1771,11 @@ do {
             if ($voice -and ($secondsremaining % $seconds -eq 0)) {
                 $minutesremaining = $remaining.TotalMinutes.tostring("#.##")
                 if ($minutesremaining -ge 1) {
-                    $speak.SpeakAsync("$minutesremaining minutes remaining")| Out-Null
+                    $speak.SpeakAsync("$minutesremaining minutes remaining") > $null
                 }
                 else {
                     if ($secondsremaining -ge 1) {
-                        $speak.SpeakAsync("$secondsremaining seconds remaining")| Out-Null
+                        $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
                     }
                 }
             }
@@ -1785,16 +1785,16 @@ do {
             if ($voice -and ($secondsremaining % $seconds -eq 0)) {
                 $hoursremaining = $remaining.TotalHours.tostring("#.##")
                 if ($hoursremaining -ge 1) {
-                    $speak.SpeakAsync("$hoursremaining hours remaining")| Out-Null
+                    $speak.SpeakAsync("$hoursremaining hours remaining") > $null
                 }
                 else {
                     $minutesremaining = $remaining.TotalMinutes.tostring("#.##")
                     if ($minutesremaining -ge 1) {
-                        $speak.SpeakAsync("$minutesremaining minutes remaining")| Out-Null
+                        $speak.SpeakAsync("$minutesremaining minutes remaining") > $null
                     }
                     else {
                         if ($secondsremaining -ge 1) {
-                            $speak.SpeakAsync("$secondsremaining seconds remaining")| Out-Null
+                            $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
                         }
                     }
                 }
@@ -1805,21 +1805,21 @@ do {
             if ($voice -and ($secondsremaining % $seconds -eq 0)) {
                 $daysremaining = $remaining.TotalDays.tostring("#.##")
                 if ($daysremaining -ge 1) {
-                    $speak.SpeakAsync("$daysremaining days remaining")| Out-Null
+                    $speak.SpeakAsync("$daysremaining days remaining") > $null
                 }
                 else {
                     $hoursremaining = $remaining.TotalHours.tostring("#.##")
                     if ($hoursremaining -ge 1) {
-                        $speak.SpeakAsync("$hoursremaining hours remaining")| Out-Null
+                        $speak.SpeakAsync("$hoursremaining hours remaining") > $null
                     }
                     else {
                         $minutesremaining = $remaining.TotalMinutes.tostring("#.##")
                         if ($minutesremaining -ge 1) {
-                            $speak.SpeakAsync("$minutesremaining minutes remaining")| Out-Null
+                            $speak.SpeakAsync("$minutesremaining minutes remaining") > $null
                         }
                         else {
                             if ($secondsremaining -ge 1) {
-                                $speak.SpeakAsync("$secondsremaining seconds remaining")| Out-Null
+                                $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
                             }
                         }
                     }
@@ -1828,11 +1828,11 @@ do {
             }
         }
     }
-    $currentvrt = $vrts | ? countdownpoint -ge $($secondsremaining - 1) | Select-Object -First 1
+    $currentvrt = $vrts | Where-Object -FilterScript {$_.countdownpoint -ge $($secondsremaining - 1)} | Select-Object -First 1
     if ($currentvrt) {
         $Frequency = $currentvrt.frequency
         $Units = $currentvrt.units
-        $vrts = $vrts | ? countdownpoint -ne $currentvrt.countdownpoint
+        $vrts = $vrts | Where-Object -FilterScript  {$_countdownpoint -ne $currentvrt.countdownpoint}
     }
     Start-Sleep -Milliseconds $($nextsecond - (get-date)).TotalMilliseconds
 }
@@ -1854,35 +1854,38 @@ Function Read-AnyKey {
     $secondsCounter = 0
     $subCounter = 0
     While ( (!$host.ui.rawui.KeyAvailable) -and ($count -lt $secondsToWait) ){
-        start-sleep -m 10
+        Start-Sleep -Milliseconds 10
         $subCounter = $subCounter + 10
         if($subCounter -eq 1000)
         {
             $secondsCounter++
             $subCounter = 0
-            Write-Host -NoNewline "."
+            Write-Host -NoNewline '.'
         }       
         If ($secondsCounter -eq $secondsToWait) { 
             Write-Host "`r`n" #yuck?
-            Write-Output $false
+            Write-Output -InputObject $false
         }
     }
     Write-Host "`r`n" #yuck?
-    Write-Output $true;
+    Write-Output -InputObject $true;
 }
 function Read-InputBoxDialog
 { # Show input box popup and return the value entered by the user. 
 param(
     [string]$Message
     ,
-    [Alias("WindowTitle")]
+    [Alias('WindowTitle')]
     [string]$Title
     ,
     [string]$DefaultText
 )
+
 $Script:UserInput = $null
 #Region BuildWPFWindow
 # Add required assembly
+Add-Type -AssemblyName WindowsBase
+Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName PresentationFramework
 # Create a Size Object
 $wpfSize = new-object System.Windows.Size
@@ -1893,7 +1896,7 @@ $Window = New-Object Windows.Window
 $Window.Title = $WindowTitle
 $Window.MinWidth = 250
 $Window.SizeToContent ='WidthAndHeight'
-$window.WindowStartupLocation="CenterScreen"
+$window.WindowStartupLocation='CenterScreen'
 # Create a grid container with 3 rows, one for the message, one for the text box, and one for the buttons
 $Grid =  New-Object Windows.Controls.Grid
 $FirstRow = New-Object Windows.Controls.RowDefinition
@@ -1914,7 +1917,7 @@ $grid.ColumnDefinitions.Add($ColumnTwo)
 # Create a label for the message
 $label = New-Object Windows.Controls.Label
 $label.Content = $Message
-$label.Margin = "5,5,5,5"
+$label.Margin = '5,5,5,5'
 $label.HorizontalAlignment = 'Left'
 $label.Measure($wpfSize)
 #add the label to Row 1
@@ -1923,7 +1926,7 @@ $label.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,2)
 $textbox = New-Object Windows.Controls.TextBox
 $textbox.name = 'InputBox'
 $textbox.Text = $DefaultText
-$textbox.Margin = "10,10,10,10"
+$textbox.Margin = '10,10,10,10'
 $textbox.MinWidth = 200
 $textbox.SetValue([Windows.Controls.Grid]::RowProperty,1)
 $textbox.SetValue([Windows.Controls.Grid]::ColumnSpanProperty,2)
@@ -1934,26 +1937,26 @@ $OKButton.ToolTip = 'OK'
 $OKButton.HorizontalAlignment = 'Center'
 $OKButton.VerticalAlignment = 'Top'
 $OKButton.Add_Click({
-        [System.Object]$sender = $args[0]
-        [System.Windows.RoutedEventArgs]$e = $args[1]
+        [Object]$sender = $args[0]
+        [Windows.RoutedEventArgs]$e = $args[1]
         $Script:UserInput = $textbox.text
         $Window.DialogResult = $true
         $Window.Close()
     })
 $OKButton.SetValue([Windows.Controls.Grid]::RowProperty,2)
 $OKButton.SetValue([Windows.Controls.Grid]::ColumnProperty,0)
-$OKButton.Margin = "5,5,5,5"
+$OKButton.Margin = '5,5,5,5'
 $CancelButton = New-Object Windows.Controls.Button
 $CancelButton.Name = 'Cancel'
 $CancelButton.Content = 'Cancel'
 $CancelButton.ToolTip = 'Cancel'
 $CancelButton.HorizontalAlignment = 'Center'
 $CancelButton.VerticalAlignment = 'Top'
-$CancelButton.Margin = "5,5,5,5"
+$CancelButton.Margin = '5,5,5,5'
 $CancelButton.Measure($wpfSize)
 $CancelButton.Add_Click({
-        [System.Object]$sender = $args[0]
-        [System.Windows.RoutedEventArgs]$e = $args[1]
+        [Object]$sender = $args[0]
+        [Windows.RoutedEventArgs]$e = $args[1]
         $Window.DialogResult = $false
         $Window.Close()
     })
@@ -1979,10 +1982,9 @@ function Read-OpenFileDialog
 param(
     [string]$WindowTitle
     ,
-    [Parameter()]
     [string]$InitialDirectory
     ,
-    [string]$Filter = "All files (*.*)|*.*"
+    [string]$Filter = 'All files (*.*)|*.*'
     ,
     [switch]$AllowMultiSelect
 )
@@ -2001,10 +2003,10 @@ param(
         {
             if ($AllowMultiSelect)
             {
-                Write-Output $openFileDialog.Filenames
+                Write-Output -InputObject $openFileDialog.Filenames
             } else
             {
-                Write-Output $openFileDialog.Filename
+                Write-Output -InputObject $openFileDialog.Filename
             } 
         }
         'Cancel'
@@ -2012,18 +2014,18 @@ param(
         }
     }
     $openFileDialog.Dispose()
-    Remove-Variable openFileDialog
+    Remove-Variable -Name openFileDialog
 }#Read-OpenFileDialog
 function Read-PromptForChoice
 {
 [cmdletbinding(DefaultParameterSetName='StringChoices')]
 Param(
-    [System.String]$Message
+    [string]$Message
     ,
     [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
     [ValidateNotNullOrEmpty()]
     [alias('StringChoices')]
-    [System.String[]]$Choices
+    [String[]]$Choices
     ,
     [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
     [ValidateNotNullOrEmpty()]
@@ -2033,7 +2035,7 @@ Param(
     [int]$DefaultChoice = -1
     #[int[]]$DefaultChoices = @(0)
     ,
-    [System.String]$Title = [string]::Empty
+    [string]$Title = [string]::Empty
     ,
     [Parameter(ParameterSetName='StringChoices')]
     [switch]$Numbered
@@ -2100,7 +2102,7 @@ switch ($PSCmdlet.ParameterSetName)
         }
     }
 }#Switch
-[System.Management.Automation.Host.ChoiceDescription[]]$PossibleChoices = @(
+[Management.Automation.Host.ChoiceDescription[]]$PossibleChoices = @(
     $ChoiceObjects | ForEach-Object {
         $Enumerator = $_.Enumerator
         $Choice = $_.Choice
@@ -2131,14 +2133,14 @@ function Read-Choice
 {
 [cmdletbinding()]
 param(
-    [System.String]$Title = [string]::Empty
+    [string]$Title = [string]::Empty
     ,
-    [System.String]$Message
+    [string]$Message
     ,
     [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
     [ValidateNotNullOrEmpty()]
     [alias('StringChoices')]
-    [System.String[]]$Choices
+    [String[]]$Choices
     ,
     [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
     [ValidateNotNullOrEmpty()]
@@ -2259,6 +2261,8 @@ if ($Vertical)
 #EndRegion Layout
 #Region BuildWPFWindow
 # Add required assembly
+Add-Type -AssemblyName WindowsBase
+Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName PresentationFramework
 # Create a Size Object
 $wpfSize = new-object System.Windows.Size
@@ -2268,7 +2272,7 @@ $wpfSize.Width = [double]::PositiveInfinity
 $Window = New-Object Windows.Window
 $Window.Title = $Title
 $Window.SizeToContent ='WidthAndHeight'
-$window.WindowStartupLocation="CenterScreen"
+$window.WindowStartupLocation='CenterScreen'
 # Create a grid container with x rows, one for the message, x for the buttons
 $Grid =  New-Object Windows.Controls.Grid
 $FirstRow = New-Object Windows.Controls.RowDefinition
@@ -2277,7 +2281,7 @@ $grid.RowDefinitions.Add($FirstRow)
 # Create a label for the message
 $label = New-Object Windows.Controls.Label
 $label.Content = $Message
-$label.Margin = "5,5,5,5"
+$label.Margin = '5,5,5,5'
 $label.HorizontalAlignment = 'Left'
 $label.Measure($wpfSize)
 #add the label to Row 1
@@ -2292,7 +2296,7 @@ $buttonIndex = 0
 foreach ($pc in $possiblechoices)
 {
     # Create a button to get running Processes
-    Set-Variable "buttonControl$buttonIndex" -Value (New-Object Windows.Controls.Button) -Scope local
+    Set-Variable -Name "buttonControl$buttonIndex" -Value (New-Object Windows.Controls.Button) -Scope local
     $tempButton = Get-Variable -Name "buttonControl$buttonIndex" -ValueOnly
     $tempButton.Name = "Choice$buttonIndex"
     $tempButton.Content = $pc.ChoiceWithEnumerator
@@ -2301,8 +2305,8 @@ foreach ($pc in $possiblechoices)
     $tempButton.VerticalAlignment = 'Top'
     # Add an event on the Get Processes button
     $tempButton.Add_Click({
-        [System.Object]$sender = $args[0]
-        [System.Windows.RoutedEventArgs]$e = $args[1]
+        [Object]$sender = $args[0]
+        [Windows.RoutedEventArgs]$e = $args[1]
         $Script:UserChoice = $sender.content.tostring()
         $Window.DialogResult = $true
         $Window.Close()
@@ -2335,7 +2339,7 @@ foreach ($pc in $possiblechoices)
         }
     }
     $tempButton.MinHeight = 10
-    $tempButton.Margin = "5,5,5,5"
+    $tempButton.Margin = '5,5,5,5'
     $tempButton.Measure($wpfSize)
     $buttonheights += $tempButton.desiredSize.Height
     $buttonwidths += $tempButton.desiredSize.Width
@@ -2345,7 +2349,7 @@ $buttonHeight = ($buttonHeights | Measure-Object -Maximum | Select-Object -Expan
 Write-Verbose -Message "Button Height is $buttonHeight"
 $buttonWidth = ($buttonWidths| Measure-Object -Maximum | Select-Object -ExpandProperty Maximum) + 10
 Write-Verbose -Message "Button Width is $buttonWidth"
-$buttons = Get-Variable 'buttonControl*' -Scope local -ValueOnly
+$buttons = Get-Variable -Name 'buttonControl*' -Scope local -ValueOnly
 $buttonIndex = 0
 foreach ($button in $buttons)
 {
@@ -2354,7 +2358,7 @@ foreach ($button in $buttons)
     $grid.AddChild($button)
     if ($buttonIndex -eq $DefaultChoice)
     {
-        [void]$button.focus()
+        $null = $button.focus()
     }
     $buttonIndex++
 }
@@ -2383,7 +2387,6 @@ function Read-FolderBrowserDialog
     Param(
         [string]$Description
         ,
-        [Parameter()]
         [string]$InitialDirectory
         ,
         [string]$RootDirectory
@@ -2402,14 +2405,14 @@ function Read-FolderBrowserDialog
         'OK'
         {
             $folder = $FolderBrowserDialog.SelectedPath
-            Write-Output $folder
+            Write-Output -InputObject $folder
         }
         'Cancel'
         {
         }
     }
     $FolderBrowserDialog.Dispose()
-    Remove-Variable FolderBrowserDialog
+    Remove-Variable -Name FolderBrowserDialog
 }#Read-FolderBrowswerDialog
 ##########################################################################################################
 #Remote System Connection Functions
@@ -2445,20 +2448,20 @@ if ($ModuleLoaded.count -eq 0)
         Write-Log -message $message -EntryType Attempting
         Import-Module -Name $ModuleName -Global -ErrorAction Stop
         Write-Log -message $message -EntryType Succeeded
-        Write-Output $true
+        Write-Output -InputObject $true
     }#try
     catch 
     {
         $myerror = $_
         Write-Log -message $message -Verbose -ErrorLog -EntryType Failed 
         Write-Log -message $myerror.tostring() -ErrorLog
-        Write-Output $false
+        Write-Output -InputObject $false
         $PSCmdlet.ThrowTerminatingError($myerror)
     }#catch
 } else 
 {
     Write-Log -EntryType Notification -Message "$ModuleName Module is already loaded."
-    Write-Output $true
+    Write-Output -InputObject $true
 }
 }# Function Import-RequiredModule
 Function Connect-Exchange
@@ -2496,7 +2499,7 @@ Function Connect-Exchange
         [parameter(ParameterSetName='ComplianceCenter')]
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
-        [boolean]$ProxyEnabled = $False
+        [bool]$ProxyEnabled = $False
         ,
         [parameter(ParameterSetName='OnPremises')]
         [string[]]$PreferredDomainControllers
@@ -2539,7 +2542,7 @@ Function Connect-Exchange
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         switch ($PSCmdlet.ParameterSetName) {
@@ -2654,7 +2657,7 @@ Function Connect-Exchange
         switch ($UseExistingSession) {
             $true
             {
-                Write-Output $true
+                Write-Output -InputObject $true
             }#$true
             $false {
                 $sessionParams = @{
@@ -2683,7 +2686,7 @@ Function Connect-Exchange
                     }
                     'OnPremises' {
                         #add option for https + Basic Auth    
-                        $sessionParams.ConnectionURI = "http://" + $Server + "/PowerShell/"
+                        $sessionParams.ConnectionURI = 'http://' + $Server + '/PowerShell/'
                         $sessionParams.Authentication = $AuthMethod
                         if ($ProxyEnabled) {
                             $sessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig -ProxyAuthentication basic
@@ -2693,14 +2696,14 @@ Function Connect-Exchange
                 }
                 try {
                     Write-Log -Message "Attempting: Creation of Remote Session $SessionName to Exchange System $orgName"
-                    $sessionobj = New-PSSession @sessionParams -ErrorAction Stop
+                    $Session = New-PSSession @sessionParams -ErrorAction Stop
                     Write-Log -Message "Succeeded: Creation of Remote Session to Exchange System $orgName"
                     Write-Log -Message "Attempting: Import Exchange Session $SessionName and Module" 
                     $ImportPSSessionParams = @{
                         AllowClobber = $true
                         DisableNameChecking = $true
                         ErrorAction = 'Stop'
-                        Session = Get-PSSession -Name $SessionName
+                        Session = $Session
                     }
                     $ImportModuleParams = @{
                         DisableNameChecking = $true
@@ -2722,13 +2725,13 @@ Function Connect-Exchange
                         }#else    
                         Invoke-ExchangeCommand -cmdlet Set-ADServerSettings -ExchangeOrganization $orgName -splat $splat
                     }#if
-                    Write-Output $true
+                    Write-Output -InputObject $true
                     Write-Log -Message "Succeeded: Connect to Exchange System $orgName"
                 }#try
                 catch {
                     Write-Log -Message "Failed: Connect to Exchange System $orgName" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
-                    Write-Output $False
+                    Write-Output -InputObject $False
                     $_
                 }#catch
             }#$false
@@ -2762,7 +2765,7 @@ Function Connect-Skype {
         ,
         [parameter(ParameterSetName='OnPremises')]
         [parameter(ParameterSetName='Online')]
-        [boolean]$ProxyEnabled = $False
+        [bool]$ProxyEnabled = $False
         ,
         [parameter(ParameterSetName='OnPremises')]
         [string[]]$PreferredDomainControllers
@@ -2805,7 +2808,7 @@ Function Connect-Skype {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         switch ($PSCmdlet.ParameterSetName) {
@@ -2882,7 +2885,7 @@ Function Connect-Skype {
                             {
                                 Write-Log -Message 'Unable to load LyncOnlineConnector Module' -EntryType Failed -ErrorLog -Verbose
                                 Write-Log -Message $_.tostring() -ErrorLog 
-                                Write-Output $false
+                                Write-Output -InputObject $false
                             }
                             $Global:ErrorActionPreference = 'Stop'
                             Invoke-SkypeCommand -cmdlet 'Get-CsTenantFederationConfiguration' -SkypeOrganization $orgName -string '-erroraction Stop'
@@ -2905,7 +2908,7 @@ Function Connect-Skype {
             $UseExistingSession = $false
         }#catch
         switch ($UseExistingSession) {
-            $true {Write-Output $true}#$true
+            $true {Write-Output -InputObject $true}#$true
             $false {
                 $sessionParams = @{
                     Credential = $Credential
@@ -2954,13 +2957,13 @@ Function Connect-Skype {
                     }
                     Import-Module (Import-PSSession @ImportPSSessionParams) @ImportModuleParams
                     Write-Log -Message "Succeeded: Import Skype Session $SessionName and Module" 
-                    Write-Output $true
+                    Write-Output -InputObject $true
                     Write-Log -Message "Succeeded: Connect to Skype System $orgName"
                 }#try
                 catch {
                     Write-Log -Message "Failed: Connect to Skype System $orgName" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
-                    Write-Output $False
+                    Write-Output -InputObject $False
                     $_
                 }#catch
             }#$false
@@ -3016,7 +3019,7 @@ Function Connect-AADSync {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
@@ -3049,7 +3052,7 @@ Function Connect-AADSync {
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 $UseExistingSession = $true
-                Write-Output $true
+                Write-Output -InputObject $true
             }#else
         }#try
         catch {
@@ -3062,15 +3065,15 @@ Function Connect-AADSync {
                 $Session = New-PsSession -ComputerName $Server -Credential $Credential -Name $SessionName -ErrorAction Stop
                 Write-Log -Message "Attempting: Import AADSync Session $SessionName and Module" 
                 if ($usePrefix) {
-                    Invoke-Command -Session $Session -ScriptBlock {Import-Module ADSync -DisableNameChecking} -ErrorAction Stop
+                    Invoke-Command -Session $Session -ScriptBlock {Import-Module -Name ADSync -DisableNameChecking} -ErrorAction Stop
                     Import-Module (Import-PSSession -Session $Session -Module ADSync -DisableNameChecking -ErrorAction Stop -Prefix $CommandPrefix) -Global -DisableNameChecking -ErrorAction Stop -Prefix $CommandPrefix
                 }
                 else {
-                    Invoke-Command -Session $Session -ScriptBlock {Import-Module ADSync -DisableNameChecking} -ErrorAction Stop
+                    Invoke-Command -Session $Session -ScriptBlock {Import-Module -Name ADSync -DisableNameChecking} -ErrorAction Stop
                     Import-Module (Import-PSSession -Session $Session -Module ADSync -DisableNameChecking -ErrorAction Stop) -Global -DisableNameChecking -ErrorAction Stop 
                 }
                 Write-Log -Message "Succeeded: Import AADSync Session $SessionName and Module" 
-                if ((Invoke-Command -Session (Get-PSSession -Name $SessionName) -ScriptBlock {Get-Command -Module ADSync | select -ExpandProperty Name}) -contains 'Get-ADSyncScheduler') 
+                if ((Invoke-Command -Session (Get-PSSession -Name $SessionName) -ScriptBlock {Get-Command -Module ADSync | Select-Object -ExpandProperty Name}) -contains 'Get-ADSyncScheduler') 
                 {
                 if ($usePrefix) {$functionstring = "Function Global:Start-$($CommandPrefix)DirectorySynchronization {"}
                 else {$functionstring = 'Function Global:Start-DirectorySynchronization {'}
@@ -3109,12 +3112,12 @@ Function Connect-AADSync {
                 }
                 $function = [scriptblock]::Create($functionstring)
                 &$function
-                Write-Output $true
+                Write-Output -InputObject $true
             }#Try
             Catch {
                 Write-Log -Verbose -Message "ERROR: Connection to $server failed." -ErrorLog
                 Write-Log -Verbose -Message $_.tostring() -ErrorLog
-                Write-Output $false
+                Write-Output -InputObject $false
             }#catch
         }#if
     }#process 
@@ -3135,7 +3138,7 @@ Function Connect-ADInstance {
         [string]$description
         ,
         [parameter(Mandatory = $true,ParameterSetName='Manual')]
-        [boolean]$GlobalCatalog = $true
+        [bool]$GlobalCatalog
     )#param
     DynamicParam {
         #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
@@ -3172,7 +3175,7 @@ Function Connect-ADInstance {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         $ProcessStatus = @{
@@ -3207,7 +3210,7 @@ Function Connect-ADInstance {
                     If ($result.Count -ge 1) {
                         Write-Log -Message "Succeeded: Validate Operational Status of Drive $name."
                         $UseExistingDrive = $True
-                        Write-Output $True
+                        Write-Output -InputObject $True
                     }
                     else {
                         Remove-PSDrive -Name $name -ErrorAction Stop
@@ -3242,10 +3245,10 @@ Function Connect-ADInstance {
             try {
                 Write-Log -Message "Attempting: Connect PS Drive $name`: to $Description"
                 if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop) {
-                    New-PSDrive @NewPSDriveParams | Out-Null
+                    New-PSDrive @NewPSDriveParams  > $null
                 }#if
                 Write-Log -Message "Succeeded: Connect PS Drive $name`: to $Description"
-                Write-Output $true
+                Write-Output -InputObject $true
             }#try
             catch {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
@@ -3297,7 +3300,7 @@ Function Connect-AzureAD {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory
     begin{
@@ -3325,13 +3328,13 @@ Function Connect-AzureAD {
                 Write-Log -Message "Attempting: Connect to Windows Azure AD Administration with User $($Credential.username)."
                 Connect-MsolService -Credential $Credential -ErrorAction Stop
                 Write-Log -Message "Succeeded: Connect to Windows Azure AD Administration with User $($Credential.username)."
-                Write-Output $true
+                Write-Output -InputObject $true
             }
             Catch 
             {
                 Write-Log -Message "FAILED: Connect to Windows Azure AD Administration with User $($Credential.username)." -Verbose -ErrorLog
                 Write-Log -Message $_.tostring()
-                Write-Output $false 
+                Write-Output -InputObject $false 
             }
     } #process
     <#Proxy for connect-msolservice
@@ -3380,7 +3383,7 @@ Function Connect-AADRM {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
     begin{
@@ -3404,18 +3407,18 @@ Function Connect-AADRM {
         {
             $ModuleStatus = Import-RequiredModule -ModuleName AADRM -ErrorAction Stop
             Write-Log -Message "Attempting: Connect to Azure AD RMS Administration with User $($Credential.username)."
-            Connect-AadrmService -Credential $Credential -errorAction Stop | Out-Null
+            Connect-AadrmService -Credential $Credential -errorAction Stop  > $null
             Write-Log -Message "Succeeded: Connect to Azure AD RMS Administration with User $($Credential.username)."
-            Write-Output $true
+            Write-Output -InputObject $true
         }
         catch 
         {
             Write-Log -Message "FAILED: Connect to Azure AD RMS Administration with User $($Credential.username)." -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
-            Write-Output $false 
+            Write-Output -InputObject $false 
         }
     }#process
-}#function Connect-AADRM 
+}#function Connect-AADRM
 Function Connect-SQLDatabase {
     [cmdletbinding(DefaultParameterSetName = 'SQLDatabase')]
     Param(
@@ -3457,7 +3460,7 @@ Function Connect-SQLDatabase {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
     begin{
@@ -3486,7 +3489,7 @@ Function Connect-SQLDatabase {
     {
         try 
         {
-            $message = "Import required module POSH_ADO_SQLServer"
+            $message = 'Import required module POSH_ADO_SQLServer'
             Write-Log -Message $message -EntryType Attempting
             $ModuleStatus = Import-RequiredModule -ModuleName POSH_ADO_SQLServer -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
@@ -3502,14 +3505,14 @@ Function Connect-SQLDatabase {
         {
             $message = "Connect to $Description on $SQLServer as User $($Credential.username)."
             Write-Log -Message $message -EntryType Attempting
-            Write-Warning -Message "Connect-SQLDatabase currently uses Windows Integrated Authentication to connect to SQL Servers and ignores supplied credentials"
+            Write-Warning -Message 'Connect-SQLDatabase currently uses Windows Integrated Authentication to connect to SQL Servers and ignores supplied credentials'
             $SQLConnection = New-SQLServerConnection -server $SQLServer -database $Database -ErrorAction Stop #-user $credential.username -password $($Credential.password | Convert-SecureStringToString)
             $SQLConnectionString = New-SQLServerConnectionString -server $SQLServer -database $Database -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
             $SQLConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
             Update-SQLConnections -ConnectionName $Name -SQLConnection $SQLConnection
             Update-SQLConnectionStrings -ConnectionName $name -SQLConnectionString $SQLConnectionString
-            Write-Output $true
+            Write-Output -InputObject $true
         }
         catch 
         {
@@ -3519,7 +3522,7 @@ Function Connect-SQLDatabase {
             $PSCmdlet.ThrowTerminatingError($myerror) 
         }
     }#process
-}#function Connect-SQLDatabase 
+}#function Connect-SQLDatabase
 Function Connect-PowerShellSystem {
     [cmdletbinding(DefaultParameterSetName = 'Profile')]
     Param(
@@ -3571,7 +3574,7 @@ Function Connect-PowerShellSystem {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
@@ -3606,7 +3609,7 @@ Function Connect-PowerShellSystem {
             else {
                 #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
                 $UseExistingSession = $true
-                Write-Output $true
+                Write-Output -InputObject $true
             }#else
         }#try
         catch {
@@ -3627,7 +3630,7 @@ Function Connect-PowerShellSystem {
                 $Session = New-PsSession @NewPSSessionParams
                 Write-Log -Message $message -EntryType Succeeded
                 Update-SessionManagementGroups -ManagementGroups $ManagementGroups -Session $SessionName -ErrorAction Stop
-                Write-Output $true
+                Write-Output -InputObject $true
             }#Try
             Catch {
                 Write-Log -Verbose -Message $message -ErrorLog -EntryType Failed
@@ -3675,7 +3678,7 @@ DynamicParam
     # Create and return the dynamic parameter
     $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
     $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-    Write-Output $RuntimeParameterDictionary
+    Write-Output -InputObject $RuntimeParameterDictionary
 }#DynamicParam
 #Connect to MigrationWiz
 begin
@@ -3710,14 +3713,14 @@ process
         $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop
         Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket #-Identity $Identity
         Write-Log -Message $message -EntryType Succeeded
-        Write-Output $true
+        Write-Output -InputObject $true
     }
     Catch 
     {
         $myerror = $_
         Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
         Write-Log -Message $myerror.tostring()
-        Write-Output $false 
+        Write-Output -InputObject $false 
     }
 } 
 }#function Connect-MigrationWiz
@@ -3763,7 +3766,7 @@ Function Connect-LotusNotesDatabase
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     begin{
         Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
@@ -3825,7 +3828,7 @@ Function Connect-LotusNotesDatabase
         #and then import the session with just those functions available to bring them into the local session
         try
         {
-            $message = "Import the Client PSSession importing only the Notes functions"
+            $message = 'Import the Client PSSession importing only the Notes functions'
             Write-Log -Message $message -EntryType Attempting
             $NotesFunctionNames | ForEach-Object {Remove-Item -Path "function:\$_" -Force -ErrorAction Stop}
             $ClientPSSession = Get-PSSession -Name $ClientIdentity 
@@ -3852,7 +3855,7 @@ Function Connect-LotusNotesDatabase
             #$NotesDatabaseConnection | Add-Member -Name 'Name' -Value $name -MemberType NoteProperty
             #$NotesDatabaseConnection | Add-Member -Name 'Identity' -Value $Identity -MemberType NoteProperty
             #Update-NotesDatabaseConnections -ConnectionName $Name -NotesDatabaseConnection $NotesDatabaseConnection
-            Write-Output $true
+            Write-Output -InputObject $true
         }
         catch 
         {
@@ -3866,7 +3869,7 @@ Function Connect-LotusNotesDatabase
     {
         Write-EndFunctionStatus -CallingFunction $MyInvocation.MyCommand
     }
-}#function Connect-LotusNotesDatabase 
+}#function Connect-LotusNotesDatabase
 Function Update-SessionManagementGroups {
 [cmdletbinding(DefaultParameterSetName = 'Profile')]
 Param(
@@ -3912,13 +3915,13 @@ Param(
     $SQLConnection
 )#param
 #Check if the Session Group already exists
-if (Test-Path -Path 'variable:\SQLConnections') 
+if (Test-Path -Path 'variable:\SQLConnections')
 {
     #since the connection group already exists, add the connection to it if it is not already present or update it if it is
     $existingConnections = Get-Variable -Name 'SQLConnections' -Scope Global -ValueOnly
     $existingConnectionNames = $existingConnections | Select-Object -ExpandProperty Name
     #$existingSessionIDs = $existingSessions | Select-Object -ExpandProperty ID
-    if ($ConnectionName -in $existingConnectionNames) 
+    if ($ConnectionName -in $existingConnectionNames)
     {
         $newvalue = @($existingConnections | Where-Object -FilterScript {$_.Name -ne $ConnectionName})
         $newvalue += $SQLConnection
@@ -4143,11 +4146,11 @@ Function Connect-RemoteSystems
             }#catch
         }
         $ProcessStatus.Outcome = $true
-        Write-Output $ProcessStatus.Connections
+        Write-Output -InputObject $ProcessStatus.Connections
     }
     catch {
         $ProcessStatus.Outcome = $false
-        Write-Output $ProcessStatus.Connections
+        Write-Output -InputObject $ProcessStatus.Connections
     }
 }
 function Invoke-ExchangeCommand {
@@ -4200,7 +4203,7 @@ function Invoke-ExchangeCommand {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
 
     begin {
@@ -4278,7 +4281,7 @@ function Invoke-SkypeCommand {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
 
     begin {
@@ -4320,7 +4323,7 @@ param(
 [string]$Name
 ,
 [parameter(ParameterSetName = 'SessionObject',Mandatory,ValueFromPipeline)]
-[System.Management.Automation.Runspaces.PSSession]$PSSession
+[Management.Automation.Runspaces.PSSession]$PSSession
 ,
 [switch]$Refresh
 )
@@ -4361,7 +4364,7 @@ foreach ($FN in $FunctionNames)
         $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
     }
 }
-Write-Verbose "Functions remaining: $($FunctionNames -join ',')"
+Write-Verbose -Message "Functions remaining: $($FunctionNames -join ',')"
 #Verify the local function availiability
 $Functions = @(
     foreach ($FN in $FunctionNames)
@@ -4579,7 +4582,7 @@ function Find-ADUser {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         $ADInstance = $PSBoundParameters[$ParameterName]
@@ -4587,13 +4590,13 @@ function Find-ADUser {
         #validate AD Instance
         try {
             #Write-Log -Message "Attempting: Set Location to AD Drive $("$ADInstance`:")"
-            Set-Location $("$ADInstance`:\") -ErrorAction Stop
+            Set-Location -Path $("$ADInstance`:\") -ErrorAction Stop
             #Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" 
         }#try
         catch {
             Write-Log -Message "Failed: Set Location to AD Drive $("$ADInstance`:")" -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
-            $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
+            $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message 'Required AD Drive not available'
             $PSCmdlet.ThrowTerminatingError($ErrorRecord)
         }
         #Setup GetADUserParams
@@ -4686,7 +4689,7 @@ function Find-ADUser {
             switch ($aduser.Count) {
                 1 {
                     $TrimmedADUser = $ADUser | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                    Write-Output $TrimmedADUser
+                    Write-Output -InputObject $TrimmedADUser
                 }#1
                 0 {
                     if ($ReportExceptions) {$Script:LookupADUserNotFound += $ID}
@@ -4694,7 +4697,7 @@ function Find-ADUser {
                 Default {
                     if ($AmbiguousAllowed) {
                         $TrimmedADUser = $ADUser | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                        Write-Output $TrimmedADUser    
+                        Write-Output -InputObject $TrimmedADUser    
                     }
                     else {
                         if ($ReportExceptions) {$Script:LookupADUserAmbiguous += $ID}
@@ -4772,20 +4775,20 @@ function Find-ADContact {
         # Create and return the dynamic parameter
         $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output $RuntimeParameterDictionary
+        Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
     Begin {
         $ADInstance = $PSBoundParameters[$ParameterName]
         if ($DoNotPreserveLocation -ne $true) {Push-Location -StackName 'Find-ADContact'}
         try {
             #Write-Log -Message "Attempting: Set Location to AD Drive $("$ADInstance`:")" -Verbose
-            Set-Location $("$ADInstance`:") -ErrorAction Stop
+            Set-Location -Path $("$ADInstance`:") -ErrorAction Stop
             #Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" -Verbose
         }#try
         catch {
             Write-Log -Message "Succeeded: Set Location to AD Drive $("$ADInstance`:")" -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
-            $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message "Required AD Drive not available"
+            $ErrorRecord = New-ErrorRecord -Exception 'System.Exception' -ErrorId ADDriveNotAvailable -ErrorCategory NotSpecified -TargetObject $ADInstance -Message 'Required AD Drive not available'
             $PSCmdlet.ThrowTerminatingError($ErrorRecord)
         }
         $GetADObjectParams = @{ErrorAction = 'Stop'}
@@ -4847,7 +4850,7 @@ function Find-ADContact {
             switch ($ADContact.Count) {
                 1 {
                     $TrimmedADObject = $ADContact | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                    Write-Output $TrimmedADObject
+                    Write-Output -InputObject $TrimmedADObject
                 }#1
                 0 {
                     if ($ReportExceptions) {$Script:LookupADContactNotFound += $ID}
@@ -4855,7 +4858,7 @@ function Find-ADContact {
                 Default {
                     if ($AmbiguousAllowed) {
                         $TrimmedADObject = $ADContact | Select-Object -property * -ExcludeProperty Item, PropertyNames, *Properties, PropertyCount
-                        Write-Output $TrimmedADObject    
+                        Write-Output -InputObject $TrimmedADObject    
                     }
                     else {
                         if ($ReportExceptions) {$Script:LookupADContactAmbiguous += $ID}
@@ -4888,7 +4891,7 @@ function Find-PrimarySMTPAddress {
         [parameter(mandatory = $false)]
         [string]$Identity
     )
-    $message = "Find Primary SMTP Address"
+    $message = 'Find Primary SMTP Address'
     if (-not [string]::IsNullOrWhiteSpace($Identity)) 
     {
         $message = $message + " for $Identity"
@@ -4905,13 +4908,13 @@ function Find-PrimarySMTPAddress {
         }#1
         0 
         {
-            $message = $message + ": 0 Found"
+            $message = $message + ': 0 Found'
             Write-Log -message $message -Verbose -EntryType Failed
             Throw "$message"
         }#0
         Default 
         {
-            $message = $message + ": Multiple Found"
+            $message = $message + ': Multiple Found'
             Write-Log -message $message -Verbose -EntryType Failed
             Throw "$message"
         }#Default
@@ -4923,7 +4926,7 @@ function Get-AdObjectDomain {
         $adobject
     )
     [string]$domain=$adobject.canonicalname.split('/')[0]
-    Write-Output $domain
+    Write-Output -InputObject $domain
 }
 Function Get-ADAttributeSchema
 {
@@ -4949,7 +4952,7 @@ try
 catch
 {
     $_
-    throw "Could not find AD Forest"
+    throw 'Could not find AD Forest'
 }
 $schemalocation = "CN=Schema,$($script:LoggedOnUserActiveDirectoryForest.PartitionsContainer.split(',',2)[1])"
 $GetADObjectParams = @{
@@ -4971,10 +4974,10 @@ switch ($PSCmdlet.ParameterSetName)
 try {
     $ADObjects = @(Get-ADObject @GetADObjectParams)
     if ($ADObjects.Count -eq 0)
-    {Write-Warning "Failed: Find AD Attribute with name/Identifier: $($LDAPDisplayName,$GetADObjectParams.Identity)"}
+    {Write-Warning -Message "Failed: Find AD Attribute with name/Identifier: $($LDAPDisplayName,$GetADObjectParams.Identity)"}
     else
     {
-        Write-Output $ADObjects[0]
+        Write-Output -InputObject $ADObjects[0]
     }
 }
 catch {
@@ -5011,12 +5014,12 @@ try
     $AttributeSchema = @(Get-ADAttributeSchema @GetADAttributeSchemaParams)
     if ($AttributeSchema.Count -eq 1)
     {
-        if ($AttributeSchema[0].RangeUpper -eq $null) {Write-Output 'Unlimited'}
-        else {Write-Output $AttributeSchema[0].RangeUpper}
+        if ($AttributeSchema[0].RangeUpper -eq $null) {Write-Output -InputObject 'Unlimited'}
+        else {Write-Output -InputObject $AttributeSchema[0].RangeUpper}
     }
     else
     {
-        Write-Warning "AD Attribute Not Found"
+        Write-Warning -Message 'AD Attribute Not Found'
     }
 }
 catch
@@ -5040,12 +5043,12 @@ function Get-MsolUserLicenseDetail {
             $result += [pscustomobject]@{
                 UserPrincipalName = $user.UserPrincipalName
                 LicenseAssigned = $user.Licenses.AccountSKUID
-                EnabledServices = @($user.Licenses.servicestatus | Select-Object @{n='Service';e={$_.serviceplan.servicename}},@{n='Status';e={$_.provisioningstatus}} | where-object Status -ne 'Disabled' | Select-Object -ExpandProperty Service)
-                DisabledServices = @($user.Licenses.servicestatus | Select-Object @{n='Service';e={$_.serviceplan.servicename}},@{n='Status';e={$_.provisioningstatus}} | where-object Status -eq 'Disabled' | Select-Object -ExpandProperty Service)
+                EnabledServices = @($user.Licenses.servicestatus | Select-Object -Property @{n='Service';e={$_.serviceplan.servicename}},@{n='Status';e={$_.provisioningstatus}} | where-object Status -ne 'Disabled' | Select-Object -ExpandProperty Service)
+                DisabledServices = @($user.Licenses.servicestatus | Select-Object -Property @{n='Service';e={$_.serviceplan.servicename}},@{n='Status';e={$_.provisioningstatus}} | where-object Status -eq 'Disabled' | Select-Object -ExpandProperty Service)
                 UsageLocation = $user.UsageLocation
                 LicenseReconciliationNeeded = $user.LicenseReconciliationNeeded
             }#result
-            Write-Output $result
+            Write-Output -InputObject $result
         }
     }#begin
     process {
@@ -5056,7 +5059,7 @@ function Get-MsolUserLicenseDetail {
                         Write-Log -Message "Attempting: Get-MsolUser for UserPrincipalName $UPN" 
                         $user = Get-MsolUser -UserPrincipalName $UPN -ErrorAction Stop
                         Write-Log -Message "Succeeded: Get-MsolUser for UserPrincipalName $UPN" 
-                        getresult $user 
+                        getresult -user $user 
                     }#try
                     catch{
                         Write-Log -message "Unable to locate MSOL User with UserPrincipalName $UPN" -ErrorLog
@@ -5067,7 +5070,7 @@ function Get-MsolUserLicenseDetail {
             }#UserPrincipalName
             'MSOLUserObject' {
                 foreach ($user in $msoluser) {
-                    getresult $user 
+                    getresult -user $user 
                 }#foreach
             }#MSOLUserObject
         }#switch
@@ -5077,23 +5080,23 @@ function Get-MsolUserLicenseDetail {
 }
 function Get-XADUserPasswordExpirationDate() {
 
-    Param ([Parameter(Mandatory=$true,  Position=0,  ValueFromPipeline=$true, HelpMessage="Identity of the Account")]
+    Param ([Parameter(Mandatory=$true,  Position=0,  ValueFromPipeline=$true, HelpMessage='Identity of the Account')]
 
-    [Object] $accountIdentity)
+     $accountIdentity)
 
     PROCESS {
 
-        $accountObj = Get-ADUser $accountIdentity -properties PasswordExpired, PasswordNeverExpires, PasswordLastSet
+        $accountObj = Get-ADUser -Identity $accountIdentity -Properties PasswordExpired, PasswordNeverExpires, PasswordLastSet
 
         if ($accountObj.PasswordExpired) {
 
-            echo ("Password of account: " + $accountObj.Name + " already expired!")
+            Write-Output -InputObject $('Password of account: ' + $accountObj.Name + ' already expired!')
 
         } else { 
 
             if ($accountObj.PasswordNeverExpires) {
 
-                echo ("Password of account: " + $accountObj.Name + " is set to never expires!")
+                Write-Output -InputObject $('Password of account: ' + $accountObj.Name + ' is set to never expires!')
 
             } else {
 
@@ -5101,7 +5104,7 @@ function Get-XADUserPasswordExpirationDate() {
 
                 if ($passwordSetDate -eq $null) {
 
-                    echo ("Password of account: " + $accountObj.Name + " has never been set!")
+                    Write-Output -InputObject $('Password of account: ' + $accountObj.Name + ' has never been set!')
 
                 }  else {
 
@@ -5133,11 +5136,11 @@ function Get-XADUserPasswordExpirationDate() {
 
                     if ($maxPasswordAgeTimeSpan -eq $null -or $maxPasswordAgeTimeSpan.TotalMilliseconds -eq 0) {
 
-                        echo ("MaxPasswordAge is not set for the domain or is set to zero!")
+                        Write-Output -InputObject $('MaxPasswordAge is not set for the domain or is set to zero!')
 
                     } else {
 
-                        echo ("Password of account: " + $accountObj.Name + " expires on: " + ($passwordSetDate + $maxPasswordAgeTimeSpan))
+                        Write-Output -InputObject $('Password of account: ' + $accountObj.Name + ' expires on: ' + ($passwordSetDate + $maxPasswordAgeTimeSpan))
 
                     }
 
@@ -5163,7 +5166,7 @@ param
 [parameter(Mandatory=$true)]
 $ADInstance
 )
-    cd "$($ADInstance):\"
+    Set-Location -Path "$($ADInstance):\"
     $AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties @($AllADAttributesToRetrieve + 'Members') -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
     $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
     $AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $AllADContactAttributesToRetrieve -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
@@ -5195,11 +5198,11 @@ $Credential
 #verify required powershell session is available
 $SessionIdentity = $Identity.Replace('-','')
 $Password = $Credential.Password | Convert-SecureStringToString
-if (-not (Test-Path variable:NotesSessions))
+if (-not (Test-Path -Path variable:NotesSessions))
 {
     New-Variable -Name NotesSessions -Value @{} -Scope Global
 }
-if (-not (Test-Path variable:NotesDatabaseConnections))
+if (-not (Test-Path -Path variable:NotesDatabaseConnections))
 {
     New-Variable -Name NotesDatabaseConnections -Value @{} -Scope Global
 }
@@ -5212,7 +5215,7 @@ if (-not ($NotesSessions.ContainsKey($SessionIdentity)))
         $NotesDatabaseConnections.$Name = $NotesSessions.$SessionIdentity.GetDatabase("$NotesServerName","$Database")
     }
 }
-Write-Output $NotesDatabaseConnections.$Name
+Write-Output -InputObject $NotesDatabaseConnections.$Name
 }
 function Get-NotesUser
 {
@@ -5222,7 +5225,7 @@ param(
 ,
 [string]$PrimarySMTPAddress
 )
-if (-not (Test-Path variable:Global:NotesViews))
+if (-not (Test-Path -Path variable:Global:NotesViews))
 {
     New-Variable -Name NotesViews -Value @{} -Scope Global
 }
@@ -5259,10 +5262,10 @@ switch ($userdocs.Count)
         {
             $NotesUserObject | Add-Member -Name $($item.name) -value $(if ($item.values.count -gt 1) {$item.text} else {$item.values}) -MemberType NoteProperty
         }
-        Write-Output $NotesUserObject
+        Write-Output -InputObject $NotesUserObject
     }
     0
-    {Write-Warning "No Notes User for $PrimarySMTPAddress was found"}
+    {Write-Warning -Message "No Notes User for $PrimarySMTPAddress was found"}
     default
     {
         throw "$PrimarySMTPAddress is ambiguous among Notes Databases: $($NotesDatabase -join ',')"
@@ -5321,20 +5324,20 @@ Switch ($PSCmdlet.ParameterSetName)
     'AutoConnect'
     {
         $DefaultOrgProfile = Get-OrgProfile @GetOrgProfileParams -GetDefault
-        [boolean]$OrgProfileLoaded = Use-OrgProfile -Profile $DefaultOrgProfile -ErrorAction Stop
+        [bool]$OrgProfileLoaded = Use-OrgProfile -Profile $DefaultOrgProfile -ErrorAction Stop
         if ($OrgProfileLoaded)
         {
             $DefaultAdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams -GetDefault
             $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
             Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
-            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
+            [bool]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
             if ($AdminUserProfileLoaded)
             {
                 if ($NoConnections)
                 {}
                 else
                 {
-                    Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                    Write-Log -Message 'Running Connect-RemoteSystems' -EntryType Notification
                     Connect-RemoteSystems
                 }
             }#if
@@ -5365,9 +5368,9 @@ Switch ($PSCmdlet.ParameterSetName)
             $message = 'Get the User Organization Profile Choice'
             Write-Log -Message $message -EntryType Attempting 
             $Choices = @($OrgProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
-            $UserChoice = Read-Choice -Title "Select OrgProfile" -Message "Select an organization profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+            $UserChoice = Read-Choice -Title 'Select OrgProfile' -Message 'Select an organization profile to load:' -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
             $OrgProfile = $OrgProfiles[$UserChoice]
-            Use-OrgProfile -profile $OrgProfile -ErrorAction Stop | Out-Null
+            Use-OrgProfile -profile $OrgProfile -ErrorAction Stop  > $null
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -5400,13 +5403,13 @@ Switch ($PSCmdlet.ParameterSetName)
                     $message = 'Get the User Admin User Profile Choice'
                     Write-Log -Message $message -EntryType Attempting
                     $Choices = @($AdminUserProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
-                    $UserChoice = Read-Choice -Title "Select AdminUserProfile" -Message "Select an Admin User Profile to load:" -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+                    $UserChoice = Read-Choice -Title 'Select AdminUserProfile' -Message 'Select an Admin User Profile to load:' -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
                     $AdminUserProfile = $AdminUserProfiles[$UserChoice]
                     Write-Log -Message $message -EntryType Succeeded
                 }
                 {$_ -lt 1}
                 {
-                    $ShouldCreateNewProfile = Read-Choice -Title "Create new profile?" -Message "No Admin User profile exists for the following Org Profile:`r`nIdentity:$($OrgProfile.Identity)`r`nName$($OrgProfile.General.Name)" -Choices 'Yes','No' -ReturnChoice
+                    $ShouldCreateNewProfile = Read-Choice -Title 'Create new profile?' -Message "No Admin User profile exists for the following Org Profile:`r`nIdentity:$($OrgProfile.Identity)`r`nName$($OrgProfile.General.Name)" -Choices 'Yes','No' -ReturnChoice
                     switch ($ShouldCreateNewProfile)
                     {
                         'Yes'
@@ -5428,7 +5431,7 @@ Switch ($PSCmdlet.ParameterSetName)
         {
             $message = 'Load User Selected Admin User Profile'
             Write-Log -Message $message -EntryType Attempting
-            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+            [bool]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -5443,7 +5446,7 @@ Switch ($PSCmdlet.ParameterSetName)
                 {}
                 else
                 {
-                    Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                    Write-Log -Message 'Running Connect-RemoteSystems' -EntryType Notification
                     Connect-RemoteSystems
                 }
         }
@@ -5465,7 +5468,7 @@ Switch ($PSCmdlet.ParameterSetName)
                 1
                 {
                     $OrgProfile = $OrgProfile[0]
-                    Use-OrgProfile -profile $OrgProfile -ErrorAction Stop | Out-Null
+                    Use-OrgProfile -profile $OrgProfile -ErrorAction Stop  > $null
                 }
                 Default
                 {throw "Multiple OrgProfile(s) with Identity $OrgProfileIdentity found in the specified location(s) $($OrgProfilePath -join ';')"}
@@ -5508,7 +5511,7 @@ Switch ($PSCmdlet.ParameterSetName)
         {
             $message = 'Load User Selected Admin User Profile'
             Write-Log -Message $message -EntryType Attempting
-            [boolean]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+            [bool]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -5523,7 +5526,7 @@ Switch ($PSCmdlet.ParameterSetName)
                 {}
                 else
                 {
-                    Write-Log -Message "Running Connect-RemoteSystems" -EntryType Notification
+                    Write-Log -Message 'Running Connect-RemoteSystems' -EntryType Notification
                     Connect-RemoteSystems
                 }
         }
@@ -5557,7 +5560,7 @@ Function Export-OrgProfile
 
     try {
         ConvertTo-Json @JSONparams | Out-File -FilePath $path -Encoding ascii -ErrorAction Stop
-        Write-Output $true
+        Write-Output -InputObject $true
     }#try
     catch {
         $_
@@ -5711,7 +5714,7 @@ begin
             Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name)." -EntryType Notification -Verbose
         }
         $Script:CurrentOrgAdminProfileSystems = @()
-        Write-Output $true
+        Write-Output -InputObject $true
     }#process
 }
 function GetOrgProfileSystem
@@ -5788,11 +5791,11 @@ process{
     if (($script:CurrentAdminUserProfile -ne $null) -and $AdminUserProfile.Identity -ne $script:CurrentAdminUserProfile.Identity) 
     {
         $script:CurrentAdminUserProfile = $AdminUserProfile
-        Write-Warning "Admin User Profile has been changed to $($script:CurrentAdminUserProfile.Identity). Remove PSSessions and then re-establish connectivity using Connect-RemoteSystems."
+        Write-Warning -Message "Admin User Profile has been changed to $($script:CurrentAdminUserProfile.Identity). Remove PSSessions and then re-establish connectivity using Connect-RemoteSystems."
     }
     else {
         $script:CurrentAdminUserProfile = $AdminUserProfile
-        Write-Verbose "Admin User Profile has been set to $($script:CurrentAdminUserProfile.Identity), $($script:CurrentAdminUserProfile.general.name)."
+        Write-Verbose -Message "Admin User Profile has been set to $($script:CurrentAdminUserProfile.Identity), $($script:CurrentAdminUserProfile.general.name)."
     }
     #Retrieve the systems from the current org profile
     $systems = GetOrgProfileSystem -OrganizationIdentity $AdminUserProfile.general.OrganizationIdentity
@@ -5824,7 +5827,7 @@ process{
     $Script:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations.log'
     $Script:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations-Errors.log'
     $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
-    Write-Output $true
+    Write-Output -InputObject $true
 }#process
 }
 Function Get-AdminUserProfile
@@ -5991,7 +5994,7 @@ param
             {
                 if (-not [string]::IsNullOrEmpty($AdminUserProfile.General.ProfileFolder))
                 {
-                    $InitialDirectory = Split-Path $AdminUserProfile.General.ProfileFolder
+                    $InitialDirectory = Split-Path -Path $AdminUserProfile.General.ProfileFolder
                     $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
                 } else 
                 {
@@ -6039,7 +6042,7 @@ param
             {
                 if ($AdminUserProfile.General.ProfileFolder -eq '')
                 {
-                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                    Write-Error -Message 'Unable to save Admin Profile.  Please set a profile directory.'
                 }
                 else
                 {
@@ -6062,7 +6065,7 @@ param
             {
                 if ($AdminUserProfile.General.ProfileFolder -eq '')
                 {
-                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                    Write-Error -Message 'Unable to save Admin Profile.  Please set a profile directory.'
                 }
                 else
                 {
@@ -6090,7 +6093,7 @@ param
     }
     until ($quit)
     #return the admin profile raw object to the pipeline
-    if ($passthru) {Write-Output $AdminUserProfile}
+    if ($passthru) {Write-Output -InputObject $AdminUserProfile}
 } #New-AdminUserProfile
 function Set-AdminUserProfile
 {
@@ -6197,7 +6200,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
             {
                 if (-not [string]::IsNullOrEmpty($AdminUserProfile.General.ProfileFolder))
                 {
-                    $InitialDirectory = Split-Path $AdminUserProfile.General.ProfileFolder
+                    $InitialDirectory = Split-Path -Path $AdminUserProfile.General.ProfileFolder
                     $ProfileDirectory = GetAdminUserProfileFolder -InitialDirectory $InitialDirectory
                 } else 
                 {
@@ -6238,7 +6241,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
             {
                 if ($AdminUserProfile.General.ProfileFolder -eq '')
                 {
-                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                    Write-Error -Message 'Unable to save Admin Profile.  Please set a profile directory.'
                 }
                 else
                 {
@@ -6261,7 +6264,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
             {
                 if ($AdminUserProfile.General.ProfileFolder -eq '')
                 {
-                    Write-Error -Message "Unable to save Admin Profile.  Please set a profile directory."
+                    Write-Error -Message 'Unable to save Admin Profile.  Please set a profile directory.'
                 }
                 else
                 {
@@ -6289,7 +6292,7 @@ $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $Admin
     }
     until ($quit)
     #return the admin profile raw object to the pipeline
-    if ($passthru) {Write-Output $AdminUserProfile}
+    if ($passthru) {Write-Output -InputObject $AdminUserProfile}
 }#Process
 }# Set-AdminUserProfile
 function Update-AdminUserProfileTypeVersion
@@ -6318,16 +6321,16 @@ if ($BackupProfileUserChoice -eq 'Yes')
     {
         if ($Folder -ne $AdminUserProfile.General.ProfileFolder)
         {
-            Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop | Out-Null
+            Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop  > $null
         }
         else
         {
-            throw "Choose a different directory."
+            throw 'Choose a different directory.'
         }
     }
 }
 $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
-Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.general.profilefolder | Out-Null
+Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.general.profilefolder  > $null
 }
 Function Export-AdminUserProfile
 {
@@ -6342,7 +6345,7 @@ param(
     {$name = $($profile.Identity.Guid) + '.JSON'} 
     else
     {$name = $($profile.Identity) + '.JSON'}
-    $fullpath = Join-Path $path $name
+    $fullpath = Join-Path -Path $path -ChildPath $name
     $ConvertToJsonParams =@{
         InputObject = $profile
         ErrorAction = 'Stop'
@@ -6351,7 +6354,7 @@ param(
     try
     {
         ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
-        Write-Output $true
+        Write-Output -InputObject $true
     }#try
     catch
     {
@@ -6473,7 +6476,7 @@ if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion) {
     )
     $AdminUserProfile.Credentials = $UpdatedCredentialObjects
 }
-Write-Output $AdminUserProfile
+Write-Output -InputObject $AdminUserProfile
 } #UpdateAdminUserProfileObjectVersion
 function GetAdminUserProfileFolder
 {
@@ -6487,7 +6490,7 @@ Param(
         $UserChosenPath = Read-FolderBrowserDialog -Description $message -InitialDirectory $InitialDirectory
         if (Test-IsWriteableDirectory -Path $UserChosenPath)
         {
-            $ProfileFolderToCreate = Join-Path $UserChosenPath 'OneShell'
+            $ProfileFolderToCreate = Join-Path -Path $UserChosenPath -ChildPath 'OneShell'
             $IsWriteableFilesystemDirectory = $true
         }
     }
@@ -6495,7 +6498,7 @@ Param(
     (
         $IsWriteableFilesystemDirectory
     )
-    Write-Output $ProfileFolderToCreate
+    Write-Output -InputObject $ProfileFolderToCreate
 }#function GetAdminUserProfileFolder
 function GetAdminUserProfileEmailAddress
 {
@@ -6533,7 +6536,7 @@ $CurrentMailRelayEndpoint
         $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
         $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
         $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title "Select Mail Relay Endpoint"
+        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title 'Select Mail Relay Endpoint'
         $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
     }
     else
@@ -6542,7 +6545,7 @@ $CurrentMailRelayEndpoint
         Read-AnyKey -prompt "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice."
         $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
     }
-    Write-Output $MailRelayEndpointToUse
+    Write-Output -InputObject $MailRelayEndpointToUse
 }
 function GetAdminUserProfileSystemEntries
 {
@@ -6594,7 +6597,7 @@ Credential: $($AdminUserProfile.Credentials | Where-Object -FilterScript {$_.Ide
             {
                 'AutoConnect'
                 {
-                    Write-Verbose -Message "Running AutoConnect Prompt"
+                    Write-Verbose -Message 'Running AutoConnect Prompt'
                     $AutoConnectPrompt = "Do you want to Auto Connect to this system: $($SystemLabels[$SystemChoice])?"
                     $DefaultChoice = if ($SystemEntries[$SystemChoice].AutoConnect -eq $true) {0} elseif ($SystemEntries[$SystemChoice].AutoConnect -eq $null) {-1} else {1}
                     $AutoConnectChoice = Read-Choice -Message $AutoConnectPrompt -Choices 'Yes','No' -DefaultChoice $DefaultChoice -Title "AutoConnect System $($SystemLabels[$SystemChoice])?"
@@ -6621,7 +6624,7 @@ Credential: $($AdminUserProfile.Credentials | Where-Object -FilterScript {$_.Ide
                         $SystemEntries[$SystemChoice].Credential = $AdminUserProfile.Credentials[$CredentialChoice].Identity
                     } else
                     {
-                        Write-Error -Message "No Credentials exist in the Admin User Profile.  Please add one or more credentials." -Category InvalidData -ErrorId 0
+                        Write-Error -Message 'No Credentials exist in the Admin User Profile.  Please add one or more credentials.' -Category InvalidData -ErrorId 0
                     }
                     $EditsDone = $false
                 }
@@ -6682,7 +6685,7 @@ $profilefolder = $AdminUserProfile.General.ProfileFolder
 $profilefolders =  $($profilefolder + '\Logs'), $($profilefolder + '\Export'),$($profilefolder + '\InputFiles')
 foreach ($folder in $profilefolders)
 {
-    if (-not (Test-Path $folder))
+    if (-not (Test-Path -Path $folder))
     {
         New-Item -Path $folder -ItemType Directory -ErrorAction Stop
     }
@@ -6706,12 +6709,12 @@ function SetAdminUserProfileCredentials
     switch ($PSCmdlet.ParameterSetName)
     {
         'Edit' {
-            $editableCredentials = @($Credentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
+            $editableCredentials = @($Credentials | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
         }
         'New' {$editableCredentials = @()}
     }
     #$systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
-    $labels = $systems | Select-Object @{n='name';e={$_.SystemType + ': ' + $_.Name}}
+    $labels = $systems | Select-Object -Property @{n='name';e={$_.SystemType + ': ' + $_.Name}}
     do {
         $prompt = @"
 You may associate a credential with each of the following systems for auto connection or on demand connections/usage:
@@ -6763,8 +6766,8 @@ Would you like to add, edit, or remove a credential?"
         }
     }
     until ($noMoreCreds -eq $true)
-    $exportcredentials = @($editableCredentials | Select-Object @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
-    Write-Output $exportcredentials
+    $exportcredentials = @($editableCredentials | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
+    Write-Output -InputObject $exportcredentials
 }
 Function GetDefaultAdminUserProfile
 {
@@ -6809,7 +6812,7 @@ else
 ##########################################################################################################
 #Module Variables and Variable Functions
 ##########################################################################################################
-function Get-OneShellVariable 
+function Get-OneShellVariable
 {
 param
 (
@@ -6817,7 +6820,7 @@ param
 )
     Get-Variable -Scope Script -Name $name 
 }
-function Get-OneShellVariableValue 
+function Get-OneShellVariableValue
 {
 param
 (
@@ -6825,7 +6828,7 @@ param
 )
     Get-Variable -Scope Script -Name $name -ValueOnly
 }
-function Set-OneShellVariable 
+function Set-OneShellVariable
 {
 param
 (
@@ -6835,7 +6838,7 @@ $Value
 )
     Set-Variable -Scope Script -Name $Name -Value $value  
 }
-function New-OneShellVariable 
+function New-OneShellVariable
 {
 param 
 (
@@ -6857,11 +6860,11 @@ function Set-OneShellVariables
 {
     #Write-Log -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
-    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
+<#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
     [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
     [string]$Script:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
     [string]$Script:E1_SkuPartNumber = 'STANDARDPACK'
-    [string]$Script:K1_SkuPartNumber = 'DESKLESSPACK' 
+    [string]$Script:K1_SkuPartNumber = 'DESKLESSPACK' #>
     $Script:LogPreference = $True
     #AdvancedOneShell needs updated for the following:
     $Script:ScalarADAttributes = @(
