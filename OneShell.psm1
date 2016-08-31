@@ -5212,7 +5212,7 @@ else
 Try
 {
 	$message ='Retrieve qualified Active Directory User Accounts.'
-    Write-Log -verbose -message  -EntryType Attempting
+    Write-Log -verbose -message $message -EntryType Attempting
     $QualifiedADUsers = @(Get-ADUser @GetADUserParams | Select-Object -Property $Properties)
 	$message = $message + " Count:$($QualifiedADUsers.count)"
 	Write-Log -verbose -message $message -EntryType Succeeded
