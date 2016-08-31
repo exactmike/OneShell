@@ -5154,7 +5154,7 @@ function Get-XADUserPasswordExpirationDate() {
     }
 
 }
-function Get-AllADRecipientObjects {
+function Get-ADRecipientObject {
 [cmdletbinding()]
 param
 (
@@ -5180,6 +5180,91 @@ $ADInstance
     if ($Passthrough) {$AllMailEnabledADObjects}
     if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
 }
+Function Get-QualifiedADUserObject
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[string]$ActiveDirectoryInstance
+,
+[string]$LDAPFilter
+#'(&(sAMAccountType=805306368)(proxyAddresses=SMTP:*)(extensionattribute15=DirSync))'
+#'(&((sAMAccountType=805306368))(mail=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
+,
+[string[]]$Properties = $script:ADUserAttributes
+)
+#Retrieve all qualified (per the filter)AD User Objects including the specified properties
+Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
+Connect-ADInstance -ActiveDirectoryInstance $ActiveDirectoryInstance -ErrorAction Stop > $null
+Set-Location -Path "$($ActiveDirectoryInstance):\"
+$GetADUserParams = @{
+	ErrorAction = 'Stop'
+	Properties = $Properties
+}
+if ($PSBoundParameters.ContainsKey('LDAPFilter'))
+{
+	$GetADUserParams.LDAPFilter = $LDAPFilter
+}
+else
+{
+	$GetADUserParams.Filter = '*'
+}
+Try
+{
+	$message ='Retrieve qualified Active Directory User Accounts.'
+    Write-Log -verbose -message  -EntryType Attempting
+    $QualifiedADUsers = @(Get-ADUser @GetADUserParams | Select-Object -Property $Properties)
+	$message = $message + " Count:$($QualifiedADUsers.count)"
+	Write-Log -verbose -message $message -EntryType Succeeded
+    Write-Output -InputObject $QualifiedADUsers
+}
+Catch
+{
+    $myerror = $_
+    Write-Log -Message "Active Directory user objects could not be retrieved." -ErrorLog -Verbose
+    Write-Log -Message $myerror.tostring() -ErrorLog
+}
+Write-EndFunctionStatus $MyInvocation.MyCommand
+}#Get-QualifiedADUserObject
+Function Get-ADDomainNetBiosName
+{
+[cmdletbinding()]
+param(
+[parameter(ValueFromPipeline,Mandatory)]
+[string]$DNSRoot
+)
+#If necessary, create the script:ADDomainDNSRootToNetBiosNameHash
+if (-not (Test-Path variable:script:ADDomainDNSRootToNetBiosNameHash))
+{
+    $script:ADDomainDNSRootToNetBiosNameHash = @{}
+}
+#Lookup the NetBIOSName for the domain in the script:ADDomainDNSRootToNetBiosNameHash
+if ($script:ADDomainDNSRootToNetBiosNameHash.containskey($DNSRoot))
+{
+    $NetBiosName = $script:ADDomainDNSRootToNetBiosNameHash.$DNSRoot
+}
+#or lookup the NetBIOSName from AD and add it to the script:ADDomainDNSRootToNetBiosNameHash
+else
+{
+    try
+    {
+        $message = "Look up $DNSRoot NetBIOSName for the first time."
+        Write-Log -Message $message -EntryType Attempting
+        $NetBiosName = Get-ADDomain -Identity $DNSRoot -ErrorAction Stop | Select-Object -ExpandProperty NetBIOSName
+        $script:ADDomainDNSRootToNetBiosNameHash.$DNSRoot = $NetBiosName
+        Write-Log -Message $message -EntryType Succeeded
+    }
+    catch
+    {
+        $myerror = $_
+        Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
+        Write-Log -Message $myerror.tostring() -ErrorLog
+        $PSCmdlet.ThrowTerminatingError($myerror)
+    }
+}
+#Return the NetBIOSName
+Write-Output $NetBiosName
+}#Get-ADDomainNetBiosName
 ##########################################################################################################
 #Lotus Notes Helper and Get Functions
 ##########################################################################################################
