@@ -2620,7 +2620,7 @@ Function Connect-Exchange
                         {
                             $splat = @{Identity = $Credential.UserName;ErrorAction = 'Stop'}
                             $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat
+                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat -ErrorAction Stop > $null
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
@@ -2637,7 +2637,7 @@ Function Connect-Exchange
                         {
                             $splat = @{Identity = $Credential.UserName;ErrorAction = 'Stop'}
                             $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat
+                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat -ErrorAction Stop > $null
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
