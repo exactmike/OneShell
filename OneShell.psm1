@@ -588,7 +588,7 @@ function Get-ADDrive {get-psdrive -PSProvider ActiveDirectory}
 function Start-WindowsSecurity
 {
 #useful in RDP sessions especially on Windows 2012
-(New-Object -COM Shell.Application).WindowsSecurity()
+(New-Object -ComObject Shell.Application).WindowsSecurity()
 }
 function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
@@ -1845,32 +1845,6 @@ if ($showprogress) {
 }
 }
 #User Input Functions
-Function Read-AnyKey {   
-    param(
-        [string]$prompt
-        ,
-        [int]$secondsToWait
-    )
-    Write-Host -NoNewline $prompt
-    $secondsCounter = 0
-    $subCounter = 0
-    While ( (!$host.ui.rawui.KeyAvailable) -and ($count -lt $secondsToWait) ){
-        Start-Sleep -Milliseconds 10
-        $subCounter = $subCounter + 10
-        if($subCounter -eq 1000)
-        {
-            $secondsCounter++
-            $subCounter = 0
-            Write-Host -NoNewline '.'
-        }       
-        If ($secondsCounter -eq $secondsToWait) { 
-            Write-Host "`r`n" #yuck?
-            Write-Output -InputObject $false
-        }
-    }
-    Write-Host "`r`n" #yuck?
-    Write-Output -InputObject $true;
-}
 function Read-InputBoxDialog
 { # Show input box popup and return the value entered by the user. 
 param(
@@ -5221,7 +5195,7 @@ Try
 Catch
 {
     $myerror = $_
-    Write-Log -Message "Active Directory user objects could not be retrieved." -ErrorLog -Verbose
+    Write-Log -Message 'Active Directory user objects could not be retrieved.' -ErrorLog -Verbose
     Write-Log -Message $myerror.tostring() -ErrorLog
 }
 Write-EndFunctionStatus $MyInvocation.MyCommand
@@ -6617,20 +6591,28 @@ $CurrentMailRelayEndpoint
 )
     $systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity)
     $MailRelayEndpoints = @($systems | where-object -FilterScript {$_.SystemType -eq 'MailRelayEndpoints'})
-    if ($MailRelayEndpoints.Count -gt 1)
-    {
-        $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
-        $Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
-        $choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-        $choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title 'Select Mail Relay Endpoint'
-        $MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
-    }
-    else
-    {
-        $choice = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
-        Read-AnyKey -prompt "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice."
-        $MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
-    }
+    switch ($MailRelayEndpoints.Count)
+	{
+		{$_ -gt 1}
+		{
+	        $DefaultChoice = if ($CurrentMailRelayEndpoint -eq $Null) {-1} else {Get-ArrayIndexForValue -array $MailRelayEndpoints -value $CurrentMailRelayEndpoint -property Identity}
+			$Message = "Organization Profile $($targetorgprofile.general.name) defines more than one mail relay endpoint.  Which one would you like to use for this Admin profile?"
+			$choices = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+			$choice = Read-Choice -Message $Message -Choices $choices -DefaultChoice $DefaultChoice -Title 'Select Mail Relay Endpoint'
+			$MailRelayEndpointToUse = $MailRelayEndpoints[$choice] | Select-Object -ExpandProperty Identity
+		}
+		{$_ -eq 1}
+		{
+			$choice = $MailRelayEndpoints | Select-Object -Property @{n='choice';e={$_.Name + '(' + $_.ServiceAddress + ')'}} | Select-Object -ExpandProperty Choice
+			Write-Verbose -Message "Only one Mail Relay Endpoint is defined in Organization Profile $($targetorgprofile.general.name). Setting Mail Relay Endpoint to $choice." -Verbose
+			$MailRelayEndpointToUse = $MailRelayEndpoints[0] | Select-Object -ExpandProperty Identity
+		}
+		{$_ -eq 0}
+		{
+			Write-Verbose -Message "No Mail Relay Endpoint(s) defined in Organization Profile $($targetorgprofile.general.name)." -Verbose
+			$MailRelayEndpointToUse = $null
+		}
+	}
     Write-Output -InputObject $MailRelayEndpointToUse
 }
 function GetAdminUserProfileSystemEntries
