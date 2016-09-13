@@ -3,6 +3,63 @@
 #Utility and Support Functions
 ##########################################################################################################
 #Used By Other OneShell Functions
+function Get-SpecialFolder
+#Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
+<#
+MIT License
+
+Copyright (c) 2016 Øyvind Kallstad
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+#>
+{
+[cmdletbinding()]
+param (
+[parameter(ParameterSetName='All',Mandatory)]
+[switch]$All
+,
+[parameter(ParameterSetName='Selected',Mandatory)]
+[ValidateSet('Desktop','Programs','MyDocuments','MyDocuments','Favorites','Startup','Recent','SendTo','StartMenu','MyMusic','MyVideos','DesktopDirectory','MyComputer','NetworkShortcuts','Fonts','Templates','CommonStartMenu','CommonPrograms','CommonStartup','CommonDesktopDirectory','ApplicationData','PrinterShortcuts','LocalApplicationData','InternetCache','Cookies','History','CommonApplicationData','Windows','System','ProgramFiles','MyPictures','UserProfile','SystemX86','ProgramFilesX86','CommonProgramFiles','CommonProgramFilesX86','CommonTemplates','CommonDocuments','CommonAdminTools','AdminTools','CommonMusic','CommonPictures','CommonVideos','Resources','LocalizedResources','CommonOemLinks','CDBurning')] 
+#should make this a dynamic parameter using [Enum]::GetValues([System.Environment+SpecialFolder])
+[string[]]$Name
+)
+switch ($PSCmdlet.ParameterSetName)
+{
+	'All'
+	{
+		$Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+	}
+	'Selected'
+	{
+	}
+}
+#$folder in (())
+foreach ($folder in $Name)
+{
+	$FolderObject = 
+		[PSCustomObject]@{
+			Name = $folder.ToString()
+			Path = [System.Environment]::GetFolderPath($folder)
+		}
+    Write-Output -InputObject $FolderObject
+}#foreach
+}#Get-SpecialFolder
 function Get-ArrayIndexForValue
 {
     [cmdletbinding()]
