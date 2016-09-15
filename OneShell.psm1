@@ -5281,9 +5281,14 @@ function Get-NotesUser
 {
 [cmdletbinding()]
 param(
+[parameter(Mandatory)]
 [string[]]$NotesDatabase
 ,
+[parameter(Mandatory,ParameterSetName = 'SpecifiedUser')]
 [string]$PrimarySMTPAddress
+,
+[parameter(Mandatory,ParameterSetName = 'All')]
+$All
 )
 if (-not (Test-Path -Path variable:Global:NotesViews))
 {
@@ -5297,39 +5302,67 @@ foreach ($ND in $NotesDatabase)
     {
         $NotesViews.$DatabaseView = $NotesDatabaseConnections.$ND.GetView('($Users)')
     }
-    $userdoc = @($NotesViews.$DatabaseView.GetDocumentByKey($PrimarySMTPAddress) | Where-Object -FilterScript {$_ -ne $null})
-    switch ($userdoc.Count)
+}
+switch ($PSCmdlet.ParameterSetName)
+{
+    'All'
     {
-        1
+        $userdocs = @(
+            foreach ($ND in $NotesDatabase)
+            {
+                $NotesViews.$DatabaseView.AllEntries
+            }
+        )
+    }
+    'SpecifiedUser'
+    {
+        #Check Each Database for a matching user and ensure no ambiguous results
+        foreach ($ND in $NotesDatabase)
         {
-            $userdocs += $userdoc
+            $userdoc = @($NotesViews.$DatabaseView.GetDocumentByKey($PrimarySMTPAddress) | Where-Object -FilterScript {$_ -ne $null})
+            switch ($userdoc.Count)
+            {
+                1
+                {
+                    $userdocs += $userdoc
+                }
+                0
+                {
+                    #nothing to do
+                }
+                default
+                {
+                    throw "$PrimarySMTPAddress is ambiguous in `$ND"
+                }
+            }
         }
-        0
-        {}
-        default
+        #check output from all databases that there is no ambiguous results
+        switch ($userdocs.Count)
         {
-            throw "$PrimarySMTPAddress is ambiguous in `$ND"
+            1
+            {
+                #nothing to do
+            }
+            0
+            {
+                Write-Warning -Message "No Notes User for $PrimarySMTPAddress was found"
+                $userdocs = $null
+            }
+            default
+            {
+                throw "$PrimarySMTPAddress is ambiguous among Notes Databases: $($NotesDatabase -join ',')"
+            }
         }
     }
 }
-switch ($userdocs.Count)
+foreach ($rawNotesUserdoc in $userdocs)
 {
-    1
+    $NotesUserObject = [pscustomobject]@{}
+    foreach ($item in $($rawNotesUserdoc.Items | Sort-Object -Property Name))
     {
-        $rawNotesUserdoc = $userdocs[0]
-        $NotesUserObject = [pscustomobject]@{}
-        foreach ($item in $($rawNotesUserdoc.Items | Sort-Object -Property Name))
-        {
-            $NotesUserObject | Add-Member -Name $($item.name) -value $(if ($item.values.count -gt 1) {$item.text} else {$item.values}) -MemberType NoteProperty
-        }
-        Write-Output -InputObject $NotesUserObject
+        $NotesUserObject | Add-Member -Name $($item.name) -value $(if ($item.values.count -gt 1) {$item.text} else {$item.values}) -MemberType NoteProperty
     }
-    0
-    {Write-Warning -Message "No Notes User for $PrimarySMTPAddress was found"}
-    default
-    {
-        throw "$PrimarySMTPAddress is ambiguous among Notes Databases: $($NotesDatabase -join ',')"
-    }
+    Write-Output -InputObject $NotesUserObject
 }
 }
 ##########################################################################################################
