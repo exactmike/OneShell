@@ -1500,8 +1500,8 @@ Function Write-StartFunctionStatus {
 Write-Log -Message "$CallingFunction starting." -EntryType Notification}
 Function Export-Data
 {
-[cmdletbinding(DefaultParameterSetName='delimited')]
-param(
+  [cmdletbinding(DefaultParameterSetName='delimited')]
+  param(
     $ExportFolderPath = $script:ExportDataPath
     ,
     [string]$DataToExportTitle
@@ -1520,9 +1520,13 @@ param(
     [switch]$Append
     ,
     [switch]$ReturnExportFilePath
-)
-#Determine Export File Path
-$stamp = Get-TimeStamp
+    ,
+    [parameter()]
+    [ValidateSet('Unicode','BigEndianUnicode','Ascii','Default','UTF8','UTF7','UTF32')]
+    [string]$Encoding = 'Unicode'
+  )
+  #Determine Export File Path
+  $stamp = Get-TimeStamp
     switch ($DataType)
     {
         'xml'
@@ -1556,16 +1560,16 @@ $stamp = Get-TimeStamp
         {
             'xml'
             {
-                $DataToExport | Export-Clixml -Depth $Depth -Path $ExportFilePath -ErrorAction Stop -Encoding Unicode
+                $DataToExport | Export-Clixml -Depth $Depth -Path $ExportFilePath -ErrorAction Stop -Encoding $encoding
             }#xml
             'json'
             {
-                $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop  | Out-File -FilePath $ExportFilePath -Encoding unicode -ErrorAction Stop
+                $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop  | Out-File -FilePath $ExportFilePath -Encoding $encoding -ErrorAction Stop
             }#json
             'csv'
             {
-                if ($append) {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop -Append}#if
-                else {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop}#else
+                if ($append) {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop -Append -Encoding $encoding}#if
+                else {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop -Encoding $encoding}#else
             }#csv
         }
         if ($ReturnExportFilePath) {Write-Output -InputObject $ExportFilePath}
