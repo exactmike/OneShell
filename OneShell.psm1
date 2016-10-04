@@ -120,16 +120,16 @@ function Get-AvailableExceptionsList
 function New-ErrorRecord
 {
   param(
-    [Parameter(Mandatory = $true, Position = 0)]
+    [Parameter(Mandatory, Position = 0)]
     [string]
     $Exception
     ,
-    [Parameter(Mandatory = $true, Position = 1)]
+    [Parameter(Mandatory, Position = 1)]
     [Alias('ID')]
     [string]
     $ErrorId
     ,
-    [Parameter(Mandatory = $true, Position = 2)]
+    [Parameter(Mandatory, Position = 2)]
     [Alias('Category')]
     [Management.Automation.ErrorCategory]
     [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
@@ -141,7 +141,7 @@ function New-ErrorRecord
     'FromStdErr', 'SecurityError')]
     $ErrorCategory
     ,
-    [Parameter(Mandatory = $true, Position = 3)]
+    [Parameter(Mandatory, Position = 3)]
     $TargetObject
     ,
     [string]
@@ -326,15 +326,15 @@ function Get-CallerPreference
     #https://gallery.technet.microsoft.com/scriptcenter/Inherit-Preference-82343b9d
     [CmdletBinding(DefaultParameterSetName = 'AllVariables')]
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [ValidateScript({ $_.GetType().FullName -eq 'System.Management.Automation.PSScriptCmdlet' })]
         $Cmdlet,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [Management.Automation.SessionState]
         $SessionState,
 
-        [Parameter(ParameterSetName = 'Filtered', ValueFromPipeline = $true)]
+        [Parameter(ParameterSetName = 'Filtered', ValueFromPipeline)]
         [string[]]
         $Name
     )
@@ -653,7 +653,7 @@ function Convert-HashtableToObject
 {
     [CmdletBinding()]
     PARAM(
-        [Parameter(ValueFromPipeline=$true, Mandatory=$true)]
+        [Parameter(ValueFromPipeline, Mandatory)]
         [HashTable]$hashtable
         ,
         [switch]$Combine
@@ -759,8 +759,8 @@ Function Convert-ObjectToHashTable
     [cmdletbinding()]
 
     Param(
-        [Parameter(Position=0,Mandatory=$True,
-        HelpMessage='Please specify an object',ValueFromPipeline=$True)]
+        [Parameter(Position=0,Mandatory,
+        HelpMessage='Please specify an object',ValueFromPipeline)]
         [ValidateNotNullorEmpty()]
         $InputObject,
         [switch]$NoEmpty,
@@ -884,7 +884,7 @@ function Test-Member
     #> 
     [CmdletBinding()] 
     param( 
-        [Parameter(ValueFromPipeline=$true)] 
+        [Parameter(ValueFromPipeline)] 
         [psobject] 
         $InputObject, 
 
@@ -944,7 +944,7 @@ function Test-IP
   #https://gallery.technet.microsoft.com/scriptcenter/A-short-tip-to-validate-IP-4f039260
     param
     (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory)]
         [ValidateScript({$_ -match [IPAddress]$_ })]
         [String]$ip    
     )
@@ -1415,7 +1415,7 @@ Function Write-Log
 {
     [cmdletbinding()]
     Param(
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory,Position=0)]
         [ValidateNotNullOrEmpty()]
         [string]$Message
         ,
@@ -1498,6 +1498,78 @@ Write-Log -Message "$CallingFunction completed." -EntryType Notification}
 Function Write-StartFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction starting." -EntryType Notification}
+function Out-FileUtf8NoBom {
+#requires -version 3
+<#
+.SYNOPSIS
+  Outputs to a UTF-8-encoded file *without a BOM* (byte-order mark).
+
+.DESCRIPTION
+  Mimics the most important aspects of Out-File:
+  * Input objects are sent to Out-String first.
+  * -Append allows you to append to an existing file, -NoClobber prevents
+    overwriting of an existing file.
+  * -Width allows you to specify the line width for the text representations
+     of input objects that aren't strings.
+  However, it is not a complete implementation of all Out-String parameters:
+  * Only a literal output path is supported, and only as a parameter.
+  * -Force is not supported.
+
+  Caveat: *All* pipeline input is buffered before writing output starts,
+          but the string representations are generated and written to the target
+          file one by one.
+
+.NOTES
+  The raison d'être for this advanced function is that, as of PowerShell v5, 
+  Out-File still lacks the ability to write UTF-8 files without a BOM: 
+  using -Encoding UTF8 invariably prepends a BOM.
+  http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
+#>
+  [CmdletBinding()]
+  param
+  (
+    [Parameter(Mandatory, Position=0)]
+    [string] $LiteralPath
+    ,
+    [switch] $Append
+    ,
+    [switch] $NoClobber
+    ,
+    [AllowNull()] [int] $Width
+    ,
+    [Parameter(ValueFromPipeline)] 
+    $InputObject
+  )
+  # Make sure that the .NET framework sees the same working dir. as PS
+  # and resolve the input path to a full path.
+  [Environment]::CurrentDirectory = $PWD
+  $LiteralPath = [IO.Path]::GetFullPath($LiteralPath)
+  # If -NoClobber was specified, throw an exception if the target file already
+  # exists.
+  if ($NoClobber -and (Test-Path $LiteralPath)) { 
+    Throw [IO.IOException] "The file '$LiteralPath' already exists."
+  }
+  # Create a StreamWriter object.
+  # Note that we take advantage of the fact that the StreamWriter class by default:
+  # - uses UTF-8 encoding
+  # - without a BOM.
+  $sw = New-Object IO.StreamWriter $LiteralPath, $Append
+  $htOutStringArgs = @{}
+  if ($Width) {
+    $htOutStringArgs += @{ Width = $Width }
+  }
+    # Note: By not using begin / process / end blocks, we're effectively running
+  #       in the end block, which means that all pipeline input has already
+  #       been collected in automatic variable $Input.
+  #       We must use this approach, because using | Out-String individually
+  #       in each iteration of a process block would format each input object
+  #       with an indvidual header.
+  try {
+    $Input | Out-String -Stream @htOutStringArgs | ForEach-Object { $sw.WriteLine($_) }
+  } finally {
+    $sw.Dispose()
+  }
+}
 Function Export-Data
 {
   [cmdletbinding(DefaultParameterSetName='delimited')]
@@ -1519,10 +1591,13 @@ Function Export-Data
     [parameter(ParameterSetName='delimited')]
     [switch]$Append
     ,
+    [parameter(ParameterSetName='delimited')]
+    [string]$Delimiter = ','
+    ,
     [switch]$ReturnExportFilePath
     ,
     [parameter()]
-    [ValidateSet('Unicode','BigEndianUnicode','Ascii','Default','UTF8','UTF7','UTF32')]
+    [ValidateSet('Unicode','BigEndianUnicode','Ascii','Default','UTF8','UTF8NOBOM','UTF7','UTF32')]
     [string]$Encoding = 'Unicode'
   )
   #Determine Export File Path
@@ -1556,22 +1631,48 @@ Function Export-Data
     Write-Log -Message $message -EntryType Attempting
     Try
     {
+        $formattedData = $(
         switch ($DataType)
         {
             'xml'
             {
-                $DataToExport | Export-Clixml -Depth $Depth -Path $ExportFilePath -ErrorAction Stop -Encoding $encoding
+                $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation
             }#xml
             'json'
             {
-                $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop  | Out-File -FilePath $ExportFilePath -Encoding $encoding -ErrorAction Stop
+                $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
             }#json
             'csv'
             {
-                if ($append) {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop -Append -Encoding $encoding}#if
-                else {$DataToExport | Export-csv -Path $ExportFilePath -NoTypeInformation -ErrorAction Stop -Encoding $encoding}#else
+                $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
             }#csv
         }
+        $outFileParams = @{
+          ErrorAction = 'Stop'
+          InputData = $formattedData
+          LiteralPath = $ExportFilePath
+        }
+        switch ($Encoding)
+        {
+          'UTF8NOBOM'
+          {
+            if ($Append)
+            {
+              $outFileParams.Append = $true
+            }
+            Out-FileUtf8NoBom @outFileParams
+          }
+          Default
+          {
+            $outFileParams.Encoding = $Encoding
+            if ($append)
+            {
+              $outFileParams.Append = $true
+            }
+            Out-File @outFileParams
+          }
+        }
+        )
         if ($ReturnExportFilePath) {Write-Output -InputObject $ExportFilePath}
         Write-Log -Message $message -EntryType Succeeded
     }#try
@@ -2058,12 +2159,12 @@ function Read-PromptForChoice
   Param(
     [string]$Message
     ,
-    [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
+    [Parameter(Mandatory,ParameterSetName='StringChoices')]
     [ValidateNotNullOrEmpty()]
     [alias('StringChoices')]
     [String[]]$Choices
     ,
-    [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
+    [Parameter(Mandatory,ParameterSetName='ObjectChoices')]
     [ValidateNotNullOrEmpty()]
     [alias('ObjectChoices')]
     [psobject[]]$ChoiceObjects
@@ -2173,12 +2274,12 @@ function Read-Choice
     ,
     [string]$Message
     ,
-    [Parameter(Mandatory = $true,ParameterSetName='StringChoices')]
+    [Parameter(Mandatory,ParameterSetName='StringChoices')]
     [ValidateNotNullOrEmpty()]
     [alias('StringChoices')]
     [String[]]$Choices
     ,
-    [Parameter(Mandatory = $true,ParameterSetName='ObjectChoices')]
+    [Parameter(Mandatory,ParameterSetName='ObjectChoices')]
     [ValidateNotNullOrEmpty()]
     [alias('ObjectChoices')]
     [psobject[]]$ChoiceObjects
@@ -3015,7 +3116,7 @@ Function Connect-AADSync {
         ,[parameter(ParameterSetName='Manual',Mandatory=$true)]
         $Credential
         ,
-        [Parameter(ParameterSetName='Manual',Mandatory=$true)]
+        [Parameter(ParameterSetName='Manual',Mandatory)]
         [ValidateLength(1,3)]
         [string]$CommandPrefix
         ,
@@ -3652,7 +3753,7 @@ Function Connect-PowerShellSystem {
         ,[parameter(ParameterSetName='Manual',Mandatory=$true)]
         $Credential
         ,
-        [Parameter(ParameterSetName='Manual',Mandatory=$true)]
+        [Parameter(ParameterSetName='Manual',Mandatory)]
         [ValidateLength(1,3)]
         [string]$CommandPrefix
         ,
@@ -5220,7 +5321,7 @@ function Get-MsolUserLicenseDetail {
 }
 function Get-XADUserPasswordExpirationDate() {
 
-    Param ([Parameter(Mandatory=$true,  Position=0,  ValueFromPipeline=$true, HelpMessage='Identity of the Account')]
+    Param ([Parameter(Mandatory,  Position=0,  ValueFromPipeline, HelpMessage='Identity of the Account')]
 
      $accountIdentity)
 
