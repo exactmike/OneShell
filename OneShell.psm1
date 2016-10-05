@@ -1565,7 +1565,7 @@ function Out-FileUtf8NoBom {
   #       in each iteration of a process block would format each input object
   #       with an indvidual header.
   try {
-    $Input | Out-String -Stream @htOutStringArgs | ForEach-Object { $sw.WriteLine($_) }
+    $InputObject | Out-String -Stream @htOutStringArgs | ForEach-Object { $sw.WriteLine($_) }
   } finally {
     $sw.Dispose()
   }
