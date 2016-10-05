@@ -4026,6 +4026,7 @@ Function Connect-LotusNotesDatabase
             $message = "Verify Connection to Lotus Notes Client PowerShell Session on Client $ClientName"
             Write-Log -Message $message -EntryType Attempting
             $ClientConnectionStatus = Connect-PowerShellSystem -PowerShellSystem $ClientName -ErrorAction Stop
+            $ClientPSSession = Get-PSSession -Name $ClientIdentity -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -4040,7 +4041,7 @@ Function Connect-LotusNotesDatabase
         {
             $message = "Import the required Notes Module into the client PSSession $ClientIdentity"
             Write-Log -Message $message -EntryType Attempting
-            Invoke-Command -Session $ClientIdentity -ScriptBlock {Import-Module -Global -Name PSLotusNotes}
+            Invoke-Command -Session $ClientPSSession -ScriptBlock {Import-Module -Global -Name PSLotusNotes}
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -4055,7 +4056,6 @@ Function Connect-LotusNotesDatabase
         {
             $message = 'Import the Client PSSession importing only the Notes functions'
             Write-Log -Message $message -EntryType Attempting
-            $ClientPSSession = Get-PSSession -Name $ClientIdentity 
             Import-Module (Import-PSSession -Module PSLotusNotes -AllowClobber -Session $ClientPSSession -ErrorAction Stop) -Scope Global
             Write-Log -Message $message -EntryType Succeeded
         }
