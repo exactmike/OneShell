@@ -1542,7 +1542,7 @@ function Out-FileUtf8NoBom {
   )
   # Make sure that the .NET framework sees the same working dir. as PS
   # and resolve the input path to a full path.
-  [Environment]::CurrentDirectory = $PWD
+  #[Environment]::CurrentDirectory = $PWD
   $LiteralPath = [IO.Path]::GetFullPath($LiteralPath)
   # If -NoClobber was specified, throw an exception if the target file already
   # exists.
