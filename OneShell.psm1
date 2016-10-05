@@ -827,13 +827,17 @@ function Convert-SecureStringToString
 
     [cmdletbinding()]
     param (
-        [parameter(Mandatory=$True,ValueFromPipeline=$True)]
-        [securestring]$SecureString
+        [parameter(ValueFromPipeline=$True)]
+        [securestring[]]$SecureString
     )
     
     BEGIN {}
     PROCESS {
-        [Runtime.InteropServices.marshal]::PtrToStringAuto([Runtime.InteropServices.marshal]::SecureStringToBSTR($securestring))
+        foreach ($ss in $SecureString)
+        {
+          if ($ss -is 'SecureString')
+          {[Runtime.InteropServices.marshal]::PtrToStringAuto([Runtime.InteropServices.marshal]::SecureStringToBSTR($ss))}
+        }
     }
     END {}
 }
@@ -4034,10 +4038,9 @@ Function Connect-LotusNotesDatabase
         #Create the required functions in the Client PSSession 
         try
         {
-            $message = "Export the required Notes related functions into the client PSSession $ClientIdentity"
+            $message = "Import the required Notes Module into the client PSSession $ClientIdentity"
             Write-Log -Message $message -EntryType Attempting
-            $NotesFunctionNames = @(Get-Command -Noun 'Notes*' | Select-Object -ExpandProperty Name | Select-Object -Unique)
-            Export-FunctionToPSSession -Name $ClientIdentity -FunctionNames @($NotesFunctionNames + 'Convert-SecureStringToString')
+            Invoke-Command -Session $ClientIdentity -ScriptBlock {Import-Module -Global -Name PSLotusNotes}
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -4052,9 +4055,8 @@ Function Connect-LotusNotesDatabase
         {
             $message = 'Import the Client PSSession importing only the Notes functions'
             Write-Log -Message $message -EntryType Attempting
-            $NotesFunctionNames | ForEach-Object {Remove-Item -Path "function:\$_" -Force -ErrorAction Stop}
             $ClientPSSession = Get-PSSession -Name $ClientIdentity 
-            Import-Module (Import-PSSession -CommandName $NotesFunctionNames -AllowClobber -Session $ClientPSSession -ErrorAction Stop) -Scope Global
+            Import-Module (Import-PSSession -Module PSLotusNotes -AllowClobber -Session $ClientPSSession -ErrorAction Stop) -Scope Global
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -5505,99 +5507,6 @@ Function Get-ADDomainNetBiosName
   #Return the NetBIOSName
   Write-Output $NetBiosName
 }#Get-ADDomainNetBiosName
-##########################################################################################################
-#Lotus Notes Helper and Get Functions
-##########################################################################################################
-function New-NotesDatabaseConnection
-{[cmdletbinding()]
-  param(
-    [string]$NotesServerName
-    ,
-    [string]$Database #the Notes nsf file name to be accessed
-    ,
-    $Credential
-    ,
-    [string]$Name # An arbitrary friendly name for the notes database
-    ,
-    [string]$Identity #An arbitrary session name for the Notes Session
-  )
-  #verify required powershell session is available
-  $SessionIdentity = $Identity.Replace('-','')
-  $Password = $Credential.Password | Convert-SecureStringToString
-  if (-not (Test-Path -Path variable:NotesSessions))
-  {
-    New-Variable -Name NotesSessions -Value @{} -Scope Global
-  }
-  if (-not (Test-Path -Path variable:NotesDatabaseConnections))
-  {
-    New-Variable -Name NotesDatabaseConnections -Value @{} -Scope Global
-  }
-  if (-not ($NotesSessions.ContainsKey($SessionIdentity)))
-  {
-    $NotesSessions.$SessionIdentity = New-Object -ComObject 'Lotus.NotesSession'
-    $NotesSessions.$SessionIdentity.Initialize("$Password")
-    if (-not ($NotesDatabaseConnections.ContainsKey($Name)))
-    {
-        $NotesDatabaseConnections.$Name = $NotesSessions.$SessionIdentity.GetDatabase("$NotesServerName","$Database")
-    }
-  }
-  Write-Output -InputObject $NotesDatabaseConnections.$Name
-}
-function Get-NotesUser
-{
-  [cmdletbinding()]
-  param(
-    [string[]]$NotesDatabase
-    ,
-    [string]$PrimarySMTPAddress
-  )
-  if (-not (Test-Path -Path variable:Global:NotesViews))
-  {
-    New-Variable -Name NotesViews -Value @{} -Scope Global
-  }
-  $userdocs = @()
-  foreach ($ND in $NotesDatabase)
-  {
-    $DatabaseView = "$($ND)Users"
-    if (-not ($NotesViews.ContainsKey($DatabaseView)))
-    {
-        $NotesViews.$DatabaseView = $NotesDatabaseConnections.$ND.GetView('($Users)')
-    }
-    $userdoc = @($NotesViews.$DatabaseView.GetDocumentByKey($PrimarySMTPAddress) | Where-Object -FilterScript {$_ -ne $null})
-    switch ($userdoc.Count)
-    {
-        1
-        {
-            $userdocs += $userdoc
-        }
-        0
-        {}
-        default
-        {
-            throw "$PrimarySMTPAddress is ambiguous in `$ND"
-        }
-    }
-  }
-  switch ($userdocs.Count)
-  {
-    1
-    {
-        $rawNotesUserdoc = $userdocs[0]
-        $NotesUserObject = [pscustomobject]@{}
-        foreach ($item in $($rawNotesUserdoc.Items | Sort-Object -Property Name))
-        {
-            $NotesUserObject | Add-Member -Name $($item.name) -value $(if ($item.values.count -gt 1) {$item.text} else {$item.values}) -MemberType NoteProperty
-        }
-        Write-Output -InputObject $NotesUserObject
-    }
-    0
-    {Write-Warning -Message "No Notes User for $PrimarySMTPAddress was found"}
-    default
-    {
-        throw "$PrimarySMTPAddress is ambiguous among Notes Databases: $($NotesDatabase -join ',')"
-    }
-  }
-}
 ##########################################################################################################
 #Profile and Environment Initialization Functions
 ##########################################################################################################
