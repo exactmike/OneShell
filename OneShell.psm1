@@ -1632,21 +1632,22 @@ Function Export-Data
     Try
     {
         $formattedData = $(
-        switch ($DataType)
-        {
-            'xml'
-            {
+          switch ($DataType)
+          {
+              'xml'
+                  {
                 $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation
             }#xml
-            'json'
-            {
-                $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
-            }#json
-            'csv'
-            {
+              'json'
+              {
+                  $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
+              }#json
+              'csv'
+                  {
                 $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
             }#csv
-        }
+          }
+        )
         $outFileParams = @{
           ErrorAction = 'Stop'
           InputObject = $formattedData
@@ -1672,7 +1673,6 @@ Function Export-Data
             Out-File @outFileParams
           }
         }
-        )
         if ($ReturnExportFilePath) {Write-Output -InputObject $ExportFilePath}
         Write-Log -Message $message -EntryType Succeeded
     }#try
