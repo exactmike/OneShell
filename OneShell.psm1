@@ -1649,7 +1649,7 @@ Function Export-Data
         }
         $outFileParams = @{
           ErrorAction = 'Stop'
-          InputData = $formattedData
+          InputObject = $formattedData
           LiteralPath = $ExportFilePath
         }
         switch ($Encoding)
