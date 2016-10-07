@@ -1,5 +1,5 @@
 # What is OneShell?
-OneShell is a PowerShell module designed for administration of cloud and on premises services (specifically, but not only Office 365 workloads and supporting on premises infrastructure) in a single PowerShell session.
+OneShell is a PowerShell module designed for administration of cloud and on premises services (specifically, but not only, Office 365 workloads and supporting on premises infrastructure) in a single PowerShell session.
 OneShell provides administrators with a powerful per organization and per administrator profile system which allows for automation of connectivity (and reconnection, when necessary).  
 OneShell supports automated connectivity to the following list of services, and is continually expanding to include additional workloads and services:
 - Azure AD
