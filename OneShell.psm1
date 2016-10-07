@@ -4625,6 +4625,27 @@ function Export-FunctionToPSSession
   $ScriptBlock = [scriptblock]::Create($FunctionsText)
   Invoke-Command -Session $PSSession -ScriptBlock $ScriptBlock -ErrorAction Stop
 }
+Function Get-MCTLSourceData
+{
+[cmdletbinding()]
+param(
+  [parameter(Mandatory)]
+  [ValidateSet('SQL','SharePoint','LocalFile')]
+  $SourceType
+  ,
+  [parameter(Mandatory,ParameterSetName='SQL')]
+  $SQLConnection
+)
+try
+{
+  $message = "Retrieve MCTL Source Data from source $sourcetype"
+  Write-Log -Message $message -EntryType Attempting
+  $Global:MCTLSourceData = Invoke-SQLServerQuery -sql 'Select * FROM dbo.ExpandedMCTL' -connection $SQLConnection
+  Write-Log -Message $message -EntryType Succeeded -Verbose
+  Write-Log -Message "$($Global:MCTLSourceData.count) MCTL Records Retrieved and stored in `$Global:MCTLSourceData" -Verbose
+}
+catch{}
+}
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
 ##########################################################################################################
