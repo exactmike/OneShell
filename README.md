@@ -13,6 +13,7 @@ OneShell provides administrators with a powerful per organization and per admini
 - Automated Connectivity to administrative endpoints
   - with one command connects an administrator to all desired administrative endpoints and re-connects on demand as well when sessions break
   - connectivity functions are suitable to embed in your own automation scripts to ensure connectivity during long running operations
+
 ## Supported services/workloads
 OneShell supports automated connectivity to the following list of services, and is continually expanding to include additional workloads and services:
 - Azure AD
