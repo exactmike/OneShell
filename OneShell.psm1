@@ -1602,7 +1602,7 @@ Function Export-Data
     ,
     [parameter()]
     [ValidateSet('Unicode','BigEndianUnicode','Ascii','Default','UTF8','UTF8NOBOM','UTF7','UTF32')]
-    [string]$Encoding = 'Unicode'
+    [string]$Encoding = 'Ascii'
   )
   #Determine Export File Path
   $stamp = Get-TimeStamp
@@ -2874,7 +2874,6 @@ Function Connect-Exchange
                     Write-Log -Message "Failed: Connect to Exchange System $orgName" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
                     Write-Output -InputObject $False
-                    $_
                 }#catch
             }#$false
         }#switch
@@ -3395,8 +3394,7 @@ Function Connect-ADInstance {
             catch {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
-                $_
-                $false
+                Write-Output -InputObject $false
             }#catch
         } #if
     }#process  
@@ -4210,16 +4208,16 @@ Function Connect-RemoteSystems
         foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
         {
             try {
-                Write-Log -Message "Attempting: Connect to $sys-Exchange."
-                $Status = Connect-Exchange -ExchangeOrganization $sys -ErrorAction Stop
-                Write-Log -Message "Succeeded: Connect to $sys-Exchange."
-                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$Status}
+                $message = "Connect to $sys-Exchange."
+                Write-Log -Message $message -EntryType Attempting
+                $ConnectionResult = Connect-Exchange -ExchangeOrganization $sys -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$ConnectionResult}
             }#try
             catch {
-                Write-Log -Message "Failed: Connect to $sys-Exchange." -Verbose -ErrorLog
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
                 Write-Log -Message $_.tostring() -ErrorLog
-                $Status = $false
-                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$Status}
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$ConnectionResult}
             }#catch
         }
         # Connect to Azure AD Sync
