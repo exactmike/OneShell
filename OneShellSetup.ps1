@@ -36,7 +36,8 @@ $SoftwareInstalled = @(Get-UninstallEntry)
 $PreReqsTest = @{
     PSVersion = $PSVersionTable.PSVersion.ToString() -ge 4
     MOSIA = 'Microsoft Online Services Sign-in Assistant' -in $SoftwareInstalled.DisplayName
-    AzureAD = 'Windows Azure Active Directory Module for Windows PowerShell' -in $SoftwareInstalled.DisplayName
+    #https://www.microsoft.com/en-us/download/details.aspx?id=41950&WT.mc_id=rss_alldownloads_all
+    AzureAD = 'Microsoft Azure Active Directory Module for Windows PowerShell' -in $SoftwareInstalled.DisplayName
     Git = Test-CommandExists -command 'git'
 }
 
