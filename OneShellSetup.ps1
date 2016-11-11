@@ -49,6 +49,10 @@ if (-not (Test-Path C:\ProgramData\OneShell))
 {
     New-Item -Path C:\ProgramData -Name 'OneShell' -ItemType Directory
 }
+if (-not (Test-Path $env:USERPROFILE\OneShell))
+{
+    New-Item -Path $env:USERPROFILE -Name 'OneShell' -ItemType Directory
+}
 $MyDocsPath = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders').Personal
 if (-not (Test-Path "$MyDocsPath\WindowsPowerShell"))
 {
