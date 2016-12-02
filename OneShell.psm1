@@ -857,6 +857,7 @@ function Get-ImmutableIDFromGUID
 }
 function Get-GUIDFromImmutableID
 {
+[cmdletbinding()]
     param(
         $ImmutableID
     )
