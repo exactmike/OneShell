@@ -6076,12 +6076,35 @@ Function Use-AdminUserProfile
     )
     #set folder paths
     $script:OneShellAdminUserProfileFolder = $script:CurrentAdminUserProfile.general.ProfileFolder
-    #need to update the following to Script (Module) scoped variables . . . 
-    $Script:LogFolderPath = "$script:OneShellAdminUserProfileFolder\Logs\"
-    $Script:ReferenceFolder = "$script:OneShellAdminUserProfileFolder\Reference\"
-    $Script:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations.log'
-    $Script:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations-Errors.log'
-    $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
+    #Log Folder and Log Paths
+    if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.general.LogFolder))
+    {
+        $Script:LogFolderPath = "$script:OneShellAdminUserProfileFolder\Logs"
+    }
+    else
+    {
+        $Script:LogFolderPath = $script:CurrentAdminUserProfile.general.LogFolder
+    }
+    $Script:LogPath = "$Script:LogFolderPath\$Script:Stamp" + '-AdminOperations.log'
+    $Script:ErrorLogPath = "$Script:LogFolderPath\$Script:Stamp" +  '-AdminOperations-Errors.log'
+    #Input Files Path
+    if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.general.InputFilesFolder))
+    {
+        $Script:InputFilesPath = "$script:OneShellAdminUserProfileFolder\InputFiles\"
+    }
+    else
+    {
+        $Script:InputFilesPath = $script:CurrentAdminUserProfile.general.InputFilesFolder + '\'
+    }
+    #Export Data Path
+    if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.general.ExportDataFolder))
+    {
+        $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
+    }
+    else
+    {
+            $Script:ExportDataPath = $script:CurrentAdminUserProfile.general.ExportDataFolder + '\'
+    }    
     Write-Output -InputObject $true
   }#process
 }
