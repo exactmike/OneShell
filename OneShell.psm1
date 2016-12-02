@@ -1611,11 +1611,11 @@ Function Export-Data
     {
         'xml'
         {
-            $ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.xml'
+            $ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp  + $DataToExportTitle + '.xml')
         }#xml
         'json'
         {
-            $ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.json'
+            $ExportFilePath = Join-Path -Path $exportFolderPath  -ChildPath $($Stamp  + $DataToExportTitle + '.json')
         }#json
         'csv'
         {
@@ -1626,9 +1626,9 @@ Function Export-Data
                 {
                     $ExportFilePath = $mostrecent[0].fullname
                 }#if
-                else {$ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.csv'}#else
+                else {$ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp  + $DataToExportTitle + '.csv')}#else
             }#if
-            else {$ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.csv'}#else
+            else {$ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp  + $DataToExportTitle + '.csv')}#else
         }#csv
     }#switch $dataType
     #Attempt Export of Data to File
