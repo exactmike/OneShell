@@ -6117,7 +6117,7 @@ Function Get-AdminUserProfile
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
     [parameter(ParameterSetName='GetDefault')]
-    [ValidateScript({Test-DirectoryPath -Path $_})]
+    #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
     [string[]]$Path = "$env:UserProfile\OneShell\"
     ,
     [parameter(ParameterSetName = 'All')]
