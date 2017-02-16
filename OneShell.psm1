@@ -857,7 +857,7 @@ function Get-ImmutableIDFromGUID
 }
 function Get-GUIDFromImmutableID
 {
-[cmdletbinding()]
+  [cmdletbinding()]
     param(
         $ImmutableID
     )
@@ -1504,32 +1504,32 @@ Function Write-StartFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction starting." -EntryType Notification}
 function Out-FileUtf8NoBom {
-#requires -version 3
-<#
-.SYNOPSIS
-  Outputs to a UTF-8-encoded file *without a BOM* (byte-order mark).
+  #requires -version 3
+  <#
+      .SYNOPSIS
+      Outputs to a UTF-8-encoded file *without a BOM* (byte-order mark).
 
-.DESCRIPTION
-  Mimics the most important aspects of Out-File:
-  * Input objects are sent to Out-String first.
-  * -Append allows you to append to an existing file, -NoClobber prevents
-    overwriting of an existing file.
-  * -Width allows you to specify the line width for the text representations
-     of input objects that aren't strings.
-  However, it is not a complete implementation of all Out-String parameters:
-  * Only a literal output path is supported, and only as a parameter.
-  * -Force is not supported.
+      .DESCRIPTION
+      Mimics the most important aspects of Out-File:
+      * Input objects are sent to Out-String first.
+      * -Append allows you to append to an existing file, -NoClobber prevents
+      overwriting of an existing file.
+      * -Width allows you to specify the line width for the text representations
+      of input objects that aren't strings.
+      However, it is not a complete implementation of all Out-String parameters:
+      * Only a literal output path is supported, and only as a parameter.
+      * -Force is not supported.
 
-  Caveat: *All* pipeline input is buffered before writing output starts,
+      Caveat: *All* pipeline input is buffered before writing output starts,
           but the string representations are generated and written to the target
           file one by one.
 
-.NOTES
-  The raison d'être for this advanced function is that, as of PowerShell v5, 
-  Out-File still lacks the ability to write UTF-8 files without a BOM: 
-  using -Encoding UTF8 invariably prepends a BOM.
-  http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
-#>
+      .NOTES
+      The raison d'être for this advanced function is that, as of PowerShell v5, 
+      Out-File still lacks the ability to write UTF-8 files without a BOM: 
+      using -Encoding UTF8 invariably prepends a BOM.
+      http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
+  #>
   [CmdletBinding()]
   param
   (
@@ -2565,7 +2565,7 @@ Function Import-RequiredModule
   param
   (
     [parameter(Mandatory=$true)]
-    [ValidateSet('ActiveDirectory','AzureADPreview','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
+    [ValidateSet('ActiveDirectory','AzureAD','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
     [string]$ModuleName
   )
   #Do any custom environment preparation per specific module
@@ -3548,7 +3548,7 @@ Function Connect-AzureADTenant {
     {
             try 
             {
-                $ModuleStatus = Import-RequiredModule -ModuleName AzureADPreview -ErrorAction Stop
+                $ModuleStatus = Import-RequiredModule -ModuleName AzureAD -ErrorAction Stop
                 Write-Log -Message "Attempting: Connect to Windows Azure AD Administration with User $($Credential.username)."
                 $AzureADContext = Connect-AzureAD -Credential $Credential -Confirm:$false -ErrorAction Stop
                 #Looks like they might set these up to support multiple tenant connections simultaneously.  May need to add them to a Script array if so.  
@@ -4626,24 +4626,24 @@ function Export-FunctionToPSSession
 }
 Function Get-MCTLSourceData
 {
-[cmdletbinding()]
-param(
-  [parameter(Mandatory)]
-  [ValidateSet('SQL','SharePoint','LocalFile')]
-  $SourceType
-  ,
-  [parameter(Mandatory,ParameterSetName='SQL')]
-  $SQLConnection
-)
-try
-{
-  $message = "Retrieve MCTL Source Data from source $sourcetype"
-  Write-Log -Message $message -EntryType Attempting
-  $Global:MCTLSourceData = Invoke-SQLServerQuery -sql 'Select * FROM dbo.ExpandedMCTL' -connection $SQLConnection
-  Write-Log -Message $message -EntryType Succeeded -Verbose
-  Write-Log -Message "$($Global:MCTLSourceData.count) MCTL Records Retrieved and stored in `$Global:MCTLSourceData" -Verbose
-}
-catch{}
+  [cmdletbinding()]
+  param(
+    [parameter(Mandatory)]
+    [ValidateSet('SQL','SharePoint','LocalFile')]
+    $SourceType
+    ,
+    [parameter(Mandatory,ParameterSetName='SQL')]
+    $SQLConnection
+  )
+  try
+  {
+    $message = "Retrieve MCTL Source Data from source $sourcetype"
+    Write-Log -Message $message -EntryType Attempting
+    $Global:MCTLSourceData = Invoke-SQLServerQuery -sql 'Select * FROM dbo.ExpandedMCTL' -connection $SQLConnection
+    Write-Log -Message $message -EntryType Succeeded -Verbose
+    Write-Log -Message "$($Global:MCTLSourceData.count) MCTL Records Retrieved and stored in `$Global:MCTLSourceData" -Verbose
+  }
+  catch{}
 }
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
@@ -6549,7 +6549,7 @@ function Set-AdminUserProfile
                     Try
                     {
                         AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
-                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
                         if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
                             Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
                             Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
@@ -6930,6 +6930,7 @@ Credential: $($AdminUserProfile.Credentials | Where-Object -FilterScript {$_.Ide
 }
 function SaveAdminUserProfile
 {
+[cmdletbinding()]
   param(
     $AdminUserProfile
   )
@@ -7231,7 +7232,7 @@ function Set-OneShellVariables
         'proxyAddresses'
     )#MultiValuedADAttributesToRetrieve
     $Script:ADUserAttributes = @($script:ScalarADAttributes + $Script:MultiValuedADAttributes)
-    $Script:ADContactAttributes = $script:ADUserAttributes | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADContactAttributes = @('CanonicalName','CN','Created','createTimeStamp','Deleted','Description','DisplayName','DistinguishedName','givenName','instanceType','internetEncoding','isDeleted','LastKnownParent','legacyExchangeDN','mail','mailNickname','mAPIRecipient','memberOf','Modified','modifyTimeStamp','msExchADCGlobalNames','msExchALObjectVersion','msExchPoliciesExcluded','Name','ObjectCategory','ObjectClass','ObjectGUID','ProtectedFromAccidentalDeletion','proxyAddresses','showInAddressBook','sn','targetAddress','textEncodedORAddress','uSNChanged','uSNCreated','whenChanged','whenCreated')
     $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
