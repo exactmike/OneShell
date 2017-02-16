@@ -6117,7 +6117,7 @@ Function Get-AdminUserProfile
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
     [parameter(ParameterSetName='GetDefault')]
-    [ValidateScript({Test-DirectoryPath -Path $_})]
+    #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
     [string[]]$Path = "$env:UserProfile\OneShell\"
     ,
     [parameter(ParameterSetName = 'All')]
@@ -6172,7 +6172,7 @@ Function Get-AdminUserProfile
       {
         foreach ($loc in $Path)
         {
-            $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
+            $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue)
             if ($JSONProfiles.Count -ge 1) {
                 $PotentialAdminUserProfiles = foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json}
                 $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType})
