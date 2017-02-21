@@ -1115,8 +1115,18 @@ function New-TestExchangeAlias
     $Script:TestExchangeAlias =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
+    $RecordCount = $AllRecipients.count
+    $cr=0
     foreach ($r in $AllRecipients) 
     {
+        $cr++
+        $writeProgressParams = @{
+            Activity = 'Processing Recipient Alias for Test-ExchangeAlias.  Building Global Variable which future uses of Test-ExchangeAlias will use unless the -RefreshAliasData parameter is used.'
+            Status = "Record $cr of $RecordCount"
+            PercentComplete = $cr/$RecordCount * 100
+            CurrentOperation = "Processing Recipient: $($r.GUID.tostring())"
+        }
+        Write-Progress @writeProgressParams
         $alias = $r.alias
         if ($Script:TestExchangeAlias.ContainsKey($alias)) 
         {
@@ -1128,6 +1138,7 @@ function New-TestExchangeAlias
             $Script:TestExchangeAlias.$alias += $r.guid.tostring()
         }
     }
+    Write-Progress @writeProgressParams -Completed
 }
 Function Test-ExchangeAlias
 {
