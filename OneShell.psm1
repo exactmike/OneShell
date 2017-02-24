@@ -6868,7 +6868,7 @@ function GetAdminUserProfileSystemEntries
         $system = $systems | Where-Object -FilterScript {$_.Identity -eq $s.Identity}
         "$($system.SystemType):$($system.Name)"
     } 
-  ) | Sort-Object
+  ) #| Sort-Object
   $SystemLabels += 'Done'
   $SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
   $SystemChoiceTitle = 'Configure Systems'
