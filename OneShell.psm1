@@ -5927,6 +5927,43 @@ Function Get-OrgProfile
     $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}}
   }
 }#Function Get-OrgProfile
+Function Get-OrgProfileSystem
+{
+[cmdletbinding(DefaultParameterSetName = 'GetCurrent')]
+param(
+[parameter(ParameterSetName = 'Identity')]
+[string]$OrgIdentity,
+[parameter(ParameterSetName = 'OrgName')]
+[string]$OrgName
+)
+  begin
+  {
+    switch ($PSCmdlet.ParameterSetName)
+    {
+        'GetCurrent'
+        {
+            $profile = Get-OrgProfile -GetCurrent -raw
+        }
+        'Identity'
+        {
+            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity} | Select-Object -First 1
+        }
+        'OrgName'
+        {
+            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName} | Select-Object -First 1
+        }
+    }
+  }#begin
+  process
+  {
+    $RawSystems = $profile | Select-Object -Property * -ExcludeProperty Identity,ProfileType,General
+    $SystemTypes = $RawSystems | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
+    foreach ($ST in $SystemTypes)
+    {
+        $profile.$ST | Select-Object -Property @{n='SystemType';e={$ST}},* | Sort-Object -Property SystemType
+    }
+  }
+}
 Function Use-OrgProfile
 {
   param
