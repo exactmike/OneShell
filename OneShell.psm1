@@ -1343,6 +1343,80 @@ Function Test-EmailAddress
   #Regex borrowed from: http://www.regular-expressions.info/email.html
   $EmailAddress -imatch '^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}$)[A-Z0-9._%+-]{1,64}@(?:(?=[A-Z0-9-]{1,63}\.)[A-Z0-9]+(?:-[A-Z0-9]+)*\.){1,8}[A-Z]{2,63}$'
 }
+function Test-RecipientObjectForUnwantedSMTPAddresses
+{
+[cmdletbinding()]
+param(
+[Parameter(Mandatory)]
+[string[]]$WantedDomains
+,
+[Parameter(Mandatory)]
+[ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
+[psobject[]]$Recipient
+,
+[Parameter()]
+[ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
+[string]$Operation = 'TestOnly'
+,
+[bool]$ValidateSMTPAddress = $true
+)
+    foreach ($R in $Recipient)
+    {
+        Switch ($R)
+        {
+            {$R | Test-Member -Name 'EmailAddresses'}
+            {$AddrAtt = 'EmailAddresses'}
+            {$R | Test-Member -Name 'ProxyAddresses'}
+            {$AddrAtt = 'ProxyAddresses'}
+        }
+        $Addresses = @($R.$addrAtt)
+        $TestedAddresses = @(
+            foreach ($A in $Addresses)
+            {
+                if ($A -like 'smtp:*')
+                {
+                    $RawA = $A.split(':')[1]
+                    if ($ValidateSMTPAddress)
+                    {$ValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA}
+                    $ADomain = $RawA.split('@')[1]
+                    $IsSupportedDomain = $ADomain -in $WantedDomains
+                    $outputObject = 
+                        [pscustomobject]@{
+                            DistinguishedName = $R.DistinguishedName
+                            Identity = $R.Identity
+                            Address = $RawA
+                            Domain = $ADomain
+                            IsSupportedDomain = $IsSupportedDomain
+                        }
+                    if ($ValidateSMTPAddress)
+                    {
+                        $IsValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA
+                        $outputObject.IsValidSMTPAddress = $IsValidSMTPAddress
+                    }
+                }
+                Write-Output -InputObject $outputObject
+            }
+        )
+       switch ($Operation)
+       {
+            'TestOnly'
+            {
+                if ($TestedAddresses.IsSupportedDomain -contains $false -or $TestedAddresses.IsValidSMTPAddress -contains $false)
+                {Write-Output -InputObject $false}
+                else 
+                {Write-Output -InputObject $true}
+            }
+            'ReportUnwanted'
+            {
+                Write-Output -InputObject ($TestedAddresses | Where-Object -FilterScript {$_.IsSupportedDomain -eq $false -or $_.IsValidSMTPAddress -eq $false})
+            }
+            'ReportAll'
+            {
+                Write-Output -InputObject $TestedAddresses
+            }
+       }
+    }#foreach R in Recipient
+}#function
 Function Test-DirectorySynchronization
 {
   [cmdletbinding()]
@@ -1652,7 +1726,7 @@ Function Export-Data
           {
               'xml'
                   {
-                $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation
+                $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation -As String
             }#xml
               'json'
               {
