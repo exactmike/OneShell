@@ -1387,6 +1387,7 @@ param(
                             Address = $RawA
                             Domain = $ADomain
                             IsSupportedDomain = $IsSupportedDomain
+                            IsValidSMTPAddress = $null
                         }
                     if ($ValidateSMTPAddress)
                     {
