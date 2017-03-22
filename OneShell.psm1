@@ -1409,7 +1409,11 @@ param(
             }
             'ReportUnwanted'
             {
-                Write-Output -InputObject ($TestedAddresses | Where-Object -FilterScript {$_.IsSupportedDomain -eq $false -or $_.IsValidSMTPAddress -eq $false})
+                $UnwantedAddresses = @($TestedAddresses | Where-Object -FilterScript {$_.IsSupportedDomain -eq $false -or $_.IsValidSMTPAddress -eq $false})
+                if ($UnwantedAddresses.Count -ge 1)
+                {
+                    Write-Output -InputObject $UnwantedAddresses
+                }
             }
             'ReportAll'
             {
