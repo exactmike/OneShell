@@ -1376,11 +1376,9 @@ param(
                 if ($A -like 'smtp:*')
                 {
                     $RawA = $A.split(':')[1]
-                    if ($ValidateSMTPAddress)
-                    {$ValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA}
                     $ADomain = $RawA.split('@')[1]
                     $IsSupportedDomain = $ADomain -in $WantedDomains
-                    $outputObject = 
+                    $outputRecord = 
                         [pscustomobject]@{
                             DistinguishedName = $R.DistinguishedName
                             Identity = $R.Identity
@@ -1392,10 +1390,10 @@ param(
                     if ($ValidateSMTPAddress)
                     {
                         $IsValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA
-                        $outputObject.IsValidSMTPAddress = $IsValidSMTPAddress
+                        $outputRecord.IsValidSMTPAddress = $IsValidSMTPAddress
                     }
                 }
-                Write-Output -InputObject $outputObject
+                Write-Output -InputObject $outputRecord
             }
         )
        switch ($Operation)
@@ -1727,21 +1725,21 @@ Function Export-Data
     Try
     {
         $formattedData = $(
-          switch ($DataType)
-          {
-              'xml'
-                  {
-                $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation -As String
-            }#xml
-              'json'
-              {
-                  $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
-              }#json
-              'csv'
-                  {
-                $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
-            }#csv
-          }
+            switch ($DataType)
+            {
+                'xml'
+                {
+                    $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation -As String
+                }#xml
+                'json'
+                {
+                    $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
+                }#json
+                'csv'
+                {
+                    $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
+                }#csv
+            }
         )
         $outFileParams = @{
           ErrorAction = 'Stop'
