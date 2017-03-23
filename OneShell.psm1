@@ -857,6 +857,7 @@ function Get-ImmutableIDFromGUID
 }
 function Get-GUIDFromImmutableID
 {
+  [cmdletbinding()]
     param(
         $ImmutableID
     )
@@ -1114,8 +1115,18 @@ function New-TestExchangeAlias
     $Script:TestExchangeAlias =@{}
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
+    $RecordCount = $AllRecipients.count
+    $cr=0
     foreach ($r in $AllRecipients) 
     {
+        $cr++
+        $writeProgressParams = @{
+            Activity = 'Processing Recipient Alias for Test-ExchangeAlias.  Building Global Variable which future uses of Test-ExchangeAlias will use unless the -RefreshAliasData parameter is used.'
+            Status = "Record $cr of $RecordCount"
+            PercentComplete = $cr/$RecordCount * 100
+            CurrentOperation = "Processing Recipient: $($r.GUID.tostring())"
+        }
+        Write-Progress @writeProgressParams
         $alias = $r.alias
         if ($Script:TestExchangeAlias.ContainsKey($alias)) 
         {
@@ -1127,6 +1138,7 @@ function New-TestExchangeAlias
             $Script:TestExchangeAlias.$alias += $r.guid.tostring()
         }
     }
+    Write-Progress @writeProgressParams -Completed
 }
 Function Test-ExchangeAlias
 {
@@ -1331,6 +1343,83 @@ Function Test-EmailAddress
   #Regex borrowed from: http://www.regular-expressions.info/email.html
   $EmailAddress -imatch '^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}$)[A-Z0-9._%+-]{1,64}@(?:(?=[A-Z0-9-]{1,63}\.)[A-Z0-9]+(?:-[A-Z0-9]+)*\.){1,8}[A-Z]{2,63}$'
 }
+function Test-RecipientObjectForUnwantedSMTPAddresses
+{
+[cmdletbinding()]
+param(
+[Parameter(Mandatory)]
+[string[]]$WantedDomains
+,
+[Parameter(Mandatory)]
+[ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
+[psobject[]]$Recipient
+,
+[Parameter()]
+[ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
+[string]$Operation = 'TestOnly'
+,
+[bool]$ValidateSMTPAddress = $true
+)
+    foreach ($R in $Recipient)
+    {
+        Switch ($R)
+        {
+            {$R | Test-Member -Name 'EmailAddresses'}
+            {$AddrAtt = 'EmailAddresses'}
+            {$R | Test-Member -Name 'ProxyAddresses'}
+            {$AddrAtt = 'ProxyAddresses'}
+        }
+        $Addresses = @($R.$addrAtt)
+        $TestedAddresses = @(
+            foreach ($A in $Addresses)
+            {
+                if ($A -like 'smtp:*')
+                {
+                    $RawA = $A.split(':')[1]
+                    $ADomain = $RawA.split('@')[1]
+                    $IsSupportedDomain = $ADomain -in $WantedDomains
+                    $outputRecord = 
+                        [pscustomobject]@{
+                            DistinguishedName = $R.DistinguishedName
+                            Identity = $R.Identity
+                            Address = $RawA
+                            Domain = $ADomain
+                            IsSupportedDomain = $IsSupportedDomain
+                            IsValidSMTPAddress = $null
+                        }
+                    if ($ValidateSMTPAddress)
+                    {
+                        $IsValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA
+                        $outputRecord.IsValidSMTPAddress = $IsValidSMTPAddress
+                    }
+                }
+                Write-Output -InputObject $outputRecord
+            }
+        )
+       switch ($Operation)
+       {
+            'TestOnly'
+            {
+                if ($TestedAddresses.IsSupportedDomain -contains $false -or $TestedAddresses.IsValidSMTPAddress -contains $false)
+                {Write-Output -InputObject $false}
+                else 
+                {Write-Output -InputObject $true}
+            }
+            'ReportUnwanted'
+            {
+                $UnwantedAddresses = @($TestedAddresses | Where-Object -FilterScript {$_.IsSupportedDomain -eq $false -or $_.IsValidSMTPAddress -eq $false})
+                if ($UnwantedAddresses.Count -ge 1)
+                {
+                    Write-Output -InputObject $UnwantedAddresses
+                }
+            }
+            'ReportAll'
+            {
+                Write-Output -InputObject $TestedAddresses
+            }
+       }
+    }#foreach R in Recipient
+}#function
 Function Test-DirectorySynchronization
 {
   [cmdletbinding()]
@@ -1503,32 +1592,32 @@ Function Write-StartFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction starting." -EntryType Notification}
 function Out-FileUtf8NoBom {
-#requires -version 3
-<#
-.SYNOPSIS
-  Outputs to a UTF-8-encoded file *without a BOM* (byte-order mark).
+  #requires -version 3
+  <#
+      .SYNOPSIS
+      Outputs to a UTF-8-encoded file *without a BOM* (byte-order mark).
 
-.DESCRIPTION
-  Mimics the most important aspects of Out-File:
-  * Input objects are sent to Out-String first.
-  * -Append allows you to append to an existing file, -NoClobber prevents
-    overwriting of an existing file.
-  * -Width allows you to specify the line width for the text representations
-     of input objects that aren't strings.
-  However, it is not a complete implementation of all Out-String parameters:
-  * Only a literal output path is supported, and only as a parameter.
-  * -Force is not supported.
+      .DESCRIPTION
+      Mimics the most important aspects of Out-File:
+      * Input objects are sent to Out-String first.
+      * -Append allows you to append to an existing file, -NoClobber prevents
+      overwriting of an existing file.
+      * -Width allows you to specify the line width for the text representations
+      of input objects that aren't strings.
+      However, it is not a complete implementation of all Out-String parameters:
+      * Only a literal output path is supported, and only as a parameter.
+      * -Force is not supported.
 
-  Caveat: *All* pipeline input is buffered before writing output starts,
+      Caveat: *All* pipeline input is buffered before writing output starts,
           but the string representations are generated and written to the target
           file one by one.
 
-.NOTES
-  The raison d'être for this advanced function is that, as of PowerShell v5, 
-  Out-File still lacks the ability to write UTF-8 files without a BOM: 
-  using -Encoding UTF8 invariably prepends a BOM.
-  http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
-#>
+      .NOTES
+      The raison d'être for this advanced function is that, as of PowerShell v5, 
+      Out-File still lacks the ability to write UTF-8 files without a BOM: 
+      using -Encoding UTF8 invariably prepends a BOM.
+      http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
+  #>
   [CmdletBinding()]
   param
   (
@@ -1602,7 +1691,7 @@ Function Export-Data
     ,
     [parameter()]
     [ValidateSet('Unicode','BigEndianUnicode','Ascii','Default','UTF8','UTF8NOBOM','UTF7','UTF32')]
-    [string]$Encoding = 'Unicode'
+    [string]$Encoding = 'Ascii'
   )
   #Determine Export File Path
   $stamp = Get-TimeStamp
@@ -1610,11 +1699,11 @@ Function Export-Data
     {
         'xml'
         {
-            $ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.xml'
+            $ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp  + $DataToExportTitle + '.xml')
         }#xml
         'json'
         {
-            $ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.json'
+            $ExportFilePath = Join-Path -Path $exportFolderPath  -ChildPath $($Stamp  + $DataToExportTitle + '.json')
         }#json
         'csv'
         {
@@ -1625,9 +1714,9 @@ Function Export-Data
                 {
                     $ExportFilePath = $mostrecent[0].fullname
                 }#if
-                else {$ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.csv'}#else
+                else {$ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp  + $DataToExportTitle + '.csv')}#else
             }#if
-            else {$ExportFilePath = $exportFolderPath +  $Stamp  + $DataToExportTitle + '.csv'}#else
+            else {$ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp  + $DataToExportTitle + '.csv')}#else
         }#csv
     }#switch $dataType
     #Attempt Export of Data to File
@@ -1636,21 +1725,21 @@ Function Export-Data
     Try
     {
         $formattedData = $(
-          switch ($DataType)
-          {
-              'xml'
-                  {
-                $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation
-            }#xml
-              'json'
-              {
-                  $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
-              }#json
-              'csv'
-                  {
-                $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
-            }#csv
-          }
+            switch ($DataType)
+            {
+                'xml'
+                {
+                    $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation -As String
+                }#xml
+                'json'
+                {
+                    $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
+                }#json
+                'csv'
+                {
+                    $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
+                }#csv
+            }
         )
         $outFileParams = @{
           ErrorAction = 'Stop'
@@ -2564,7 +2653,7 @@ Function Import-RequiredModule
   param
   (
     [parameter(Mandatory=$true)]
-    [ValidateSet('ActiveDirectory','AzureADPreview','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
+    [ValidateSet('ActiveDirectory','AzureAD','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
     [string]$ModuleName
   )
   #Do any custom environment preparation per specific module
@@ -2874,7 +2963,6 @@ Function Connect-Exchange
                     Write-Log -Message "Failed: Connect to Exchange System $orgName" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
                     Write-Output -InputObject $False
-                    $_
                 }#catch
             }#$false
         }#switch
@@ -3395,8 +3483,7 @@ Function Connect-ADInstance {
             catch {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
-                $_
-                $false
+                Write-Output -InputObject $false
             }#catch
         } #if
     }#process  
@@ -3549,7 +3636,7 @@ Function Connect-AzureADTenant {
     {
             try 
             {
-                $ModuleStatus = Import-RequiredModule -ModuleName AzureADPreview -ErrorAction Stop
+                $ModuleStatus = Import-RequiredModule -ModuleName AzureAD -ErrorAction Stop
                 Write-Log -Message "Attempting: Connect to Windows Azure AD Administration with User $($Credential.username)."
                 $AzureADContext = Connect-AzureAD -Credential $Credential -Confirm:$false -ErrorAction Stop
                 #Looks like they might set these up to support multiple tenant connections simultaneously.  May need to add them to a Script array if so.  
@@ -4210,16 +4297,16 @@ Function Connect-RemoteSystems
         foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
         {
             try {
-                Write-Log -Message "Attempting: Connect to $sys-Exchange."
-                $Status = Connect-Exchange -ExchangeOrganization $sys -ErrorAction Stop
-                Write-Log -Message "Succeeded: Connect to $sys-Exchange."
-                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$Status}
+                $message = "Connect to $sys-Exchange."
+                Write-Log -Message $message -EntryType Attempting
+                $ConnectionResult = Connect-Exchange -ExchangeOrganization $sys -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$ConnectionResult}
             }#try
             catch {
-                Write-Log -Message "Failed: Connect to $sys-Exchange." -Verbose -ErrorLog
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
                 Write-Log -Message $_.tostring() -ErrorLog
-                $Status = $false
-                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$Status}
+                $ProcessStatus.Connections += [pscustomobject]@{Type='Exchange';Name=$sys;ConnectionStatus=$ConnectionResult}
             }#catch
         }
         # Connect to Azure AD Sync
@@ -4627,24 +4714,24 @@ function Export-FunctionToPSSession
 }
 Function Get-MCTLSourceData
 {
-[cmdletbinding()]
-param(
-  [parameter(Mandatory)]
-  [ValidateSet('SQL','SharePoint','LocalFile')]
-  $SourceType
-  ,
-  [parameter(Mandatory,ParameterSetName='SQL')]
-  $SQLConnection
-)
-try
-{
-  $message = "Retrieve MCTL Source Data from source $sourcetype"
-  Write-Log -Message $message -EntryType Attempting
-  $Global:MCTLSourceData = Invoke-SQLServerQuery -sql 'Select * FROM dbo.ExpandedMCTL' -connection $SQLConnection
-  Write-Log -Message $message -EntryType Succeeded -Verbose
-  Write-Log -Message "$($Global:MCTLSourceData.count) MCTL Records Retrieved and stored in `$Global:MCTLSourceData" -Verbose
-}
-catch{}
+  [cmdletbinding()]
+  param(
+    [parameter(Mandatory)]
+    [ValidateSet('SQL','SharePoint','LocalFile')]
+    $SourceType
+    ,
+    [parameter(Mandatory,ParameterSetName='SQL')]
+    $SQLConnection
+  )
+  try
+  {
+    $message = "Retrieve MCTL Source Data from source $sourcetype"
+    Write-Log -Message $message -EntryType Attempting
+    $Global:MCTLSourceData = Invoke-SQLServerQuery -sql 'Select * FROM dbo.ExpandedMCTL' -connection $SQLConnection
+    Write-Log -Message $message -EntryType Succeeded -Verbose
+    Write-Log -Message "$($Global:MCTLSourceData.count) MCTL Records Retrieved and stored in `$Global:MCTLSourceData" -Verbose
+  }
+  catch{}
 }
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
@@ -5928,6 +6015,43 @@ Function Get-OrgProfile
     $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}}
   }
 }#Function Get-OrgProfile
+Function Get-OrgProfileSystem
+{
+[cmdletbinding(DefaultParameterSetName = 'GetCurrent')]
+param(
+[parameter(ParameterSetName = 'Identity')]
+[string]$OrgIdentity,
+[parameter(ParameterSetName = 'OrgName')]
+[string]$OrgName
+)
+  begin
+  {
+    switch ($PSCmdlet.ParameterSetName)
+    {
+        'GetCurrent'
+        {
+            $profile = Get-OrgProfile -GetCurrent -raw
+        }
+        'Identity'
+        {
+            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity} | Select-Object -First 1
+        }
+        'OrgName'
+        {
+            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName} | Select-Object -First 1
+        }
+    }
+  }#begin
+  process
+  {
+    $RawSystems = $profile | Select-Object -Property * -ExcludeProperty Identity,ProfileType,General
+    $SystemTypes = $RawSystems | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
+    foreach ($ST in $SystemTypes)
+    {
+        $profile.$ST | Select-Object -Property @{n='SystemType';e={$ST}},* | Sort-Object -Property SystemType
+    }
+  }
+}
 Function Use-OrgProfile
 {
   param
@@ -6077,12 +6201,35 @@ Function Use-AdminUserProfile
     )
     #set folder paths
     $script:OneShellAdminUserProfileFolder = $script:CurrentAdminUserProfile.general.ProfileFolder
-    #need to update the following to Script (Module) scoped variables . . . 
-    $Script:LogFolderPath = "$script:OneShellAdminUserProfileFolder\Logs\"
-    $Script:ReferenceFolder = "$script:OneShellAdminUserProfileFolder\Reference\"
-    $Script:LogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations.log'
-    $Script:ErrorLogPath = "$script:OneShellAdminUserProfileFolder\Logs\$Script:Stamp" + '-AdminOperations-Errors.log'
-    $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
+    #Log Folder and Log Paths
+    if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.general.LogFolder))
+    {
+        $Script:LogFolderPath = "$script:OneShellAdminUserProfileFolder\Logs"
+    }
+    else
+    {
+        $Script:LogFolderPath = $script:CurrentAdminUserProfile.general.LogFolder
+    }
+    $Script:LogPath = "$Script:LogFolderPath\$Script:Stamp" + '-AdminOperations.log'
+    $Script:ErrorLogPath = "$Script:LogFolderPath\$Script:Stamp" +  '-AdminOperations-Errors.log'
+    #Input Files Path
+    if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.general.InputFilesFolder))
+    {
+        $Script:InputFilesPath = "$script:OneShellAdminUserProfileFolder\InputFiles\"
+    }
+    else
+    {
+        $Script:InputFilesPath = $script:CurrentAdminUserProfile.general.InputFilesFolder + '\'
+    }
+    #Export Data Path
+    if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.general.ExportDataFolder))
+    {
+        $Script:ExportDataPath = "$script:OneShellAdminUserProfileFolder\Export\"
+    }
+    else
+    {
+            $Script:ExportDataPath = $script:CurrentAdminUserProfile.general.ExportDataFolder + '\'
+    }    
     Write-Output -InputObject $true
   }#process
 }
@@ -6095,7 +6242,7 @@ Function Get-AdminUserProfile
     [parameter(ParameterSetName = 'Identity')]
     [parameter(ParameterSetName = 'Name')]
     [parameter(ParameterSetName='GetDefault')]
-    [ValidateScript({Test-DirectoryPath -Path $_})]
+    #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
     [string[]]$Path = "$env:UserProfile\OneShell\"
     ,
     [parameter(ParameterSetName = 'All')]
@@ -6150,7 +6297,7 @@ Function Get-AdminUserProfile
       {
         foreach ($loc in $Path)
         {
-            $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON)
+            $JSONProfiles = @(Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue)
             if ($JSONProfiles.Count -ge 1) {
                 $PotentialAdminUserProfiles = foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json}
                 $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType})
@@ -6527,7 +6674,7 @@ function Set-AdminUserProfile
                     Try
                     {
                         AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
-                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
                         if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
                             Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
                             Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
@@ -6835,13 +6982,13 @@ function GetAdminUserProfileSystemEntries
         $system = $systems | Where-Object -FilterScript {$_.Identity -eq $s.Identity}
         "$($system.SystemType):$($system.Name)"
     } 
-  )
+  ) #| Sort-Object
   $SystemLabels += 'Done'
   $SystemChoicePrompt = 'Configure the systems below for Autoconnect and/or Associated Credentials:'
   $SystemChoiceTitle = 'Configure Systems'
   $SystemsDone = $false
   Do {
-    $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $SystemLabels -Vertical
+    $SystemChoice = Read-Choice -Message $SystemChoicePrompt -Title $SystemChoiceTitle -Choices $SystemLabels -Vertical -Numbered
     if ($SystemLabels[$SystemChoice] -eq 'Done')
     {
         $SystemsDone = $true
@@ -6908,6 +7055,7 @@ Credential: $($AdminUserProfile.Credentials | Where-Object -FilterScript {$_.Ide
 }
 function SaveAdminUserProfile
 {
+[cmdletbinding()]
   param(
     $AdminUserProfile
   )
@@ -7209,7 +7357,7 @@ function Set-OneShellVariables
         'proxyAddresses'
     )#MultiValuedADAttributesToRetrieve
     $Script:ADUserAttributes = @($script:ScalarADAttributes + $Script:MultiValuedADAttributes)
-    $Script:ADContactAttributes = $script:ADUserAttributes | Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
+    $Script:ADContactAttributes = @('CanonicalName','CN','Created','createTimeStamp','Deleted','Description','DisplayName','DistinguishedName','givenName','instanceType','internetEncoding','isDeleted','LastKnownParent','legacyExchangeDN','mail','mailNickname','mAPIRecipient','memberOf','Modified','modifyTimeStamp','msExchADCGlobalNames','msExchALObjectVersion','msExchPoliciesExcluded','Name','ObjectCategory','ObjectClass','ObjectGUID','ProtectedFromAccidentalDeletion','proxyAddresses','showInAddressBook','sn','targetAddress','textEncodedORAddress','uSNChanged','uSNCreated','whenChanged','whenCreated')
     $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
