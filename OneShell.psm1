@@ -4496,7 +4496,7 @@ Function Connect-RemoteSystems
 function Invoke-ExchangeCommand {
     [cmdletbinding(DefaultParameterSetName = 'String')]
     param(
-        [parameter(Mandatory = $true,Position = 1)]
+        [parameter(Mandatory,Position = 1)]
         [ValidateScript({$_ -like '*-*'})]
         [string]$cmdlet
         ,
@@ -4545,31 +4545,52 @@ function Invoke-ExchangeCommand {
         $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
         Write-Output -InputObject $RuntimeParameterDictionary
     }#DynamicParam
-
-    begin {
+    begin
+    {
         # Bind the dynamic parameter to a friendly variable
-        if ([string]::IsNullOrWhiteSpace($CommandPrefix)) {
+        if ([string]::IsNullOrWhiteSpace($CommandPrefix))
+        {
             $Org = $PsBoundParameters[$ParameterName]
-            if (-not [string]::IsNullOrWhiteSpace($Org)) {
+            if (-not [string]::IsNullOrWhiteSpace($Org))
+            {
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
                 $CommandPrefix = $orgobj.CommandPrefix
-            }
-            else {$CommandPrefix = ''}
-        }
-    }
-
-    Process {
-
+            }#if
+            else {$CommandPrefix = ''}#else
+        }#if
+    }#begin
+    Process
+    {
         #Build the Command String and convert to Scriptblock
-        switch ($PSCmdlet.ParameterSetName) {
+        switch ($PSCmdlet.ParameterSetName)
+        {
             'splat' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) @splat")}#splat
             'string' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) $string")}#string
-        }
-        #Execute the command String
-        &$commandstring
-
+        }#switch
+        #Store and Set and Restore ErrorAction Preference; Execute the command String
+        try
+        {
+            if ($ErrorActionPreference -eq 'Stop')
+            {
+                $originalGlobalErrorAction = $global:ErrorActionPreference
+                $global:ErrorActionPreference = 'Stop'
+            }
+            &$commandstring
+            if ($ErrorActionPreference -eq 'Stop')
+            {
+                $global:ErrorActionPreference = $originalGlobalErrorAction
+            }
+        }#try
+        catch
+        {
+            $myerror = $_
+            if ($ErrorActionPreference -eq 'Stop')
+            {
+                $global:ErrorActionPreference = $originalGlobalErrorAction
+            }
+            throw $myerror
+        }#catch
     }#Process
-
 }#Function Invoke-ExchangeCommand
 function Invoke-SkypeCommand {
     [cmdletbinding(DefaultParameterSetName = 'String')]
