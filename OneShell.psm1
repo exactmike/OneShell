@@ -2672,6 +2672,9 @@ param(
 ,
 [parameter()]
 [string]$ParameterSetName = '__AllParameterSets'
+,
+[parameter()]
+[bool]$Mandatory = $true
 )
     #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
     # Create the dictionary 
@@ -2680,7 +2683,7 @@ param(
     $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
     # Create and set the parameters' attributes
     $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-    $ParameterAttribute.Mandatory = $true
+    if ($Mandatory -eq $true) {$ParameterAttribute.Mandatory = $true}
     if ($PSBoundParameters.ContainsKey('Position')) {$ParameterAttribute.Position = $Position}
     if ($PSBoundParameters.ContainsKey('ParameterSetName')) {$ParameterAttribute.ParameterSetName = $ParameterSetName}
     # Add the attributes to the attributes collection
