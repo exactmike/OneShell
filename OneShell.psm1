@@ -4267,7 +4267,6 @@ function Invoke-ExchangeCommand {
             ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
             Alias = @('Org','ExchangeOrg')
             Position = 2
-            ParameterSetName = 'Organization'
         }
         New-DynamicParameter @NewDynamicParameterParams
     }#DynamicParam
