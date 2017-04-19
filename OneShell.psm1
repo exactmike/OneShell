@@ -1354,7 +1354,7 @@ param(
 [ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
 [psobject[]]$Recipient
 ,
-[Parameter()]
+[Parameter(Mandatory)]
 [ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
 [string]$Operation = 'TestOnly'
 ,
@@ -4632,7 +4632,6 @@ function Find-ADUser {
             ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
             Alias = @('AD','Instance')
             Position = 2
-            ParameterSetName = 'Instance'
         }
         New-DynamicParameter @NewDynamicParameterParams
     }#DynamicParam
@@ -4796,7 +4795,6 @@ function Find-ADContact {
             ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
             Alias = @('AD','Instance')
             Position = 2
-            ParameterSetName = 'Instance'
         }
         New-DynamicParameter @NewDynamicParameterParams
     }#DynamicParam
