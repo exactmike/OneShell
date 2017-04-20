@@ -4339,7 +4339,6 @@ function Invoke-SkypeCommand {
             ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
             Alias = @('Org','SkypeOrg')
             Position = 2
-            ParameterSetName = 'Organization'
         }
         New-DynamicParameter @NewDynamicParameterParams
     }#DynamicParam
