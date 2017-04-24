@@ -4365,6 +4365,35 @@ function Invoke-SkypeCommand {
 
     }#Process
 }#Function Invoke-SkypeCommand
+function New-ExchangeOrganizationDynamicParameter
+{
+[cmdletbinding()]
+param(
+[switch]$Mandatory
+,
+[int]$Position
+,
+[string]$ParameterSetName
+)
+        $NewDynamicParameterParams=@{
+            Name = 'ExchangeOrganization'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
+            Alias = @('Org','ExchangeOrg')
+        }
+        if ($PSBoundParameters.ContainsKey('Mandatory'))
+        {
+            $NewDynamicParameterParams.Mandatory = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Position'))
+        {
+            $NewDynamicParameterParams.Position = $Position
+        }
+        if ($PSBoundParameters.ContainsKey('ParameterSetName'))
+        {
+            $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
+        }
+        New-DynamicParameter @NewDynamicParameterParams
+}
 function Export-FunctionToPSSession
 {
   [cmdletbinding()]
