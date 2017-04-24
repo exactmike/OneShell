@@ -4,12 +4,11 @@
 ##########################################################################################################
 #Used By Other OneShell Functions
 function Get-SpecialFolder
-#Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
 <#
+    Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
     MIT License
-
     Copyright (c) 2016 Øyvind Kallstad
-    m
+
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
@@ -2654,7 +2653,8 @@ function Read-FolderBrowserDialog
     $FolderBrowserDialog.Dispose()
     Remove-Variable -Name FolderBrowserDialog
 }#Read-FolderBrowswerDialog
-Function New-DynamicParameter {
+Function New-DynamicParameter
+{
 <#
     .SYNOPSIS
         Helper function to simplify creating dynamic parameters
@@ -2876,7 +2876,7 @@ param(
         {
             $ParamAttr.HelpMessage = $HelpMessage
         }
- 
+
         $AttributeCollection = New-Object 'Collections.ObjectModel.Collection[System.Attribute]'
         $AttributeCollection.Add($ParamAttr)
     
@@ -2908,6 +2908,25 @@ param(
             $Dictionary.Add($Name, $Parameter)
             Write-Output -inputobject $Dictionary
         }
+}
+function Set-DynamicParameterVariable
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
+)
+foreach ($p in $Dictionary.Keys)
+{
+    Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
+    #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
+}
+}
+Function Get-CommonParameter
+{
+[cmdletbinding(SupportsShouldProcess)]
+param()
+$MyInvocation.MyCommand.Parameters.Keys
 }
 ##########################################################################################################
 #Remote System Connection Functions
@@ -3003,20 +3022,16 @@ Function Connect-Exchange
         [switch]$Profile#>
     )
     DynamicParam {
-        $NewDynamicParameterParams=@{
-            Name = 'ExchangeOrganization'
-            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
-            Alias = @('Org','ExchangeOrg')
-            Position = 2
-            ParameterSetName = 'Organization'
-        }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-ExchangeOrganizationDynamicParameter -ParameterSetName 'Organization' -Mandatory
+        Write-Output -InputObject $dictionary
     }#DynamicParam
     Begin {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         switch ($PSCmdlet.ParameterSetName) {
             'Organization' 
             {
-                $Org = $PSBoundParameters['ExchangeOrganization']
+                $Org = $ExchangeOrganization
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
                 $orgtype = $orgobj.orgtype
                 $credential = $orgobj.credential
@@ -4578,6 +4593,8 @@ param(
 [int]$Position
 ,
 [string]$ParameterSetName
+,
+[switch]$Multivalued
 )
         $NewDynamicParameterParams=@{
             Name = 'ExchangeOrganization'
@@ -4587,6 +4604,10 @@ param(
         if ($PSBoundParameters.ContainsKey('Mandatory'))
         {
             $NewDynamicParameterParams.Mandatory = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Multivalued'))
+        {
+            $NewDynamicParameterParams.Type = [string[]]
         }
         if ($PSBoundParameters.ContainsKey('Position'))
         {
@@ -4829,6 +4850,47 @@ function Get-RecipientCmdlet {
     }
   }#switch Verb
   $cmdlet
+}
+function Get-ExchangeRecipient
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[string[]]$Identity
+)
+DynamicParam
+{
+    $dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory -Multivalued
+    Write-Output -InputObject $dictionary
+}
+begin
+{
+    Set-DynamicParameterVariable -dictionary $dictionary
+    foreach ($o in $ExchangeOrganization)
+    {
+        if ((Connect-Exchange -ExchangeOrganization $o) -ne $true)
+        {throw ("Connection to Exchange Organization $o Failed")}
+    }
+}
+process
+{
+    foreach ($ID in $Identity)
+    {
+        $InvokeExchangeCommandParams = @{
+            ErrorAction = 'Stop'
+            Cmdlet = 'Get-Recipient'
+            splat = @{
+                Identity = $ID
+                ErrorAction = 'Stop'
+            }
+        }
+        foreach ($o in $exchangeOrganization)
+        {
+            $InvokeExchangeCommandParams.ExchangeOrganization = $o
+            Invoke-ExchangeCommand @InvokeExchangeCommandParams
+        }
+    }
+}#process
 }
 ##########################################################################################################
 #AD/Azure AD Helper Functions
