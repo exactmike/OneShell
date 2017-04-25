@@ -28,26 +28,26 @@ function Get-SpecialFolder
     SOFTWARE.
 #>
 {
-  [cmdletbinding()]
-  param (
-    [parameter(ParameterSetName='All',Mandatory)]
-    [switch]$All
-    ,
-    [parameter(ParameterSetName='Selected',Mandatory)]
-    [ValidateSet('Desktop','Programs','MyDocuments','MyDocuments','Favorites','Startup','Recent','SendTo','StartMenu','MyMusic','MyVideos','DesktopDirectory','MyComputer','NetworkShortcuts','Fonts','Templates','CommonStartMenu','CommonPrograms','CommonStartup','CommonDesktopDirectory','ApplicationData','PrinterShortcuts','LocalApplicationData','InternetCache','Cookies','History','CommonApplicationData','Windows','System','ProgramFiles','MyPictures','UserProfile','SystemX86','ProgramFilesX86','CommonProgramFiles','CommonProgramFilesX86','CommonTemplates','CommonDocuments','CommonAdminTools','AdminTools','CommonMusic','CommonPictures','CommonVideos','Resources','LocalizedResources','CommonOemLinks','CDBurning')] 
-    #should make this a dynamic parameter using [Enum]::GetValues([System.Environment+SpecialFolder])
-    [string[]]$Name
-  )
-  switch ($PSCmdlet.ParameterSetName)
-  {
-    'All'
+[cmdletbinding(DefaultParameterSetName = 'All')]
+param (
+)
+DynamicParam {
+        $Dictionary = New-DynamicParameter -Name 'Name' -Type $([string[]]) -ValidateSet @([Enum]::GetValues([System.Environment+SpecialFolder])) -Mandatory:$true -ParameterSetName 'Selected'
+        Write-Output -InputObject $dictionary
+}#DynamicParam
+begin {
+    #Dynamic Parameter to Variable Binding
+    Set-DynamicParameterVariable -dictionary $Dictionary
+    switch ($PSCmdlet.ParameterSetName)
     {
-      $Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+        'All'
+        {
+            $Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+        }
+        'Selected'
+        {
+        }
     }
-    'Selected'
-    {
-    }
-  }
   #$folder in (())
   foreach ($folder in $Name)
   {
@@ -58,6 +58,7 @@ function Get-SpecialFolder
     }
     Write-Output -InputObject $FolderObject
   }#foreach
+}#begin
 }#Get-SpecialFolder
 function Get-ArrayIndexForValue
 {
@@ -3448,15 +3449,19 @@ Function Connect-AADSync {
             Position = 2
             ParameterSetName = 'Profile'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
     #Credential has to be a member of ADSyncAdmins on the AADSync Server
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         switch ($PSCmdlet.ParameterSetName) {
             'Profile' {
-                $SelectedProfile = $PSBoundParameters['AADSyncServer']
+                $SelectedProfile = $AADSyncServer
                 $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'AADSyncServers' | Where-Object {$_.name -eq $selectedProfile}
                 $CommandPrefix = $Profile.Name
                 $SessionName = $Profile.Identity
@@ -3577,9 +3582,14 @@ Function Connect-ADInstance {
             Position = 2
             ParameterSetName = 'Instance'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary  = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    Begin {
+    Begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        #Process Reporting
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3587,7 +3597,7 @@ Function Connect-ADInstance {
         }#$ProcessStatus
         Switch ($PSCmdlet.ParameterSetName) {
             'Instance' {
-                $ADI = $PSBoundParameters['ActiveDirectoryInstance']
+                $ADI = $ActiveDirectoryInstance
                 $ADIobj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object {$_.name -eq $ADI}
                 $name = $ADIobj.Name
                 $server = $ADIobj.Server
@@ -3674,10 +3684,14 @@ Function Connect-MSOnlineTenant {
             Position = 2
             ParameterSetName = 'Tenant'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3686,7 +3700,7 @@ Function Connect-MSOnlineTenant {
         switch ($PSCmdlet.ParameterSetName) {
             'Tenant' 
             {
-                $Identity = $PSBoundParameters['Tenant']
+                $Identity = $Tenant
                 $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' 
@@ -3729,10 +3743,14 @@ Function Connect-AzureADTenant {
             Position = 2
             ParameterSetName = 'Tenant'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3741,7 +3759,7 @@ Function Connect-AzureADTenant {
         switch ($PSCmdlet.ParameterSetName) {
             'Tenant' 
             {
-                $Identity = $PSBoundParameters['Tenant']
+                $Identity = $Tenant
                 $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AzureADTenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' 
@@ -3785,10 +3803,15 @@ Function Connect-AADRM {
             Position = 2
             ParameterSetName = 'Tenant'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3834,10 +3857,14 @@ Function Connect-SQLDatabase {
             Position = 2
             ParameterSetName = 'SQLDatabase'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3845,7 +3872,7 @@ Function Connect-SQLDatabase {
         }
         switch ($PSCmdlet.ParameterSetName) {
             'SQLDatabase' {
-                $Identity = $PSBoundParameters['SQLDatabase']
+                $Identity = $SQLDatabase
                 $SQLDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Where-Object {$_.name -eq $Identity}
                 $name = $SQLDatabaseObj.Name
                 $SQLServer = $SQLDatabaseObj.Server
@@ -3920,12 +3947,16 @@ Function Connect-PowerShellSystem {
             Position = 3
             ParameterSetName = 'Profile'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
     #Credential has to be a member of ADSyncAdmins on the AADSync Server
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         switch ($PSCmdlet.ParameterSetName) {
             'Profile' {
                 $SelectedProfile = $PSBoundParameters['PowerShellSystem']
@@ -3988,24 +4019,28 @@ Function Connect-PowerShellSystem {
 }#Function Connect-PowerShellSystem
 Function Connect-MigrationWiz
 {
-  [cmdletbinding(DefaultParameterSetName = 'Account')]
-  Param(
-    [parameter(ParameterSetName='Manual')]
-    $Credential
-  )#param
-  DynamicParam
-  {
-        $NewDynamicParameterParams=@{
-            Name = 'Account'
-            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
-            Position = 2
-            ParameterSetName = 'Account'
-        }
-        New-DynamicParameter @NewDynamicParameterParams
-  }#DynamicParam
-  #Connect to MigrationWiz
-  begin
-  {
+[cmdletbinding(DefaultParameterSetName = 'Account')]
+Param(
+[parameter(ParameterSetName='Manual')]
+$Credential
+)#param
+DynamicParam
+{
+    $NewDynamicParameterParams=@{
+        Name = 'Account'
+        ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
+        Position = 2
+        ParameterSetName = 'Account'
+    }
+    $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+    Write-Output -InputObject $Dictionary
+}#DynamicParam
+#Connect to MigrationWiz
+begin
+{
+    #Dynamic Parameter to Variable Binding
+    Set-DynamicParameterVariable -dictionary $Dictionary
+
     $ProcessStatus = @{
         Command = $MyInvocation.MyCommand.Name
         BoundParameters = $MyInvocation.BoundParameters
@@ -4014,7 +4049,7 @@ Function Connect-MigrationWiz
     switch ($PSCmdlet.ParameterSetName) {
         'Account' 
         {
-            $Name = $PSBoundParameters['Account']
+            $Name = $Account
             $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Name}
             $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
             $Name = $MigrationWizAccountObj.Name
@@ -4061,9 +4096,13 @@ Function Connect-LotusNotesDatabase
             Position = 2
             ParameterSetName = 'LotusNotesDatabase'
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
@@ -4481,20 +4520,17 @@ function Invoke-ExchangeCommand {
         [string]$CommandPrefix
     )#Param
     DynamicParam {
-        $NewDynamicParameterParams=@{
-            Name = 'ExchangeOrganization'
-            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
-            Alias = @('Org','ExchangeOrg')
-            Position = 2
-        }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-ExchangeOrganizationDynamicParameter -ParameterSetName 'Organization' -Mandatory
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     begin
     {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         # Bind the dynamic parameter to a friendly variable
         if ([string]::IsNullOrWhiteSpace($CommandPrefix))
         {
-            $Org = $PsBoundParameters['ExchangeOrganization']
+            $Org = $ExchangeOrganization
             if (-not [string]::IsNullOrWhiteSpace($Org))
             {
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
@@ -4559,12 +4595,16 @@ function Invoke-SkypeCommand {
             Alias = @('Org','SkypeOrg')
             Position = 2
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    begin {
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         # Bind the dynamic parameter to a friendly variable
         if ([string]::IsNullOrWhiteSpace($CommandPrefix)) {
-            $Org = $PsBoundParameters['SkypeOrganization']
+            $Org = $SkypeOrganization
             if (-not [string]::IsNullOrWhiteSpace($Org)) {
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
                 $CommandPrefix = $orgobj.CommandPrefix
@@ -4927,10 +4967,14 @@ function Find-ADUser {
             Alias = @('AD','Instance')
             Position = 2
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    Begin {
-        $ADInstance = $PSBoundParameters['ActiveDirectoryInstance']
+    Begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary        
+        $ADInstance = $ActiveDirectoryInstance
         if ($DoNotPreserveLocation -ne $true) {Push-Location -StackName 'Lookup-ADUser'}
         #validate AD Instance
         try {
@@ -5090,10 +5134,14 @@ function Find-ADContact {
             Alias = @('AD','Instance')
             Position = 2
         }
-        New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    Begin {
-        $ADInstance = $PSBoundParameters['ActiveDirectoryInstance']
+    Begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary        
+        $ADInstance = $ActiveDirectoryInstance
         if ($DoNotPreserveLocation -ne $true) {Push-Location -StackName 'Find-ADContact'}
         try {
             #Write-Log -Message "Attempting: Set Location to AD Drive $("$ADInstance`:")" -Verbose
