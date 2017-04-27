@@ -4973,11 +4973,13 @@ process
     foreach ($ID in $Identity)
     {
         $InvokeExchangeCommandParams = @{
-            ErrorAction = 'Stop'
+            #ErrorAction = 'Stop'
+            WarningAction = 'SilentlyContinue'
             Cmdlet = 'Get-Recipient'
             splat = @{
                 Identity = $ID
-                ErrorAction = 'Stop'
+                WarningAction = 'SilentlyContinue'
+                #ErrorAction = 'Stop'
             }
         }
         foreach ($o in $exchangeOrganization)
