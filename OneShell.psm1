@@ -3087,7 +3087,18 @@ Function Connect-Exchange
                         try
                         {
                             $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Set-AdServerSettings -ExchangeOrganization $orgName -string '-viewentireforest $true -erroraction Stop -WarningAction SilentlyContinue' -WarningAction SilentlyContinue
+                            $InvokeExchangeCommandParams = @{
+                                Cmdlet = 'Set-ADServerSettings'
+                                ExchangeOrganization = $orgName
+                                ErrorAction = 'Stop'
+                                WarningAction = 'SilentlyContinue'
+                                splat = @{
+                                    ViewEntireForest = $true
+                                    ErrorAction = 'Stop'
+                                    WarningAction = 'SilentlyContinue'
+                                }
+                            }
+                            Invoke-ExchangeCommand @InvokeExchangeCommandParams
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
@@ -4523,7 +4534,7 @@ param(
 )#Param
 DynamicParam
 {
-    $Dictionary = New-ExchangeOrganizationDynamicParameter -ParameterSetName 'Organization' -Mandatory
+    $Dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory
     Write-Output -InputObject $Dictionary
 }#DynamicParam
 begin
