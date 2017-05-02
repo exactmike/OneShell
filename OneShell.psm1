@@ -1525,6 +1525,7 @@ Function Write-Log
         [ValidateSet('Attempting','Succeeded','Failed','Notification')]
         [string]$EntryType
     )
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     #Add the Entry Type to the message or add nothing to the message if there is not EntryType specified - preserves legacy functionality and adds new EntryType capability
     if (-not [string]::IsNullOrWhiteSpace($EntryType)) {$Message = $EntryType + ':' + $Message}
     #check the Log Preference to see if the message should be logged or not
