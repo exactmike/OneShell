@@ -4801,7 +4801,8 @@ Function Get-MCTLSourceData
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
 ##########################################################################################################
-function Get-RecipientCmdlet {
+function Get-RecipientCmdlet
+{
   [cmdletbinding()]
   param
   (
@@ -4935,7 +4936,7 @@ function Get-RecipientCmdlet {
     }
   }#switch Verb
   $cmdlet
-}
+}#Get-RecipientCmdlet
 function Get-ExchangeRecipient
 {
 [cmdletbinding()]
@@ -4962,11 +4963,11 @@ process
     foreach ($ID in $Identity)
     {
         $InvokeExchangeCommandParams = @{
-            ErrorAction = 'Stop'
+            #ErrorAction = 'Stop'
             Cmdlet = 'Get-Recipient'
             splat = @{
                 Identity = $ID
-                ErrorAction = 'Stop'
+                #ErrorAction = 'Stop'
             }
         }
         foreach ($o in $exchangeOrganization)
@@ -5326,13 +5327,26 @@ function Find-PrimarySMTPAddress {
         }#Default
     }#switch 
 }
-function Get-AdObjectDomain {
-    param(
-        [parameter()]
-        $adobject
-    )
-    [string]$domain=$adobject.canonicalname.split('/')[0]
-    Write-Output -InputObject $domain
+function Get-AdObjectDomain
+{
+[cmdletbinding(DefaultParameterSetName='ADObject')]
+param(
+[parameter(Mandatory,ParameterSetName='ADObject')]
+[ValidateScript({Test-Member -InputObject $_ -Name CanonicalName})]
+$adobject
+,
+[parameter(Mandatory,ParameterSetName='ExchangeObject')]
+[ValidateScript({Test-Member -InputObject $_ -Name Identity})]
+$ExchangeObject
+)
+switch ($PSCmdlet.ParameterSetName)
+{
+    'ADObject'
+    {[string]$domain=$adobject.canonicalname.split('/')[0]}
+    'ExchangeObject'
+    {[string]$domain=$ExchangeObject.Identity.split('/')[0]}
+}
+Write-Output -InputObject $domain
 }
 Function Get-ADAttributeSchema
 {
