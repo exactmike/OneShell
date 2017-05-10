@@ -1738,7 +1738,21 @@ Function Export-Data
                 }#json
                 'csv'
                 {
-                    $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
+                    if ($PSBoundParameters.ContainsKey('Append'))
+                    {
+                        if ($PSBoundParameters.Append -eq $true)
+                        {
+                            $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter | Select-Object -Skip 1
+                        }
+                        else
+                        {
+                            $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
+                        }
+                    }
+                    else
+                    {
+                        $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
+                    }
                 }#csv
             }
         )
