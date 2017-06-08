@@ -1525,7 +1525,6 @@ Function Write-Log
         [ValidateSet('Attempting','Succeeded','Failed','Notification')]
         [string]$EntryType
     )
-    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     #Add the Entry Type to the message or add nothing to the message if there is not EntryType specified - preserves legacy functionality and adds new EntryType capability
     if (-not [string]::IsNullOrWhiteSpace($EntryType)) {$Message = $EntryType + ':' + $Message}
     #check the Log Preference to see if the message should be logged or not
@@ -1738,21 +1737,7 @@ Function Export-Data
                 }#json
                 'csv'
                 {
-                    if ($PSBoundParameters.ContainsKey('Append'))
-                    {
-                        if ($PSBoundParameters.Append -eq $true)
-                        {
-                            $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter | Select-Object -Skip 1
-                        }
-                        else
-                        {
-                            $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
-                        }
-                    }
-                    else
-                    {
-                        $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
-                    }
+                    $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
                 }#csv
             }
         )
@@ -7323,50 +7308,71 @@ Function GetDefaultAdminUserProfile
 ##########################################################################################################
 function Get-OneShellVariable
 {
-  param
-  (
+[cmdletbinding()]
+param
+(
     [string]$Name
-  )
-    Get-Variable -Scope Script -Name $name 
+)
+Try
+{
+    Get-Variable -Scope Script -Name $name -ErrorAction Stop
+}
+Catch
+{
+    Write-Verbose -Message "Variable $name Not Found" -Verbose
+}
 }
 function Get-OneShellVariableValue
 {
-  param
-  (
-    [string]$Name
-  )
-    Get-Variable -Scope Script -Name $name -ValueOnly
+[cmdletbinding()]
+param
+(
+[string]$Name
+)
+Try
+{
+    Get-Variable -Scope Script -Name $name -ValueOnly -ErrorAction Stop
+}
+Catch
+{
+    Write-Verbose -Message "Variable $name Not Found" -Verbose
+}
 }
 function Set-OneShellVariable
 {
-  param
-  (
-    [string]$Name
-    ,
-    $Value
-  )
-    Set-Variable -Scope Script -Name $Name -Value $value  
+[cmdletbinding()]
+param
+(
+[string]$Name
+,
+$Value
+)
+Set-Variable -Scope Script -Name $Name -Value $value  
 }
 function New-OneShellVariable
 {
-  param 
-  (
-    [string]$Name
-    ,
-    $Value
-  )
-    New-Variable -Scope Script -Name $name -Value $Value
+[cmdletbinding()]
+param 
+(
+[string]$Name
+,
+$Value
+)
+New-Variable -Scope Script -Name $name -Value $Value
 }
 function Remove-OneShellVariable
 {
-  param
-  (
-    [string]$Name
-  )
-    Remove-Variable -Scope Script -Name $name
+[cmdletbinding()]
+param
+(
+[string]$Name
+)
+Remove-Variable -Scope Script -Name $name
 }
 function Set-OneShellVariables
 {
+[cmdletbinding()]
+Param()
     #Write-Log -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
   <#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
