@@ -944,6 +944,22 @@ function Test-Member
         } 
     } 
 }
+function Test-IsNullOrWhiteSpace
+{
+[cmdletbinding()]
+Param(
+$String
+)
+[string]::IsNullOrWhiteSpace($String)
+}
+function Test-IsNotNullOrWhiteSpace
+{
+[cmdletbinding()]
+Param(
+$String
+)
+[string]::IsNullOrWhiteSpace($String) -eq $false
+}
 function Test-IP
 {
   #https://gallery.technet.microsoft.com/scriptcenter/A-short-tip-to-validate-IP-4f039260
@@ -4824,6 +4840,20 @@ Function Get-MCTLSourceData
     Write-Log -Message "$($Global:MCTLSourceData.count) MCTL Records Retrieved and stored in `$Global:MCTLSourceData" -Verbose
   }
   catch{}
+}
+function Get-OneShellSystemConfiguration
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[ValidateSet('PowerShellSystems','Office365Tenants','ActiveDirectoryInstances','SQLDatabases','ExchangeOrganizations','LotusNotesDatabases')]
+$SystemType
+,
+[parameter(Mandatory)]
+$Name
+)
+$AllSystems = Get-OneShellVariableValue -Name CurrentOrgAdminProfileSystems 
+$AllSystems | Where-Object -FilterScript {$_.Systemtype -eq $SystemType -and $_.Name -eq $Name}
 }
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
