@@ -1072,6 +1072,22 @@ Function Test-CommandExists
   Try {if(Get-Command -Name $command -ErrorAction Stop){$true}}
   Catch {$false}
 } #end function Test-CommandExists
+function Test-IsNullOrWhiteSpace
+{
+[cmdletbinding()]
+Param(
+$String
+)
+[string]::IsNullOrWhiteSpace($String)
+}
+function Test-IsNotNullOrWhiteSpace
+{
+[cmdletbinding()]
+Param(
+$String
+)
+[string]::IsNullOrWhiteSpace($String) -eq $false
+}
 function Get-UninstallEntry
 {
   [cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
