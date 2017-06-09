@@ -1072,22 +1072,6 @@ Function Test-CommandExists
   Try {if(Get-Command -Name $command -ErrorAction Stop){$true}}
   Catch {$false}
 } #end function Test-CommandExists
-function Test-IsNullOrWhiteSpace
-{
-[cmdletbinding()]
-Param(
-$String
-)
-[string]::IsNullOrWhiteSpace($String)
-}
-function Test-IsNotNullOrWhiteSpace
-{
-[cmdletbinding()]
-Param(
-$String
-)
-[string]::IsNullOrWhiteSpace($String) -eq $false
-}
 function Get-UninstallEntry
 {
   [cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
@@ -5659,7 +5643,7 @@ Function Get-QualifiedADUserObject
   )
   #Retrieve all qualified (per the filter)AD User Objects including the specified properties
   Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
-  Connect-ADInstance -ActiveDirectoryInstance $ActiveDirectoryInstance -ErrorAction Stop > $null
+  #Connect-ADInstance -ActiveDirectoryInstance $ActiveDirectoryInstance -ErrorAction Stop > $null
   Set-Location -Path "$($ActiveDirectoryInstance):\"
   $GetADUserParams = @{
     ErrorAction = 'Stop'
