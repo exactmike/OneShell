@@ -3568,7 +3568,7 @@ Function Connect-AADSync {
     }#process 
 }#Function Connect-AADSync
 Function Connect-ADInstance {
-    [cmdletbinding(DefaultParameterSetName = 'Instance')]
+    [cmdletbinding(DefaultParameterSetName = 'NamedInstance')]
     param(
         [parameter(Mandatory=$True,ParameterSetName='Manual')]
         [string]$Name
@@ -3584,6 +3584,9 @@ Function Connect-ADInstance {
         ,
         [parameter(Mandatory = $true,ParameterSetName='Manual')]
         [bool]$GlobalCatalog
+        ,
+        [parameter(Mandatory = $true,ParameterSetName='InstanceObject')]
+        [psobject]$InstanceObject
     )#param
     DynamicParam {
         $NewDynamicParameterParams=@{
@@ -3591,7 +3594,7 @@ Function Connect-ADInstance {
             ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
             Alias = @('AD','Instance')
             Position = 2
-            ParameterSetName = 'Instance'
+            ParameterSetName = 'NamedInstance'
         }
         $Dictionary  = New-DynamicParameter @NewDynamicParameterParams
         Write-Output -InputObject $Dictionary
@@ -3607,7 +3610,8 @@ Function Connect-ADInstance {
             Outcome = $null
         }#$ProcessStatus
         Switch ($PSCmdlet.ParameterSetName) {
-            'Instance' {
+            'NamedInstance'
+            {
                 $ADI = $ActiveDirectoryInstance
                 $ADIobj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object {$_.name -eq $ADI}
                 $name = $ADIobj.Name
@@ -3616,7 +3620,16 @@ Function Connect-ADInstance {
                 $Description = "OneShell $($ADIobj.Identity): $($ADIobj.description)"
                 $GlobalCatalog = $ADIobj.GlobalCatalog
             }#instance
-            'Manual' {
+            'InstanceObject'
+            {
+                $name = $InstanceObject.name
+                $server = $InstanceObject.Server
+                $Credential = $InstanceObject.credential
+                $Description = "OneShell $($InstanceObject.Identity): $($InstanceObject.description)"
+                $GlobalCatalog = $InstanceObject.GlobalCatalog
+            }
+            'Manual'
+            {
             }#manual
         }#switch
     }#begin
@@ -3665,15 +3678,18 @@ Function Connect-ADInstance {
             }#newpsdriveparams
             if ($Description) {$NewPSDriveParams.Description = $Description}
             if ($credential) {$NewPSDriveParams.Credential = $Credential}
-            try {
+            try
+            {
                 Write-Log -Message "Attempting: Connect PS Drive $name`: to $Description"
-                if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop) {
+                if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop)
+                {
                     New-PSDrive @NewPSDriveParams  > $null
                 }#if
                 Write-Log -Message "Succeeded: Connect PS Drive $name`: to $Description"
                 Write-Output -InputObject $true
             }#try
-            catch {
+            catch
+            {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
                 Write-Output -InputObject $false
