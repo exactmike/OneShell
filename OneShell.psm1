@@ -1138,6 +1138,39 @@ Function Test-CommandExists
   Try {if(Get-Command -Name $command -ErrorAction Stop){$true}}
   Catch {$false}
 } #end function Test-CommandExists
+function Test-All
+{
+#https://www.simple-talk.com/sysadmin/powershell/powershell-one-liners--collections,-hashtables,-arrays-and-strings/
+    [CmdletBinding()]
+    param(
+        $EvaluateCondition
+        ,
+        [Parameter(ValueFromPipeline = $true)]
+        $ObjectToTest
+    )
+    begin
+    { $all = $true }
+    process
+    { if (!(& $EvaluateCondition $ObjectToTest)) { $all = $false } }
+    end
+    { $all } 
+}
+function Test-Any {
+#https://www.simple-talk.com/sysadmin/powershell/powershell-one-liners--collections,-hashtables,-arrays-and-strings/
+    [CmdletBinding()]
+        param(
+        $EvaluateCondition
+        ,
+        [Parameter(ValueFromPipeline = $true)]
+        $ObjectToTest
+    )
+    begin
+    { $any = $false }
+    process
+    { if (-not $any -and (& $EvaluateCondition $ObjectToTest)) { $any = $true } }
+    end
+    { $any }
+}
 function Get-UninstallEntry
 {
   [cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
