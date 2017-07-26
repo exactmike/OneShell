@@ -1142,34 +1142,54 @@ function Test-All
 {
 #https://www.simple-talk.com/sysadmin/powershell/powershell-one-liners--collections,-hashtables,-arrays-and-strings/
     [CmdletBinding()]
-    param(
-        $EvaluateCondition
+    param
+    (
+        [scriptblock]$EvaluateCondition
         ,
-        [Parameter(ValueFromPipeline = $true)]
-        $ObjectToTest
+        [Parameter(ValueFromPipeline)]
+        [object]$ObjectToTest
     )
     begin
-    { $all = $true }
+    {
+        $all = $true
+    }
     process
-    { if (!(& $EvaluateCondition $ObjectToTest)) { $all = $false } }
+    {
+        if (!(&$EvaluateCondition))
+        {
+            $all = $false
+        }
+    }
     end
-    { $all } 
+    {
+        $all
+    } 
 }
 function Test-Any {
 #https://www.simple-talk.com/sysadmin/powershell/powershell-one-liners--collections,-hashtables,-arrays-and-strings/
     [CmdletBinding()]
-        param(
+    param
+    (
         $EvaluateCondition
         ,
-        [Parameter(ValueFromPipeline = $true)]
-        $ObjectToTest
+        [Parameter(ValueFromPipeline)]
+        [object]$ObjectToTest
     )
     begin
-    { $any = $false }
+    {
+        $any = $false
+    }
     process
-    { if (-not $any -and (& $EvaluateCondition $ObjectToTest)) { $any = $true } }
+    {
+        if (-not $any -and (&$EvaluateCondition))
+        {
+            $any = $true
+        } 
+    }
     end
-    { $any }
+    {
+        $any
+    }
 }
 function Get-UninstallEntry
 {
@@ -5792,7 +5812,7 @@ Function Get-ADDomainNetBiosName
   [cmdletbinding()]
   param(
     [parameter(ValueFromPipeline,Mandatory)]
-    [string]$DNSRoot
+    [string[]]$DNSRoot
   )
   #If necessary, create the script:ADDomainDNSRootToNetBiosNameHash
   if (-not (Test-Path variable:script:ADDomainDNSRootToNetBiosNameHash))
