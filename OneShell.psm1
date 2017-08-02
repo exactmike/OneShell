@@ -3057,7 +3057,7 @@ Function Import-RequiredModule
   param
   (
     [parameter(Mandatory=$true)]
-    [ValidateSet('ActiveDirectory','AzureAD','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
+    [ValidateSet('ActiveDirectory','AzureAD','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell','BitTitanPowerShell')]
     [string]$ModuleName
   )
   #Do any custom environment preparation per specific module
@@ -4165,69 +4165,134 @@ Function Connect-PowerShellSystem {
 }#Function Connect-PowerShellSystem
 Function Connect-MigrationWiz
 {
-[cmdletbinding(DefaultParameterSetName = 'Account')]
-Param(
-[parameter(ParameterSetName='Manual')]
-$Credential
-)#param
-DynamicParam
-{
-    $NewDynamicParameterParams=@{
-        Name = 'Account'
-        ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
-        Position = 2
-        ParameterSetName = 'Account'
-    }
-    $Dictionary = New-DynamicParameter @NewDynamicParameterParams
-    Write-Output -InputObject $Dictionary
-}#DynamicParam
-#Connect to MigrationWiz
-begin
-{
-    #Dynamic Parameter to Variable Binding
-    Set-DynamicParameterVariable -dictionary $Dictionary
+    [cmdletbinding(DefaultParameterSetName = 'Account')]
+    Param
+    (
+    [parameter(ParameterSetName='Manual')]
+    $Credential
+    )#param
+    DynamicParam
+    {
+        $NewDynamicParameterParams=@{
+            Name = 'Account'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'Account'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
+    }#DynamicParam
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
 
-    $ProcessStatus = @{
-        Command = $MyInvocation.MyCommand.Name
-        BoundParameters = $MyInvocation.BoundParameters
-        Outcome = $null
-    }
-    switch ($PSCmdlet.ParameterSetName) {
-        'Account' 
-        {
-            $Name = $Account
-            $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Name}
-            $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
-            $Name = $MigrationWizAccountObj.Name
-            $Identity = $MigrationWizAccountObj.Identity
-        }#Account
-        'Manual' 
-        {
-        }#manual
-    }#switch
-  }#begin
-  process 
-  {
-    try 
+        $ProcessStatus = @{
+            Command = $MyInvocation.MyCommand.Name
+            BoundParameters = $MyInvocation.BoundParameters
+            Outcome = $null
+        }
+        switch ($PSCmdlet.ParameterSetName) {
+            'Account' 
+            {
+                $Name = $Account
+                $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Name}
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
+                $Name = $MigrationWizAccountObj.Name
+                $Identity = $MigrationWizAccountObj.Identity
+            }#Account
+            'Manual' 
+            {
+            }#manual
+        }#switch
+    }#begin
+    process 
     {
-        $message = "Connect to MigrationWiz with User $($Credential.username)."
-        Write-Log -Message $message -EntryType Attempting                
-        $ModuleStatus = Import-RequiredModule -ModuleName MigrationPowerShell -ErrorAction Stop
-        #May eliminate the Script/Module variable later (dropping $Script:) in favor of the MigrationWizTickets Hashtable
-        $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop
-        Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket #-Identity $Identity
-        Write-Log -Message $message -EntryType Succeeded
-        Write-Output -InputObject $true
-    }
-    Catch 
-    {
-        $myerror = $_
-        Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
-        Write-Log -Message $myerror.tostring()
-        Write-Output -InputObject $false 
-    }
-  } 
+        try 
+        {
+            $message = "Connect to MigrationWiz with User $($Credential.username)."
+            Write-Log -Message $message -EntryType Attempting                
+            $ModuleStatus = Import-RequiredModule -ModuleName MigrationPowerShell -ErrorAction Stop
+            #May eliminate the Script/Module variable later (dropping $Script:) in favor of the MigrationWizTickets Hashtable
+            $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop -
+            Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket #-Identity $Identity
+            Write-Log -Message $message -EntryType Succeeded
+            Write-Output -InputObject $true
+        }
+        Catch 
+        {
+            $myerror = $_
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $myerror.tostring()
+            Write-Output -InputObject $false 
+        }
+    } 
 }#function Connect-MigrationWiz
+Function Connect-BitTitan
+{
+    [cmdletbinding(DefaultParameterSetName = 'Account')]
+    Param
+    (
+    [parameter(ParameterSetName='Manual')]
+    $Credential
+    )#param
+    DynamicParam
+    {
+        $NewDynamicParameterParams=@{
+            Name = 'Account'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'Account'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
+    }#DynamicParam
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+
+        $ProcessStatus = @{
+            Command = $MyInvocation.MyCommand.Name
+            BoundParameters = $MyInvocation.BoundParameters
+            Outcome = $null
+        }
+        switch ($PSCmdlet.ParameterSetName) {
+            'Account' 
+            {
+                $Name = $Account
+                $BitTitanAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Where-Object {$_.name -eq $Name}
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
+                $Name = $BitTitanAccountObj.Name
+                $Identity = $BitTitanAccountObj.Identity
+            }#Account
+            'Manual' 
+            {
+            }#manual
+        }#switch
+    }#begin
+    process 
+    {
+        try 
+        {
+            $message = "Connect to BitTitan with User $($Credential.username)."
+            Write-Log -Message $message -EntryType Attempting                
+            $ModuleStatus = Import-RequiredModule -ModuleName BitTitanPowerShell -ErrorAction Stop
+            #May eliminate the Script/Module variable later (dropping $Script:) in favor of the BitTitanTickets Hashtable
+            $Script:BitTitanTicket = Get-BT_Ticket -Credentials $Credential -ErrorAction Stop -ServiceType BitTitan -SetDefault
+            Update-BitTitanTickets -AccountName $Name -BitTitanTicket $Script:BitTitanTicket #-Identity $Identity
+            Write-Log -Message $message -EntryType Succeeded
+            Write-Output -InputObject $true
+        }
+        Catch 
+        {
+            $myerror = $_
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $myerror.tostring()
+            Write-Output -InputObject $false 
+        }
+    } 
+}#function Connect-BitTitan
 Function Connect-LotusNotesDatabase
 {
     [cmdletbinding(DefaultParameterSetName = 'LotusNotesDatabase')]
@@ -4449,6 +4514,23 @@ Function Update-MigrationWizTickets
     New-Variable -Name 'MigrationWizTickets' -Value @{$AccountName = $MigrationWizTicket} -Scope Global
   }#else
 }#function Update-MigrationWizTickets
+Function Update-BitTitanTickets
+{
+  [cmdletbinding()]
+  Param(
+    [parameter(Mandatory=$true)]
+    $AccountName
+    ,[parameter(Mandatory=$true)]
+    $BitTitanTicket
+  )#param
+  if (Test-Path -Path 'variable:Global:BitTitanTickets') 
+  {
+    $Global:BitTitanTickets.$($AccountName)=$BitTitanTicket
+  } else
+  {
+    New-Variable -Name 'BitTitanTickets' -Value @{$AccountName = $BitTitanTicket} -Scope Global
+  }#else
+}#function Update-BitTitanTickets
 Function Connect-RemoteSystems
 {
     [CmdletBinding()]
@@ -4642,6 +4724,24 @@ Function Connect-RemoteSystems
                 $ProcessStatus.Connections += [pscustomobject]@{Type='Migration Wiz Account';Name=$sys;ConnectionStatus=$Status}
             }#catch
         }
+        # Connect To BitTitan Accounts
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
+        {
+            try {
+                $message = "Connect to BitTitan Account $sys"
+                Write-Log -Message $message -EntryType Attempting
+                $Status = Connect-MigrationWiz -Account $sys -ErrorAction Stop 
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='BitTitan Account';Name=$sys;ConnectionStatus=$Status}
+            }#try
+            catch {
+                $myerror = $_
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='BitTitan Account';Name=$sys;ConnectionStatus=$Status}
+            }#catch
+        }        
         $ProcessStatus.Outcome = $true
         Write-Output -InputObject $ProcessStatus.Connections
     }
