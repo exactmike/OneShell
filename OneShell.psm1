@@ -4730,7 +4730,7 @@ Function Connect-RemoteSystems
             try {
                 $message = "Connect to BitTitan Account $sys"
                 Write-Log -Message $message -EntryType Attempting
-                $Status = Connect-MigrationWiz -Account $sys -ErrorAction Stop 
+                $Status = Connect-BitTitan -Account $sys -ErrorAction Stop 
                 Write-Log -Message $message -EntryType Succeeded
                 $ProcessStatus.Connections += [pscustomobject]@{Type='BitTitan Account';Name=$sys;ConnectionStatus=$Status}
             }#try
