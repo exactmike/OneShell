@@ -1138,59 +1138,6 @@ Function Test-CommandExists
   Try {if(Get-Command -Name $command -ErrorAction Stop){$true}}
   Catch {$false}
 } #end function Test-CommandExists
-function Test-All
-{
-#https://www.simple-talk.com/sysadmin/powershell/powershell-one-liners--collections,-hashtables,-arrays-and-strings/
-    [CmdletBinding()]
-    param
-    (
-        [scriptblock]$EvaluateCondition
-        ,
-        [Parameter(ValueFromPipeline)]
-        [object]$ObjectToTest
-    )
-    begin
-    {
-        $all = $true
-    }
-    process
-    {
-        if (!(&$EvaluateCondition))
-        {
-            $all = $false
-        }
-    }
-    end
-    {
-        $all
-    } 
-}
-function Test-Any {
-#https://www.simple-talk.com/sysadmin/powershell/powershell-one-liners--collections,-hashtables,-arrays-and-strings/
-    [CmdletBinding()]
-    param
-    (
-        $EvaluateCondition
-        ,
-        [Parameter(ValueFromPipeline)]
-        [object]$ObjectToTest
-    )
-    begin
-    {
-        $any = $false
-    }
-    process
-    {
-        if (-not $any -and (&$EvaluateCondition))
-        {
-            $any = $true
-        } 
-    }
-    end
-    {
-        $any
-    }
-}
 function Get-UninstallEntry
 {
   [cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
@@ -1644,6 +1591,7 @@ Function Write-Log
         [ValidateSet('Attempting','Succeeded','Failed','Notification')]
         [string]$EntryType
     )
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -Name VerbosePreference
     #Add the Entry Type to the message or add nothing to the message if there is not EntryType specified - preserves legacy functionality and adds new EntryType capability
     if (-not [string]::IsNullOrWhiteSpace($EntryType)) {$Message = $EntryType + ':' + $Message}
     #check the Log Preference to see if the message should be logged or not
