@@ -1,25 +1,23 @@
 ﻿function GetGenericNewOrgProfileObject
 {
-    param(
-    )
+    [cmdletbinding()]
+    param()
     [pscustomobject]@{
             Identity = [guid]::NewGuid()
+            Name = ''
             ProfileType = 'OneShellOrgProfile'
             ProfileTypeVersion = 1.2
             Version = .01
-            General = [pscustomobject]@{
-                Name = ''
-                Default = $null
-                OrganizationSpecificModules = @()
-                SharePointSite = ''
-            }
+            IsDefault = $null
+            OrganizationSpecificModules = @()
             Systems = @()
-        }
+    }
 } #GetGenericNewOrgProfileObject
 function GetOrgProfileMenuMessage
 {
     param($OrgProfile)
-    $Message = @"
+    $Message = 
+@"
     Oneshell: Org Profile Menu
 
         Identity: $($OrgProfile.Identity)
@@ -30,11 +28,11 @@ function GetOrgProfileMenuMessage
 } #GetOrgProfileMenuMessage
 function New-OrgProfile
 {
-[cmdletbinding()]
-param
-(
-    [switch]$Passthru
-)
+    [cmdletbinding()]
+    param
+    (
+        [switch]$Passthru
+    )
     Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
     #Build the basic Org profile object
     $OrgProfile = GetGenericNewOrgProfileObject
@@ -103,29 +101,59 @@ function New-OrgProfileSystem
     [cmdletbinding()]
     param
     (
-    [parameter(Mandatory)]
-    [ValidateSet('PowerShellSystems','SQLDatabases','ExchangeOrganizations','AADSyncServers','AzureADTenants','Office365Tenants','ActiveDirectoryInstances','MailRelayEndpoints','SkypeOrganizations')]
-    [string]$SystemCategory
-    ,
-    [parameter(Mandatory)]
-    [string]$Name
-    ,
-    [parameter()]
-    [string]$Description
-    ,
-    [Alias('Server')]
-    [parameter()]
-    [string]$ComputerName
+        [parameter(Mandatory)]
+        [ValidateSet('PowerShellSystems','SQLDatabases','ExchangeOrganizations','AADSyncServers','AzureADTenants','Office365Tenants','ActiveDirectoryInstances','MailRelayEndpoints','SkypeOrganizations')]
+        [string]$ServiceType
+        ,
+        [parameter(Mandatory)]
+        [string]$Name
+        ,
+        [parameter()]
+        [string]$Description
+        ,
+        [parameter()]
+        [bool]$isDefault
+        ,
+        [parameter()]
+        [bool]$AuthenticationRequired
+        ,
+        [parameter()]
+        [bool]$isDefault
+        
     )
-    ##Generic System Attributes
-    #Name
-    #Identity
-    #Description
-    #AuthenticationRequired
-    #AuthMethod
-    #OneShellSystemType
-    #ComputerName
-    #ServiceFqdnOrIP
-    #ProxyEnabled
-    #CommandPrefix
+
+
+}
+function GetGenericNewSystemObject
+{
+    [cmdletbinding()]
+    param()
+    [pscustomobject]@{
+        Identity = [guid]::NewGuid()
+        Name = ''
+        Description = ''
+        ServiceType = ''
+        SystemObjectVersion = .01
+        Version = .01
+        IsDefault = $null
+        AuthenticationRequired = $null
+        AuthMethod = $null
+        RequiredModule = @()
+        Defaults = [PSCustomObject]@{
+            ProxyEnabled = $null
+            CommandPrefix = $null
+            
+        }
+        Endpoints = @(
+            [PSCustomObject]@{
+                Identity = [guid]::NewGuid()
+                ServiceFqdn = $null
+                ServiceIPAddress = $null
+                ServicePort = $null
+                IsDefault = $null
+                UseTLS = $null
+            }
+        )
+        ServiceTypeAttributes = [PSCustomObject]@{}
+    }
 }
