@@ -1,31 +1,32 @@
 ﻿function GetGenericNewOrgProfileObject
 {
-param(
-)
-[pscustomobject]@{
-        Identity = [guid]::NewGuid()
-        ProfileType = 'OneShellOrgProfile'
-        ProfileTypeVersion = 1.0
-        General = [pscustomobject]@{
-            Name = ''
-            Default = $null
-            OrganizationSpecificModules = @()
-            SharePointSite = ''
+    param(
+    )
+    [pscustomobject]@{
+            Identity = [guid]::NewGuid()
+            ProfileType = 'OneShellOrgProfile'
+            ProfileTypeVersion = 1.2
+            Version = .01
+            General = [pscustomobject]@{
+                Name = ''
+                Default = $null
+                OrganizationSpecificModules = @()
+                SharePointSite = ''
+            }
+            Systems = @()
         }
-        Systems = @()
-    }
 } #GetGenericNewOrgProfileObject
 function GetOrgProfileMenuMessage
 {
-param($OrgProfile)
-$Message = @"
-Oneshell: Org Profile Menu
+    param($OrgProfile)
+    $Message = @"
+    Oneshell: Org Profile Menu
 
-    Identity: $($OrgProfile.Identity)
-    Profile Name: $($OrgProfile.General.Name)
-    Default: $($OrgProfile.General.Default)
+        Identity: $($OrgProfile.Identity)
+        Profile Name: $($OrgProfile.General.Name)
+        Default: $($OrgProfile.General.Default)
 "@
-$Message
+    $Message
 } #GetOrgProfileMenuMessage
 function New-OrgProfile
 {
@@ -65,54 +66,27 @@ param
             }
             'Systems'
             {
-                $AdminUserProfile.Systems = GetAdminUserProfileSystemEntries -OrganizationIdentity $OrganizationIdentity -AdminUserProfile $AdminUserProfile
+                #code/functions to display/add/edit systems in the OrgProfile
             }
             'Save'
             {
-                if ($OrgProfile.General.ProfileFolder -eq '')
-                {
-                    Write-Error -Message 'Unable to save Admin Profile.  Please set a profile directory.'
-                }
-                else
-                {
                     Try
                     {
-                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
-                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
-                        if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
-                            Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
-                            Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
-                        }
+                        #SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
+                        #if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
+                        #    Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
+                        #    Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
+                        #}
                     }
                     Catch {
-                        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
-                        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                        #Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
+                        #Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
                     }
-                }
             }
             'Save and Quit'
             {
-                if ($AdminUserProfile.General.ProfileFolder -eq '')
-                {
-                    Write-Error -Message 'Unable to save Admin Profile.  Please set a profile directory.'
-                }
-                else
-                {
-                    Try
-                    {
-                        AddAdminUserProfileFolders -AdminUserProfile $AdminUserProfile -ErrorAction Stop -path $AdminUserProfile.General.ProfileFolder
-                        SaveAdminUserProfile -AdminUserProfile $AdminUserProfile
-                        if (Get-AdminUserProfile -Identity $AdminUserProfile.Identity.tostring() -ErrorAction Stop -Path $AdminUserProfile.General.ProfileFolder) {
-                            Write-Log -Message "Admin Profile with Name: $($AdminUserProfile.General.Name) and Identity: $($AdminUserProfile.Identity) was successfully configured, exported, and loaded." -Verbose -ErrorAction SilentlyContinue
-                            Write-Log -Message "To initialize the edited profile for immediate use, run 'Use-AdminUserProfile -Identity $($AdminUserProfile.Identity)'" -Verbose -ErrorAction SilentlyContinue
-                        }
-                    }
-                    Catch {
-                        Write-Log -Message "FAILED: An Admin User Profile operation failed for $($AdminUserProfile.Identity).  Review the Error Logs for Details." -ErrorLog -Verbose -ErrorAction SilentlyContinue
-                        Write-Log -Message $_.tostring() -ErrorLog -Verbose -ErrorAction SilentlyContinue
-                    }
-                    $quit = $true
-                }
+                #Do the saving stuff from above then
+                $quit = $true
             }
             'Cancel'
             {
@@ -122,26 +96,36 @@ param
     }
     until ($quit)
     #return the admin profile raw object to the pipeline
-    if ($passthru) {Write-Output -InputObject $AdminUserProfile}
+    if ($passthru) {Write-Output -InputObject $OrgProfile}
 } #New-AdminUserProfile
 function New-OrgProfileSystem
 {
-[cmdletbinding()]
-param
-(
-[parameter(Mandatory)]
-[ValidateSet('PowerShellSystems','SQLDatabases','ExchangeOrganizations','AADSyncServers','AzureADTenants','Office365Tenants','ActiveDirectoryInstances','MailRelayEndpoints','SkypeOrganizations')]
-[string]$SystemCategory
-,
-[parameter(Mandatory)]
-[string]$Name
-,
-[parameter()]
-[string]$Description
-,
-[Alias('Server')]
-[parameter()]
-[string]$ComputerName
-
-)
+    [cmdletbinding()]
+    param
+    (
+    [parameter(Mandatory)]
+    [ValidateSet('PowerShellSystems','SQLDatabases','ExchangeOrganizations','AADSyncServers','AzureADTenants','Office365Tenants','ActiveDirectoryInstances','MailRelayEndpoints','SkypeOrganizations')]
+    [string]$SystemCategory
+    ,
+    [parameter(Mandatory)]
+    [string]$Name
+    ,
+    [parameter()]
+    [string]$Description
+    ,
+    [Alias('Server')]
+    [parameter()]
+    [string]$ComputerName
+    )
+    ##Generic System Attributes
+    #Name
+    #Identity
+    #Description
+    #AuthenticationRequired
+    #AuthMethod
+    #OneShellSystemType
+    #ComputerName
+    #ServiceFqdnOrIP
+    #ProxyEnabled
+    #CommandPrefix
 }
