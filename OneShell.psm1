@@ -4,10 +4,9 @@
 ##########################################################################################################
 #Used By Other OneShell Functions
 function Get-SpecialFolder
-#Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
 <#
+    Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
     MIT License
-
     Copyright (c) 2016 Øyvind Kallstad
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,26 +28,26 @@ function Get-SpecialFolder
     SOFTWARE.
 #>
 {
-  [cmdletbinding()]
-  param (
-    [parameter(ParameterSetName='All',Mandatory)]
-    [switch]$All
-    ,
-    [parameter(ParameterSetName='Selected',Mandatory)]
-    [ValidateSet('Desktop','Programs','MyDocuments','MyDocuments','Favorites','Startup','Recent','SendTo','StartMenu','MyMusic','MyVideos','DesktopDirectory','MyComputer','NetworkShortcuts','Fonts','Templates','CommonStartMenu','CommonPrograms','CommonStartup','CommonDesktopDirectory','ApplicationData','PrinterShortcuts','LocalApplicationData','InternetCache','Cookies','History','CommonApplicationData','Windows','System','ProgramFiles','MyPictures','UserProfile','SystemX86','ProgramFilesX86','CommonProgramFiles','CommonProgramFilesX86','CommonTemplates','CommonDocuments','CommonAdminTools','AdminTools','CommonMusic','CommonPictures','CommonVideos','Resources','LocalizedResources','CommonOemLinks','CDBurning')] 
-    #should make this a dynamic parameter using [Enum]::GetValues([System.Environment+SpecialFolder])
-    [string[]]$Name
-  )
-  switch ($PSCmdlet.ParameterSetName)
-  {
-    'All'
+[cmdletbinding(DefaultParameterSetName = 'All')]
+param (
+)
+DynamicParam {
+        $Dictionary = New-DynamicParameter -Name 'Name' -Type $([string[]]) -ValidateSet @([Enum]::GetValues([System.Environment+SpecialFolder])) -Mandatory:$true -ParameterSetName 'Selected'
+        Write-Output -InputObject $dictionary
+}#DynamicParam
+begin {
+    #Dynamic Parameter to Variable Binding
+    Set-DynamicParameterVariable -dictionary $Dictionary
+    switch ($PSCmdlet.ParameterSetName)
     {
-      $Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+        'All'
+        {
+            $Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+        }
+        'Selected'
+        {
+        }
     }
-    'Selected'
-    {
-    }
-  }
   #$folder in (())
   foreach ($folder in $Name)
   {
@@ -59,6 +58,7 @@ function Get-SpecialFolder
     }
     Write-Output -InputObject $FolderObject
   }#foreach
+}#begin
 }#Get-SpecialFolder
 function Get-ArrayIndexForValue
 {
@@ -649,6 +649,56 @@ function Start-WindowsSecurity
 }
 function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
+function New-SplitArrayRange
+{
+<#  
+  .SYNOPSIS   
+    Provides Start and End Ranges to Split an array into a specified number of parts (new arrays) or parts (new arrays) with a specified number (size) of elements
+  .PARAMETER inArray
+   A one dimensional array you want to split
+  .EXAMPLE  
+   Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -parts 3
+  .EXAMPLE  
+   Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -size 3
+  .NOTE
+  Derived from https://gallery.technet.microsoft.com/scriptcenter/Split-an-array-into-parts-4357dcc1#content
+#>
+[cmdletbinding()]
+param(
+  [parameter(Mandatory)]
+  [array]$inputArray
+  ,
+  [parameter(Mandatory,ParameterSetName ='Parts')]
+  [int]$parts
+  ,
+  [parameter(Mandatory,ParameterSetName ='Size')]
+  [int]$size
+)
+  switch ($PSCmdlet.ParameterSetName)
+  {
+    'Parts'
+    {
+      $PartSize = [Math]::Ceiling($inputArray.count / $parts)
+    } 
+    'Size'
+    {
+      $PartSize = $size
+      $parts = [Math]::Ceiling($inputArray.count / $size)
+    }
+  }
+  for ($i=1; $i -le $parts; $i++)
+  {
+    $start = (($i-1)*$PartSize)
+    $end = (($i)*$PartSize) - 1
+    if ($end -ge $inputArray.count) {$end = $inputArray.count}
+    $SplitArrayRange = [pscustomobject]@{
+      Part = $i
+      Start = $start
+      End = $end
+    }
+    Write-Output -InputObject $SplitArrayRange
+  }
+}
 function Convert-HashtableToObject
 {
     [CmdletBinding()]
@@ -943,6 +993,22 @@ function Test-Member
             throw 
         } 
     } 
+}
+function Test-IsNullOrWhiteSpace
+{
+[cmdletbinding()]
+Param(
+$String
+)
+[string]::IsNullOrWhiteSpace($String)
+}
+function Test-IsNotNullOrWhiteSpace
+{
+[cmdletbinding()]
+Param(
+$String
+)
+[string]::IsNullOrWhiteSpace($String) -eq $false
 }
 function Test-IP
 {
@@ -1354,7 +1420,7 @@ param(
 [ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
 [psobject[]]$Recipient
 ,
-[Parameter()]
+[Parameter(Mandatory)]
 [ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
 [string]$Operation = 'TestOnly'
 ,
@@ -1576,6 +1642,7 @@ Function Write-Log
         [ValidateSet('Attempting','Succeeded','Failed','Notification')]
         [string]$EntryType
     )
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -Name VerbosePreference
     #Add the Entry Type to the message or add nothing to the message if there is not EntryType specified - preserves legacy functionality and adds new EntryType capability
     if (-not [string]::IsNullOrWhiteSpace($EntryType)) {$Message = $EntryType + ':' + $Message}
     #check the Log Preference to see if the message should be logged or not
@@ -1857,12 +1924,22 @@ Function Remove-AgedFiles
     [parameter()]
     [validatescript({Test-IsWriteableDirectory -Path $_})]
     [string[]]$Directory
+    ,
+    [switch]$Recurse
   )
     $now = Get-Date
     $daysAgo = $now.AddDays(-$days)
+    $splat=@{
+        File=$true
+    }
+    if ($PSBoundParameters.ContainsKey('Recurse'))
+    {
+        $splat.Recurse = $true
+    }
     foreach ($d in $Directory)
     {
-        $files = Get-ChildItem -Path $d
+        $splat.path = $d
+        $files = Get-ChildItem @splat
         $filestodelete = $files | Where-Object {$_.CreationTime -lt $daysAgo -and $_.LastWriteTime -lt $daysAgo}
         $filestodelete | Remove-Item
     }
@@ -2695,6 +2772,281 @@ function Read-FolderBrowserDialog
     $FolderBrowserDialog.Dispose()
     Remove-Variable -Name FolderBrowserDialog
 }#Read-FolderBrowswerDialog
+Function New-DynamicParameter
+{
+<#
+    .SYNOPSIS
+        Helper function to simplify creating dynamic parameters
+    
+    .DESCRIPTION
+        Helper function to simplify creating dynamic parameters
+
+        Example use cases:
+            Include parameters only if your environment dictates it
+            Include parameters depending on the value of a user-specified parameter
+            Provide tab completion and intellisense for parameters, depending on the environment
+
+        Please keep in mind that all dynamic parameters you create will not have corresponding variables created.
+           One of the examples illustrates a generic method for populating appropriate variables from dynamic parameters
+           Alternatively, manually reference $PSBoundParameters for the dynamic parameter value
+
+    .NOTES
+        Credit to http://jrich523.wordpress.com/2013/05/30/powershell-simple-way-to-add-dynamic-parameters-to-advanced-function/
+        https://raw.githubusercontent.com/RamblingCookieMonster/PowerShell/master/New-DynamicParam.ps1
+        MIT License
+        Copyright (c) 2016 Warren Frame
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+
+    .PARAMETER Name
+        Name of the dynamic parameter
+
+    .PARAMETER Type
+        Type for the dynamic parameter.  Default is string
+
+    .PARAMETER Alias
+        If specified, one or more aliases to assign to the dynamic parameter
+
+    .PARAMETER ValidateSet
+        If specified, set the ValidateSet attribute of this dynamic parameter
+
+    .PARAMETER Mandatory
+        If specified, set the Mandatory attribute for this dynamic parameter
+
+    .PARAMETER ParameterSetName
+        If specified, set the ParameterSet attribute for this dynamic parameter
+
+    .PARAMETER Position
+        If specified, set the Position attribute for this dynamic parameter
+
+    .PARAMETER ValueFromPipelineByPropertyName
+        If specified, set the ValueFromPipelineByPropertyName attribute for this dynamic parameter
+
+    .PARAMETER HelpMessage
+        If specified, set the HelpMessage for this dynamic parameter
+    
+    .PARAMETER DPDictionary
+        If specified, add resulting RuntimeDefinedParameter to an existing RuntimeDefinedParameterDictionary (appropriate for multiple dynamic parameters)
+        If not specified, create and return a RuntimeDefinedParameterDictionary (appropriate for a single dynamic parameter)
+
+        See final example for illustration
+
+    .EXAMPLE
+        
+        function Show-Free
+        {
+            [CmdletBinding()]
+            Param()
+            DynamicParam {
+                $options = @( gwmi win32_volume | %{$_.driveletter} | sort )
+                New-DynamicParam -Name Drive -ValidateSet $options -Position 0 -Mandatory
+            }
+            begin{
+                #have to manually populate
+                $drive = $PSBoundParameters.drive
+            }
+            process{
+                $vol = gwmi win32_volume -Filter "driveletter='$drive'"
+                "{0:N2}% free on {1}" -f ($vol.Capacity / $vol.FreeSpace),$drive
+            }
+        } #Show-Free
+
+        Show-Free -Drive <tab>
+
+    # This example illustrates the use of New-DynamicParam to create a single dynamic parameter
+    # The Drive parameter ValidateSet populates with all available volumes on the computer for handy tab completion / intellisense
+
+    .EXAMPLE
+
+    # I found many cases where I needed to add more than one dynamic parameter
+    # The DPDictionary parameter lets you specify an existing dictionary
+    # The block of code in the Begin block loops through bound parameters and defines variables if they don't exist
+
+        Function Test-DynPar{
+            [cmdletbinding()]
+            param(
+                [string[]]$x = $Null
+            )
+            DynamicParam
+            {
+                #Create the RuntimeDefinedParameterDictionary
+                $Dictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+        
+                New-DynamicParam -Name AlwaysParam -ValidateSet @( gwmi win32_volume | %{$_.driveletter} | sort ) -DPDictionary $Dictionary
+
+                #Add dynamic parameters to $dictionary
+                if($x -eq 1)
+                {
+                    New-DynamicParam -Name X1Param1 -ValidateSet 1,2 -mandatory -DPDictionary $Dictionary
+                    New-DynamicParam -Name X1Param2 -DPDictionary $Dictionary
+                    New-DynamicParam -Name X3Param3 -DPDictionary $Dictionary -Type DateTime
+                }
+                else
+                {
+                    New-DynamicParam -Name OtherParam1 -Mandatory -DPDictionary $Dictionary
+                    New-DynamicParam -Name OtherParam2 -DPDictionary $Dictionary
+                    New-DynamicParam -Name OtherParam3 -DPDictionary $Dictionary -Type DateTime
+                }
+        
+                #return RuntimeDefinedParameterDictionary
+                $Dictionary
+            }
+            Begin
+            {
+                #This standard block of code loops through bound parameters...
+                #If no corresponding variable exists, one is created
+                    #Get common parameters, pick out bound parameters not in that set
+                    Function _temp { [cmdletbinding()] param() }
+                    $BoundKeys = $PSBoundParameters.keys | Where-Object { (get-command _temp | select -ExpandProperty parameters).Keys -notcontains $_}
+                    foreach($param in $BoundKeys)
+                    {
+                        if (-not ( Get-Variable -name $param -scope 0 -ErrorAction SilentlyContinue ) )
+                        {
+                            New-Variable -Name $Param -Value $PSBoundParameters.$param
+                            Write-Verbose "Adding variable for dynamic parameter '$param' with value '$($PSBoundParameters.$param)'"
+                        }
+                    }
+
+                #Appropriate variables should now be defined and accessible
+                    Get-Variable -scope 0
+            }
+        }
+
+    # This example illustrates the creation of many dynamic parameters using New-DynamicParam
+        # You must create a RuntimeDefinedParameterDictionary object ($dictionary here)
+        # To each New-DynamicParam call, add the -DPDictionary parameter pointing to this RuntimeDefinedParameterDictionary
+        # At the end of the DynamicParam block, return the RuntimeDefinedParameterDictionary
+        # Initialize all bound parameters using the provided block or similar code
+
+    .FUNCTIONALITY
+        PowerShell Language
+
+#>
+param(
+    [parameter(Mandatory)]
+    [string]
+    $Name,
+    
+    [System.Type]
+    $Type = [string],
+
+    [string[]]
+    $Alias = @(),
+
+    [string[]]
+    $ValidateSet,
+    
+    [bool]
+    $Mandatory = $true,
+   
+    [string]
+    $ParameterSetName="__AllParameterSets",
+    
+    [int]
+    $Position,
+    
+    [switch]
+    $ValueFromPipelineByPropertyName,
+    
+    [string]
+    $HelpMessage,
+
+    [validatescript({
+        if(-not ( $_ -is [System.Management.Automation.RuntimeDefinedParameterDictionary] -or -not $_) )
+        {
+            Throw "DPDictionary must be a System.Management.Automation.RuntimeDefinedParameterDictionary object, or not exist"
+        }
+        $True
+    })]
+    $DPDictionary = $false
+)
+    #Create attribute object, add attributes, add to collection   
+        $ParamAttr = New-Object System.Management.Automation.ParameterAttribute
+        $ParamAttr.ParameterSetName = $ParameterSetName
+        if($mandatory)
+        {
+            $ParamAttr.Mandatory = $True
+        }
+        if($Position -ne $null)
+        {
+            $ParamAttr.Position=$Position
+        }
+        if($ValueFromPipelineByPropertyName)
+        {
+            $ParamAttr.ValueFromPipelineByPropertyName = $True
+        }
+        if($HelpMessage)
+        {
+            $ParamAttr.HelpMessage = $HelpMessage
+        }
+
+        $AttributeCollection = New-Object 'Collections.ObjectModel.Collection[System.Attribute]'
+        $AttributeCollection.Add($ParamAttr)
+    
+    #param validation set if specified
+        if($ValidateSet)
+        {
+            $ParamOptions = New-Object System.Management.Automation.ValidateSetAttribute -ArgumentList $ValidateSet
+            $AttributeCollection.Add($ParamOptions)
+        }
+
+    #Aliases if specified
+        if($Alias.count -gt 0) {
+            $ParamAlias = New-Object System.Management.Automation.AliasAttribute -ArgumentList $Alias
+            $AttributeCollection.Add($ParamAlias)
+        }
+
+ 
+    #Create the dynamic parameter
+        $Parameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList @($Name, $Type, $AttributeCollection)
+    
+    #Add the dynamic parameter to an existing dynamic parameter dictionary, or create the dictionary and add it
+        if($DPDictionary)
+        {
+            $DPDictionary.Add($Name, $Parameter)
+        }
+        else
+        {
+            $Dictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+            $Dictionary.Add($Name, $Parameter)
+            Write-Output -inputobject $Dictionary
+        }
+}
+function Set-DynamicParameterVariable
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
+)
+foreach ($p in $Dictionary.Keys)
+{
+    Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
+    #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
+}
+}
+Function Get-CommonParameter
+{
+[cmdletbinding(SupportsShouldProcess)]
+param()
+$MyInvocation.MyCommand.Parameters.Keys
+}
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
@@ -2704,7 +3056,7 @@ Function Import-RequiredModule
   param
   (
     [parameter(Mandatory=$true)]
-    [ValidateSet('ActiveDirectory','AzureAD','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell')]
+    [ValidateSet('ActiveDirectory','AzureAD','MSOnline','AADRM','LyncOnlineConnector','POSH_ADO_SQLServer','MigrationPowershell','BitTitanPowerShell')]
     [string]$ModuleName
   )
   #Do any custom environment preparation per specific module
@@ -2789,47 +3141,16 @@ Function Connect-Exchange
         [switch]$Profile#>
     )
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'ExchangeOrganization'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'Organization'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('Org','ExchangeOrg')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $Dictionary = New-ExchangeOrganizationDynamicParameter -ParameterSetName 'Organization' -Mandatory
+        Write-Output -InputObject $dictionary
     }#DynamicParam
     Begin {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         switch ($PSCmdlet.ParameterSetName) {
             'Organization' 
             {
-                $Org = $PSBoundParameters[$ParameterName]
+                $Org = $ExchangeOrganization
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
                 $orgtype = $orgobj.orgtype
                 $credential = $orgobj.credential
@@ -2884,7 +3205,18 @@ Function Connect-Exchange
                         try
                         {
                             $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Set-AdServerSettings -ExchangeOrganization $orgName -string '-viewentireforest $true -erroraction Stop -WarningAction SilentlyContinue' -WarningAction SilentlyContinue
+                            $InvokeExchangeCommandParams = @{
+                                Cmdlet = 'Set-ADServerSettings'
+                                ExchangeOrganization = $orgName
+                                ErrorAction = 'Stop'
+                                WarningAction = 'SilentlyContinue'
+                                splat = @{
+                                    ViewEntireForest = $true
+                                    ErrorAction = 'Stop'
+                                    WarningAction = 'SilentlyContinue'
+                                }
+                            }
+                            Invoke-ExchangeCommand @InvokeExchangeCommandParams
                             $Global:ErrorActionPreference = 'Continue'
                             $UseExistingSession = $true
                         }#try
@@ -3055,46 +3387,19 @@ Function Connect-Skype {
         [switch]$Profile#>
     )
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'SkypeOrganization'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'Organization'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('Org','SkypeOrg')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'SkypeOrganization'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
+            Alias = @('Org','SkypeOrg')
+            Position = 2
+            ParameterSetName = 'Organization'
+        }
+        New-DynamicParameter @NewDynamicParameterParams
     }#DynamicParam
     Begin {
         switch ($PSCmdlet.ParameterSetName) {
             'Organization' {
-                $Org = $PSBoundParameters[$ParameterName]
+                $Org = $PSBoundParameters['SkypeOrganization']
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
                 $orgtype = $orgobj.orgtype
                 $credential = $orgobj.credential
@@ -3266,49 +3571,26 @@ Function Connect-AADSync {
         [switch]$usePrefix
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'AADSyncServer'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 3
-        $ParameterAttribute.ParameterSetName = 'Profile'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AADSyncServers' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'AADSyncServer'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AADSyncServers' | Select-Object -ExpandProperty Name)
+            Alias = @('Org','SkypeOrg')
+            Position = 2
+            ParameterSetName = 'Profile'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
     #Credential has to be a member of ADSyncAdmins on the AADSync Server
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         switch ($PSCmdlet.ParameterSetName) {
             'Profile' {
-                $SelectedProfile = $PSBoundParameters[$ParameterName]
+                $SelectedProfile = $AADSyncServer
                 $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'AADSyncServers' | Where-Object {$_.name -eq $selectedProfile}
                 $CommandPrefix = $Profile.Name
                 $SessionName = $Profile.Identity
@@ -3404,7 +3686,7 @@ Function Connect-AADSync {
     }#process 
 }#Function Connect-AADSync
 Function Connect-ADInstance {
-    [cmdletbinding(DefaultParameterSetName = 'Instance')]
+    [cmdletbinding(DefaultParameterSetName = 'NamedInstance')]
     param(
         [parameter(Mandatory=$True,ParameterSetName='Manual')]
         [string]$Name
@@ -3420,53 +3702,35 @@ Function Connect-ADInstance {
         ,
         [parameter(Mandatory = $true,ParameterSetName='Manual')]
         [bool]$GlobalCatalog
+        ,
+        [parameter(Mandatory = $true,ParameterSetName='InstanceObject')]
+        [psobject]$InstanceObject
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'ActiveDirectoryInstance'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'Instance'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('AD','Instance')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'ActiveDirectoryInstance'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
+            Alias = @('AD','Instance')
+            Position = 2
+            ParameterSetName = 'NamedInstance'
+        }
+        $Dictionary  = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    Begin {
+    Begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        #Process Reporting
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
             Outcome = $null
         }#$ProcessStatus
         Switch ($PSCmdlet.ParameterSetName) {
-            'Instance' {
-                $ADI = $PSBoundParameters[$ParameterName]
+            'NamedInstance'
+            {
+                $ADI = $ActiveDirectoryInstance
                 $ADIobj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Where-Object {$_.name -eq $ADI}
                 $name = $ADIobj.Name
                 $server = $ADIobj.Server
@@ -3474,7 +3738,16 @@ Function Connect-ADInstance {
                 $Description = "OneShell $($ADIobj.Identity): $($ADIobj.description)"
                 $GlobalCatalog = $ADIobj.GlobalCatalog
             }#instance
-            'Manual' {
+            'InstanceObject'
+            {
+                $name = $InstanceObject.name
+                $server = $InstanceObject.Server
+                $Credential = $InstanceObject.credential
+                $Description = "OneShell $($InstanceObject.Identity): $($InstanceObject.description)"
+                $GlobalCatalog = $InstanceObject.GlobalCatalog
+            }
+            'Manual'
+            {
             }#manual
         }#switch
     }#begin
@@ -3523,15 +3796,18 @@ Function Connect-ADInstance {
             }#newpsdriveparams
             if ($Description) {$NewPSDriveParams.Description = $Description}
             if ($credential) {$NewPSDriveParams.Credential = $Credential}
-            try {
+            try
+            {
                 Write-Log -Message "Attempting: Connect PS Drive $name`: to $Description"
-                if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop) {
+                if (Import-RequiredModule -ModuleName ActiveDirectory -ErrorAction Stop)
+                {
                     New-PSDrive @NewPSDriveParams  > $null
                 }#if
                 Write-Log -Message "Succeeded: Connect PS Drive $name`: to $Description"
                 Write-Output -InputObject $true
             }#try
-            catch {
+            catch
+            {
                 Write-Log -Message "FAILED: Connect PS Drive $name`: to $Description" -Verbose -ErrorLog
                 Write-Log -Message $_.tostring() -ErrorLog
                 Write-Output -InputObject $false
@@ -3546,44 +3822,21 @@ Function Connect-MSOnlineTenant {
         $Credential
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'Tenant'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'Tenant'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('Org','ExchangeOrg')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'Tenant'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
+            Alias = @('AD','Instance')
+            Position = 2
+            ParameterSetName = 'Tenant'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3592,7 +3845,7 @@ Function Connect-MSOnlineTenant {
         switch ($PSCmdlet.ParameterSetName) {
             'Tenant' 
             {
-                $Identity = $PSBoundParameters[$ParameterName]
+                $Identity = $Tenant
                 $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' 
@@ -3629,44 +3882,20 @@ Function Connect-AzureADTenant {
         $Credential
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'Tenant'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'Tenant'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AzureADTenants' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object -TypeName System.Management.Automation.ValidateSetAttribute -ArgumentList ($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('Org','ExchangeOrg')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'Tenant'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AzureADTenants' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'Tenant'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3675,7 +3904,7 @@ Function Connect-AzureADTenant {
         switch ($PSCmdlet.ParameterSetName) {
             'Tenant' 
             {
-                $Identity = $PSBoundParameters[$ParameterName]
+                $Identity = $Tenant
                 $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'AzureADTenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' 
@@ -3713,44 +3942,21 @@ Function Connect-AADRM {
         $Credential
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'Tenant'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'Tenant'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('Org','ExchangeOrg')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'Tenant'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'Tenant'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3758,7 +3964,7 @@ Function Connect-AADRM {
         }
         switch ($PSCmdlet.ParameterSetName) {
             'Tenant' {
-                $Identity = $PSBoundParameters[$ParameterName]
+                $Identity = $PSBoundParameters['Tenant']
                 $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'Office365Tenants' | Where-Object -FilterScript {$_.Name -eq $Identity} | Select-Object -ExpandProperty Credential
             }#tenant
             'Manual' {
@@ -3790,44 +3996,20 @@ Function Connect-SQLDatabase {
         $Credential
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'SQLDatabase'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'SQLDatabase'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('Org','ExchangeOrg')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'SQLDatabase'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'SQLDatabase'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Windows Azure Active Directory Rights Management
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
             BoundParameters = $MyInvocation.BoundParameters
@@ -3835,7 +4017,7 @@ Function Connect-SQLDatabase {
         }
         switch ($PSCmdlet.ParameterSetName) {
             'SQLDatabase' {
-                $Identity = $PSBoundParameters[$ParameterName]
+                $Identity = $SQLDatabase
                 $SQLDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SQLDatabases' | Where-Object {$_.name -eq $Identity}
                 $name = $SQLDatabaseObj.Name
                 $SQLServer = $SQLDatabaseObj.Server
@@ -3904,49 +4086,25 @@ Function Connect-PowerShellSystem {
         [string[]]$ManagementGroups
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'PowerShellSystem'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 3
-        $ParameterAttribute.ParameterSetName = 'Profile'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowerShellSystems' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'PowerShellSystem'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'PowerShellSystems' | Select-Object -ExpandProperty Name)
+            Position = 3
+            ParameterSetName = 'Profile'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
     #Connect to Directory Synchronization
     #Server has to have been enabled for PS Remoting (enable-psremoting)
     #Credential has to be a member of ADSyncAdmins on the AADSync Server
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         switch ($PSCmdlet.ParameterSetName) {
             'Profile' {
-                $SelectedProfile = $PSBoundParameters[$ParameterName]
+                $SelectedProfile = $PSBoundParameters['PowerShellSystem']
                 $Profile = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'PowerShellSystems' | Where-Object {$_.name -eq $selectedProfile}
                 $UseX86 = $Profile.UseX86
                 $SessionName = "$($Profile.Identity)"
@@ -4006,88 +4164,134 @@ Function Connect-PowerShellSystem {
 }#Function Connect-PowerShellSystem
 Function Connect-MigrationWiz
 {
-  [cmdletbinding(DefaultParameterSetName = 'Account')]
-  Param(
+    [cmdletbinding(DefaultParameterSetName = 'Account')]
+    Param
+    (
     [parameter(ParameterSetName='Manual')]
     $Credential
-  )#param
-  DynamicParam
-  {
-    #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-    # Set the dynamic parameters' name
-    $ParameterName = 'Account'
-        
-    # Create the dictionary 
-    $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-    # Create the collection of attributes
-    $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-        
-    # Create and set the parameters' attributes
-    $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-    $ParameterAttribute.Mandatory = $true
-    $ParameterAttribute.Position = 2
-    $ParameterAttribute.ParameterSetName = 'Account'
-
-    # Add the attributes to the attributes collection
-    $AttributeCollection.Add($ParameterAttribute)
-
-    # Generate and set the ValidateSet 
-    $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
-    $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-    # Add the ValidateSet to the attributes collection
-    $AttributeCollection.Add($ValidateSetAttribute)
-
-    # Create and return the dynamic parameter
-    $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-    $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-    Write-Output -InputObject $RuntimeParameterDictionary
-  }#DynamicParam
-  #Connect to MigrationWiz
-  begin
-  {
-    $ProcessStatus = @{
-        Command = $MyInvocation.MyCommand.Name
-        BoundParameters = $MyInvocation.BoundParameters
-        Outcome = $null
-    }
-    switch ($PSCmdlet.ParameterSetName) {
-        'Account' 
-        {
-            $Name = $PSBoundParameters[$ParameterName]
-            $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Name}
-            $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
-            $Name = $MigrationWizAccountObj.Name
-            $Identity = $MigrationWizAccountObj.Identity
-        }#Account
-        'Manual' 
-        {
-        }#manual
-    }#switch
-  }#begin
-  process 
-  {
-    try 
+    )#param
+    DynamicParam
     {
-        $message = "Connect to MigrationWiz with User $($Credential.username)."
-        Write-Log -Message $message -EntryType Attempting                
-        $ModuleStatus = Import-RequiredModule -ModuleName MigrationPowerShell -ErrorAction Stop
-        #May eliminate the Script/Module variable later (dropping $Script:) in favor of the MigrationWizTickets Hashtable
-        $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop
-        Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket #-Identity $Identity
-        Write-Log -Message $message -EntryType Succeeded
-        Write-Output -InputObject $true
-    }
-    Catch 
+        $NewDynamicParameterParams=@{
+            Name = 'Account'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'Account'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
+    }#DynamicParam
+    begin
     {
-        $myerror = $_
-        Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
-        Write-Log -Message $myerror.tostring()
-        Write-Output -InputObject $false 
-    }
-  } 
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+
+        $ProcessStatus = @{
+            Command = $MyInvocation.MyCommand.Name
+            BoundParameters = $MyInvocation.BoundParameters
+            Outcome = $null
+        }
+        switch ($PSCmdlet.ParameterSetName) {
+            'Account' 
+            {
+                $Name = $Account
+                $MigrationWizAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object {$_.name -eq $Name}
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'MigrationWizAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
+                $Name = $MigrationWizAccountObj.Name
+                $Identity = $MigrationWizAccountObj.Identity
+            }#Account
+            'Manual' 
+            {
+            }#manual
+        }#switch
+    }#begin
+    process 
+    {
+        try 
+        {
+            $message = "Connect to MigrationWiz with User $($Credential.username)."
+            Write-Log -Message $message -EntryType Attempting                
+            $ModuleStatus = Import-RequiredModule -ModuleName MigrationPowerShell -ErrorAction Stop
+            #May eliminate the Script/Module variable later (dropping $Script:) in favor of the MigrationWizTickets Hashtable
+            $Script:MigrationWizTicket = Get-MW_Ticket -Credentials $Credential -ErrorAction Stop -
+            Update-MigrationWizTickets -AccountName $Name -MigrationWizTicket $Script:MigrationWizTicket #-Identity $Identity
+            Write-Log -Message $message -EntryType Succeeded
+            Write-Output -InputObject $true
+        }
+        Catch 
+        {
+            $myerror = $_
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $myerror.tostring()
+            Write-Output -InputObject $false 
+        }
+    } 
 }#function Connect-MigrationWiz
+Function Connect-BitTitan
+{
+    [cmdletbinding(DefaultParameterSetName = 'Account')]
+    Param
+    (
+    [parameter(ParameterSetName='Manual')]
+    $Credential
+    )#param
+    DynamicParam
+    {
+        $NewDynamicParameterParams=@{
+            Name = 'Account'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'Account'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
+    }#DynamicParam
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+
+        $ProcessStatus = @{
+            Command = $MyInvocation.MyCommand.Name
+            BoundParameters = $MyInvocation.BoundParameters
+            Outcome = $null
+        }
+        switch ($PSCmdlet.ParameterSetName) {
+            'Account' 
+            {
+                $Name = $Account
+                $BitTitanAccountObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Where-Object {$_.name -eq $Name}
+                $Credential = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Where-Object -FilterScript {$_.Name -eq $Name} | Select-Object -ExpandProperty Credential
+                $Name = $BitTitanAccountObj.Name
+                $Identity = $BitTitanAccountObj.Identity
+            }#Account
+            'Manual' 
+            {
+            }#manual
+        }#switch
+    }#begin
+    process 
+    {
+        try 
+        {
+            $message = "Connect to BitTitan with User $($Credential.username)."
+            Write-Log -Message $message -EntryType Attempting                
+            $ModuleStatus = Import-RequiredModule -ModuleName BitTitanPowerShell -ErrorAction Stop
+            #May eliminate the Script/Module variable later (dropping $Script:) in favor of the BitTitanTickets Hashtable
+            $Script:BitTitanTicket = Get-BT_Ticket -Credentials $Credential -ErrorAction Stop -ServiceType BitTitan -SetDefault
+            Update-BitTitanTickets -AccountName $Name -BitTitanTicket $Script:BitTitanTicket #-Identity $Identity
+            Write-Log -Message $message -EntryType Succeeded
+            Write-Output -InputObject $true
+        }
+        Catch 
+        {
+            $myerror = $_
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $myerror.tostring()
+            Write-Output -InputObject $false 
+        }
+    } 
+}#function Connect-BitTitan
 Function Connect-LotusNotesDatabase
 {
     [cmdletbinding(DefaultParameterSetName = 'LotusNotesDatabase')]
@@ -4096,43 +4300,19 @@ Function Connect-LotusNotesDatabase
         $Credential
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'LotusNotesDatabase'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        $ParameterAttribute.ParameterSetName = 'LotusNotesDatabase'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        #$AliasSet = @('Org','ExchangeOrg')
-        #$AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        #$AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'LotusNotesDatabase'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Select-Object -ExpandProperty Name)
+            Position = 2
+            ParameterSetName = 'LotusNotesDatabase'
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    begin{
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
         $ProcessStatus = @{
             Command = $MyInvocation.MyCommand.Name
@@ -4141,7 +4321,7 @@ Function Connect-LotusNotesDatabase
         }
         switch ($PSCmdlet.ParameterSetName) {
             'LotusNotesDatabase' {
-                $Name = $PSBoundParameters[$ParameterName]
+                $Name = $PSBoundParameters['LotusNotesDatabase']
                 $LotusNotesDatabaseObj = $Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'LotusNotesDatabases' | Where-Object {$_.name -eq $Name}
                 $NotesServer = $LotusNotesDatabaseObj.Server
                 $Client = $Script:CurrentOrgAdminProfileSystems | Where-Object -FilterScript {$_.Identity -eq $LotusNotesDatabaseObj.Client}
@@ -4333,6 +4513,23 @@ Function Update-MigrationWizTickets
     New-Variable -Name 'MigrationWizTickets' -Value @{$AccountName = $MigrationWizTicket} -Scope Global
   }#else
 }#function Update-MigrationWizTickets
+Function Update-BitTitanTickets
+{
+  [cmdletbinding()]
+  Param(
+    [parameter(Mandatory=$true)]
+    $AccountName
+    ,[parameter(Mandatory=$true)]
+    $BitTitanTicket
+  )#param
+  if (Test-Path -Path 'variable:Global:BitTitanTickets') 
+  {
+    $Global:BitTitanTickets.$($AccountName)=$BitTitanTicket
+  } else
+  {
+    New-Variable -Name 'BitTitanTickets' -Value @{$AccountName = $BitTitanTicket} -Scope Global
+  }#else
+}#function Update-BitTitanTickets
 Function Connect-RemoteSystems
 {
     [CmdletBinding()]
@@ -4526,6 +4723,24 @@ Function Connect-RemoteSystems
                 $ProcessStatus.Connections += [pscustomobject]@{Type='Migration Wiz Account';Name=$sys;ConnectionStatus=$Status}
             }#catch
         }
+        # Connect To BitTitan Accounts
+        foreach ($sys in ($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'BitTitanAccounts' | Where-Object AutoConnect -eq $true | Select-Object -ExpandProperty Name)) 
+        {
+            try {
+                $message = "Connect to BitTitan Account $sys"
+                Write-Log -Message $message -EntryType Attempting
+                $Status = Connect-BitTitan -Account $sys -ErrorAction Stop 
+                Write-Log -Message $message -EntryType Succeeded
+                $ProcessStatus.Connections += [pscustomobject]@{Type='BitTitan Account';Name=$sys;ConnectionStatus=$Status}
+            }#try
+            catch {
+                $myerror = $_
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+                $Status = $false
+                $ProcessStatus.Connections += [pscustomobject]@{Type='BitTitan Account';Name=$sys;ConnectionStatus=$Status}
+            }#catch
+        }        
         $ProcessStatus.Outcome = $true
         Write-Output -InputObject $ProcessStatus.Connections
     }
@@ -4535,83 +4750,118 @@ Function Connect-RemoteSystems
     }
 }
 function Invoke-ExchangeCommand {
-    [cmdletbinding(DefaultParameterSetName = 'String')]
-    param(
-        [parameter(Mandatory = $true,Position = 1)]
-        [ValidateScript({$_ -like '*-*'})]
-        [string]$cmdlet
-        ,
-        [parameter(Position = 3,ParameterSetName='Splat')]
-        [hashtable]$splat
-        ,
-        [parameter(Position = 3,ParameterSetName = 'String')]
-        [string]$string = ''
-        ,
-        [string]$CommandPrefix
-    )#Param
-    DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'ExchangeOrganization'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        #$ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        #$ParameterAttribute.ParameterSetName = 'Organization'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('Org','ExchangeOrg')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
-    }#DynamicParam
-
-    begin {
-        # Bind the dynamic parameter to a friendly variable
-        if ([string]::IsNullOrWhiteSpace($CommandPrefix)) {
-            $Org = $PsBoundParameters[$ParameterName]
-            if (-not [string]::IsNullOrWhiteSpace($Org)) {
-                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
-                $CommandPrefix = $orgobj.CommandPrefix
-            }
-            else {$CommandPrefix = ''}
-        }
+[cmdletbinding(DefaultParameterSetName = 'String')]
+param(
+    [parameter(Mandatory,Position = 1)]
+    [ValidateScript({$_ -like '*-*'})]
+    [string]$cmdlet
+    ,
+    [parameter(Position = 3,ParameterSetName='Splat')]
+    [hashtable]$splat
+    ,
+    [parameter(Position = 3,ParameterSetName = 'String')]
+    [string]$string = ''
+    ,
+    [string]$CommandPrefix
+    ,
+    [switch]$checkConnection
+)#Param
+DynamicParam
+{
+    $Dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory
+    Write-Output -InputObject $Dictionary
+}#DynamicParam
+begin
+{
+    #Dynamic Parameter to Variable Binding
+    Set-DynamicParameterVariable -dictionary $Dictionary
+    # Bind the dynamic parameter to a friendly variable
+    if ([string]::IsNullOrWhiteSpace($CommandPrefix))
+    {
+        $Org = $ExchangeOrganization
+        if (-not [string]::IsNullOrWhiteSpace($Org))
+        {
+            $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
+            $CommandPrefix = $orgobj.CommandPrefix
+        }#if
+        else {$CommandPrefix = ''}#else
+    }#if
+    if ($checkConnection -eq $true)
+    {
+        if ((Connect-Exchange -exchangeorganization $ExchangeOrganization) -ne $true)
+        {throw ("Connection to Exchange Organization $ExchangeOrganization failed.")}
     }
-
-    Process {
-
-        #Build the Command String and convert to Scriptblock
-        switch ($PSCmdlet.ParameterSetName) {
-            'splat' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) @splat")}#splat
-            'string' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) $string")}#string
+}#begin
+Process
+{
+    #Build the Command String and convert to Scriptblock
+    switch ($PSCmdlet.ParameterSetName)
+    {
+        'splat' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) @splat")}#splat
+        'string' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) $string")}#string
+    }#switch
+    #Store and Set and Restore ErrorAction Preference; Execute the command String
+    try
+    {
+        if ($ErrorActionPreference -eq 'Stop')
+        {
+            $originalGlobalErrorAction = $global:ErrorActionPreference
+            $global:ErrorActionPreference = 'Stop'
         }
-        #Execute the command String
         &$commandstring
-
-    }#Process
-
+        if ($ErrorActionPreference -eq 'Stop')
+        {
+            $global:ErrorActionPreference = $originalGlobalErrorAction
+        }
+    }#try
+    catch
+    {
+        $myerror = $_
+        if ($ErrorActionPreference -eq 'Stop')
+        {
+            $global:ErrorActionPreference = $originalGlobalErrorAction
+        }
+        throw $myerror
+    }#catch
+}#Process
 }#Function Invoke-ExchangeCommand
+function Test-ExchangeCommandExists
+{
+[cmdletbinding(DefaultParameterSetName = 'Organization')]
+param(
+    [parameter(Mandatory,Position = 1)]
+    [ValidateScript({$_ -like '*-*'})]
+    [string]$cmdlet
+    ,
+    [switch]$checkConnection
+)#Param
+DynamicParam
+{
+    $Dictionary = New-ExchangeOrganizationDynamicParameter -ParameterSetName 'Organization' -Mandatory
+    Write-Output -InputObject $Dictionary
+}#DynamicParam
+begin
+{
+    #Dynamic Parameter to Variable Binding
+    Set-DynamicParameterVariable -dictionary $Dictionary
+    # Bind the dynamic parameter to a friendly variable
+    $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $ExchangeOrganization}
+    $CommandPrefix = $orgobj.CommandPrefix
+    if ($checkConnection -eq $true)
+    {
+        if ((Connect-Exchange -exchangeorganization $ExchangeOrganization) -ne $true)
+        {throw ("Connection to Exchange Organization $ExchangeOrganization failed.")}
+    }
+}#begin
+Process
+{
+    #Build the Command String
+    $commandstring = "$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1])"
+
+    #Store and Set and Restore ErrorAction Preference; Execute the command String
+    Test-CommandExists -command $commandstring
+}#Process
+}#Function Test-ExchangeCommandExists
 function Invoke-SkypeCommand {
     [cmdletbinding(DefaultParameterSetName = 'String')]
     param(
@@ -4627,48 +4877,24 @@ function Invoke-SkypeCommand {
         ,
         [string]$CommandPrefix
     )#Param
-    DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'SkypeOrganization'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        #$ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 2
-        #$ParameterAttribute.ParameterSetName = 'Organization'
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('Org','SkypeOrg')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+    DynamicParam
+    {
+        $NewDynamicParameterParams=@{
+            Name = 'SkypeOrganization'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'SkypeOrganizations' | Select-Object -ExpandProperty Name)
+            Alias = @('Org','SkypeOrg')
+            Position = 2
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-
-    begin {
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
         # Bind the dynamic parameter to a friendly variable
         if ([string]::IsNullOrWhiteSpace($CommandPrefix)) {
-            $Org = $PsBoundParameters[$ParameterName]
+            $Org = $SkypeOrganization
             if (-not [string]::IsNullOrWhiteSpace($Org)) {
                 $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'SkypeOrganizations' | Where-Object {$_.name -eq $org}
                 $CommandPrefix = $orgobj.CommandPrefix
@@ -4676,7 +4902,6 @@ function Invoke-SkypeCommand {
             else {$CommandPrefix = ''}
         }
     }
-
     Process {
 
         #Build the Command String and convert to Scriptblock
@@ -4688,8 +4913,42 @@ function Invoke-SkypeCommand {
         &$commandstring
 
     }#Process
-
 }#Function Invoke-SkypeCommand
+function New-ExchangeOrganizationDynamicParameter
+{
+[cmdletbinding()]
+param(
+[switch]$Mandatory
+,
+[int]$Position
+,
+[string]$ParameterSetName
+,
+[switch]$Multivalued
+)
+        $NewDynamicParameterParams=@{
+            Name = 'ExchangeOrganization'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
+            Alias = @('Org','ExchangeOrg')
+        }
+        if ($PSBoundParameters.ContainsKey('Mandatory'))
+        {
+            $NewDynamicParameterParams.Mandatory = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Multivalued'))
+        {
+            $NewDynamicParameterParams.Type = [string[]]
+        }
+        if ($PSBoundParameters.ContainsKey('Position'))
+        {
+            $NewDynamicParameterParams.Position = $Position
+        }
+        if ($PSBoundParameters.ContainsKey('ParameterSetName'))
+        {
+            $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
+        }
+        New-DynamicParameter @NewDynamicParameterParams
+}
 function Export-FunctionToPSSession
 {
   [cmdletbinding()]
@@ -4784,10 +5043,25 @@ Function Get-MCTLSourceData
   }
   catch{}
 }
+function Get-OneShellSystemConfiguration
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[ValidateSet('PowerShellSystems','Office365Tenants','ActiveDirectoryInstances','SQLDatabases','ExchangeOrganizations','LotusNotesDatabases')]
+$SystemType
+,
+[parameter(Mandatory)]
+$Name
+)
+$AllSystems = Get-OneShellVariableValue -Name CurrentOrgAdminProfileSystems 
+$AllSystems | Where-Object -FilterScript {$_.Systemtype -eq $SystemType -and $_.Name -eq $Name}
+}
 ##########################################################################################################
 #Invoke-ExchangeCommand Dependent Functions
 ##########################################################################################################
-function Get-RecipientCmdlet {
+function Get-RecipientCmdlet
+{
   [cmdletbinding()]
   param
   (
@@ -4921,6 +5195,49 @@ function Get-RecipientCmdlet {
     }
   }#switch Verb
   $cmdlet
+}#Get-RecipientCmdlet
+function Get-ExchangeRecipient
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[string[]]$Identity
+)
+DynamicParam
+{
+    $dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory -Multivalued
+    Write-Output -InputObject $dictionary
+}
+begin
+{
+    Set-DynamicParameterVariable -dictionary $dictionary
+    foreach ($o in $ExchangeOrganization)
+    {
+        if ((Connect-Exchange -ExchangeOrganization $o) -ne $true)
+        {throw ("Connection to Exchange Organization $o Failed")}
+    }
+}
+process
+{
+    foreach ($ID in $Identity)
+    {
+        $InvokeExchangeCommandParams = @{
+            #ErrorAction = 'Stop'
+            WarningAction = 'SilentlyContinue'
+            Cmdlet = 'Get-Recipient'
+            splat = @{
+                Identity = $ID
+                WarningAction = 'SilentlyContinue'
+                #ErrorAction = 'Stop'
+            }
+        }
+        foreach ($o in $exchangeOrganization)
+        {
+            $InvokeExchangeCommandParams.ExchangeOrganization = $o
+            Invoke-ExchangeCommand @InvokeExchangeCommandParams
+        }
+    }
+}#process
 }
 ##########################################################################################################
 #AD/Azure AD Helper Functions
@@ -4951,43 +5268,20 @@ function Find-ADUser {
         [switch]$ReportExceptions
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'ActiveDirectoryInstance'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 3
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('AD','ADInstance')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'ActiveDirectoryInstance'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
+            Alias = @('AD','Instance')
+            Position = 2
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    Begin {
-        $ADInstance = $PSBoundParameters[$ParameterName]
+    Begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary        
+        $ADInstance = $ActiveDirectoryInstance
         if ($DoNotPreserveLocation -ne $true) {Push-Location -StackName 'Lookup-ADUser'}
         #validate AD Instance
         try {
@@ -5013,7 +5307,6 @@ function Find-ADUser {
             $Script:LookupADUserAmbiguous = @()
         }
     }#Begin
-
     Process {
         switch ($IdentityType) {
             'mS-DS-ConsistencyGuid' {
@@ -5108,7 +5401,6 @@ function Find-ADUser {
             }#switch
         }#foreach
     }#Process
-
     end {
         if ($ReportExceptions) {
             if ($Script:LookupADUserNotFound.count -ge 1) {
@@ -5122,7 +5414,6 @@ function Find-ADUser {
         }#if
         if ($DoNotPreserveLocation -ne $true) {Pop-Location -StackName 'Lookup-ADUser'}#if
     }#end
-
 }#Find-ADUser
 function Find-ADContact {
     [cmdletbinding()]
@@ -5144,43 +5435,20 @@ function Find-ADContact {
         [switch]$ReportExceptions
     )#param
     DynamicParam {
-        #inspiration:  http://blogs.technet.com/b/pstips/archive/2014/06/10/dynamic-validateset-in-a-dynamic-parameter.aspx
-        # Set the dynamic parameters' name
-        $ParameterName = 'ActiveDirectoryInstance'
-            
-        # Create the dictionary 
-        $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-
-        # Create the collection of attributes
-        $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
-            
-        # Create and set the parameters' attributes
-        $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
-        $ParameterAttribute.Mandatory = $true
-        $ParameterAttribute.Position = 3
-
-        # Add the attributes to the attributes collection
-        $AttributeCollection.Add($ParameterAttribute)
-
-        # Generate and set the ValidateSet 
-        $ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
-        $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($ValidateSet)
-
-        # Add the ValidateSet to the attributes collection
-        $AttributeCollection.Add($ValidateSetAttribute)
-
-        # Add an Alias 
-        $AliasSet = @('AD','ADInstance')
-        $AliasAttribute = New-Object System.Management.Automation.AliasAttribute($AliasSet)
-        $AttributeCollection.Add($AliasAttribute)
-
-        # Create and return the dynamic parameter
-        $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
-        $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
-        Write-Output -InputObject $RuntimeParameterDictionary
+        $NewDynamicParameterParams=@{
+            Name = 'ActiveDirectoryInstance'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
+            Alias = @('AD','Instance')
+            Position = 2
+        }
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        Write-Output -InputObject $Dictionary
     }#DynamicParam
-    Begin {
-        $ADInstance = $PSBoundParameters[$ParameterName]
+    Begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary        
+        $ADInstance = $ActiveDirectoryInstance
         if ($DoNotPreserveLocation -ne $true) {Push-Location -StackName 'Find-ADContact'}
         try {
             #Write-Log -Message "Attempting: Set Location to AD Drive $("$ADInstance`:")" -Verbose
@@ -5203,7 +5471,6 @@ function Find-ADContact {
             $Script:LookupADContactAmbiguous = @()
         }
     }#Begin
-
     Process {
         if ($IdentityType -eq 'mS-DS-ConsistencyGuid') {
             $Identity = $Identity -join ' '
@@ -5269,7 +5536,6 @@ function Find-ADContact {
             }#switch
         }#foreach
     }#Process
-
     end {
         if ($ReportExceptions) {
             if ($Script:LookupADContactNotFound.count -ge 1) {
@@ -5322,13 +5588,26 @@ function Find-PrimarySMTPAddress {
         }#Default
     }#switch 
 }
-function Get-AdObjectDomain {
-    param(
-        [parameter()]
-        $adobject
-    )
-    [string]$domain=$adobject.canonicalname.split('/')[0]
-    Write-Output -InputObject $domain
+function Get-AdObjectDomain
+{
+[cmdletbinding(DefaultParameterSetName='ADObject')]
+param(
+[parameter(Mandatory,ParameterSetName='ADObject')]
+[ValidateScript({Test-Member -InputObject $_ -Name CanonicalName})]
+$adobject
+,
+[parameter(Mandatory,ParameterSetName='ExchangeObject')]
+[ValidateScript({Test-Member -InputObject $_ -Name Identity})]
+$ExchangeObject
+)
+switch ($PSCmdlet.ParameterSetName)
+{
+    'ADObject'
+    {[string]$domain=$adobject.canonicalname.split('/')[0]}
+    'ExchangeObject'
+    {[string]$domain=$ExchangeObject.Identity.split('/')[0]}
+}
+Write-Output -InputObject $domain
 }
 Function Get-ADAttributeSchema
 {
@@ -5596,7 +5875,7 @@ Function Get-QualifiedADUserObject
   )
   #Retrieve all qualified (per the filter)AD User Objects including the specified properties
   Write-StartFunctionStatus -CallingFunction $MyInvocation.MyCommand
-  Connect-ADInstance -ActiveDirectoryInstance $ActiveDirectoryInstance -ErrorAction Stop > $null
+  #Connect-ADInstance -ActiveDirectoryInstance $ActiveDirectoryInstance -ErrorAction Stop > $null
   Set-Location -Path "$($ActiveDirectoryInstance):\"
   $GetADUserParams = @{
     ErrorAction = 'Stop'
@@ -5632,7 +5911,7 @@ Function Get-ADDomainNetBiosName
   [cmdletbinding()]
   param(
     [parameter(ValueFromPipeline,Mandatory)]
-    [string]$DNSRoot
+    [string[]]$DNSRoot
   )
   #If necessary, create the script:ADDomainDNSRootToNetBiosNameHash
   if (-not (Test-Path variable:script:ADDomainDNSRootToNetBiosNameHash))
@@ -7277,50 +7556,71 @@ Function GetDefaultAdminUserProfile
 ##########################################################################################################
 function Get-OneShellVariable
 {
-  param
-  (
+[cmdletbinding()]
+param
+(
     [string]$Name
-  )
-    Get-Variable -Scope Script -Name $name 
+)
+Try
+{
+    Get-Variable -Scope Script -Name $name -ErrorAction Stop
+}
+Catch
+{
+    Write-Verbose -Message "Variable $name Not Found" -Verbose
+}
 }
 function Get-OneShellVariableValue
 {
-  param
-  (
-    [string]$Name
-  )
-    Get-Variable -Scope Script -Name $name -ValueOnly
+[cmdletbinding()]
+param
+(
+[string]$Name
+)
+Try
+{
+    Get-Variable -Scope Script -Name $name -ValueOnly -ErrorAction Stop
+}
+Catch
+{
+    Write-Verbose -Message "Variable $name Not Found" -Verbose
+}
 }
 function Set-OneShellVariable
 {
-  param
-  (
-    [string]$Name
-    ,
-    $Value
-  )
-    Set-Variable -Scope Script -Name $Name -Value $value  
+[cmdletbinding()]
+param
+(
+[string]$Name
+,
+$Value
+)
+Set-Variable -Scope Script -Name $Name -Value $value  
 }
 function New-OneShellVariable
 {
-  param 
-  (
-    [string]$Name
-    ,
-    $Value
-  )
-    New-Variable -Scope Script -Name $name -Value $Value
+[cmdletbinding()]
+param 
+(
+[string]$Name
+,
+$Value
+)
+New-Variable -Scope Script -Name $name -Value $Value
 }
 function Remove-OneShellVariable
 {
-  param
-  (
-    [string]$Name
-  )
-    Remove-Variable -Scope Script -Name $name
+[cmdletbinding()]
+param
+(
+[string]$Name
+)
+Remove-Variable -Scope Script -Name $name
 }
 function Set-OneShellVariables
 {
+[cmdletbinding()]
+Param()
     #Write-Log -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
   <#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
