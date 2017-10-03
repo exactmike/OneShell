@@ -1424,21 +1424,21 @@ Function Test-EmailAddress
 }
 function Test-RecipientObjectForUnwantedSMTPAddresses
 {
-[cmdletbinding()]
-param(
-[Parameter(Mandatory)]
-[string[]]$WantedDomains
-,
-[Parameter(Mandatory)]
-[ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
-[psobject[]]$Recipient
-,
-[Parameter(Mandatory)]
-[ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
-[string]$Operation = 'TestOnly'
-,
-[bool]$ValidateSMTPAddress = $true
-)
+    [cmdletbinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$WantedDomains
+        ,
+        [Parameter(Mandatory)]
+        [ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
+        [psobject[]]$Recipient
+        ,
+        [Parameter(Mandatory)]
+        [ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
+        [string]$Operation = 'TestOnly'
+        ,
+        [bool]$ValidateSMTPAddress = $true
+    )
     foreach ($R in $Recipient)
     {
         Switch ($R)
