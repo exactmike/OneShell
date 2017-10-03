@@ -4,80 +4,83 @@
 ##########################################################################################################
 #Used By Other OneShell Functions
 function Get-SpecialFolder
-<#
-    Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
-    MIT License
-    Copyright (c) 2016 Øyvind Kallstad
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-#>
 {
-[cmdletbinding(DefaultParameterSetName = 'All')]
-param (
-)
-DynamicParam {
-        $Dictionary = New-DynamicParameter -Name 'Name' -Type $([string[]]) -ValidateSet @([Enum]::GetValues([System.Environment+SpecialFolder])) -Mandatory:$true -ParameterSetName 'Selected'
-        Write-Output -InputObject $dictionary
-}#DynamicParam
-begin {
-    #Dynamic Parameter to Variable Binding
-    Set-DynamicParameterVariable -dictionary $Dictionary
-    switch ($PSCmdlet.ParameterSetName)
+    <#
+        Original source: https://github.com/gravejester/Communary.ConsoleExtensions/blob/master/Functions/Get-SpecialFolder.ps1
+        MIT License
+        Copyright (c) 2016 Øyvind Kallstad
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+    #>
+    [cmdletbinding(DefaultParameterSetName = 'All')]
+    param (
+    )
+    DynamicParam
     {
-        'All'
+            $Dictionary = New-DynamicParameter -Name 'Name' -Type $([string[]]) -ValidateSet @([Enum]::GetValues([System.Environment+SpecialFolder])) -Mandatory:$true -ParameterSetName 'Selected'
+            Write-Output -InputObject $dictionary
+    }#DynamicParam
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        switch ($PSCmdlet.ParameterSetName)
         {
-            $Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+            'All'
+            {
+                $Name = [Enum]::GetValues([System.Environment+SpecialFolder])
+            }
+            'Selected'
+            {
+            }
         }
-        'Selected'
+        foreach ($folder in $Name)
         {
-        }
-    }
-  #$folder in (())
-  foreach ($folder in $Name)
-  {
-    $FolderObject = 
-    [PSCustomObject]@{
-      Name = $folder.ToString()
-      Path = [System.Environment]::GetFolderPath($folder)
-    }
-    Write-Output -InputObject $FolderObject
-  }#foreach
-}#begin
+            $FolderObject = 
+                [PSCustomObject]@{
+                    Name = $folder.ToString()
+                    Path = [System.Environment]::GetFolderPath($folder)
+                }
+            Write-Output -InputObject $FolderObject
+        }#foreach
+    }#begin
 }#Get-SpecialFolder
 function Get-ArrayIndexForValue
 {
     [cmdletbinding()]
     param(
         [parameter(mandatory=$true)]
-        $array #The array for which you want to find a value's index
+        $array
         ,
         [parameter(mandatory=$true)]
-        $value #The Value for which you want to find an index
+        $value
         ,
         [parameter()]
-        $property #The property name for the value for which you want to find an index
+        $property
     )
-    if ([string]::IsNullOrWhiteSpace($Property)) {
+    if ([string]::IsNullOrWhiteSpace($Property))
+    {
         Write-Verbose -Message 'Using Simple Match for Index'
         [array]::indexof($array,$value)
     }#if
-    else {
+    else
+    {
         Write-Verbose -Message 'Using Property Match for Index'
         [array]::indexof($array.$property,$value)
     }#else
@@ -96,15 +99,6 @@ function Get-DateStamp
 #Error Handling Functions and used by other OneShell Functions
 function Get-AvailableExceptionsList
 {
-  [CmdletBinding()]
-  param()
-  end {
-        $irregulars = 'Dispose|OperationAborted|Unhandled|ThreadAbort|ThreadStart|TypeInitialization'
-        $appDomains = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {-not $_.IsDynamic}
-        $ExportedTypes = $appDomains | ForEach-Object {$_.GetExportedTypes()}
-        $Exceptions = $ExportedTypes | Where-Object {$_.name -like '*exception*' -and $_.name -notmatch $irregulars}
-        $exceptionsWithGetConstructorsMethod = $Exceptions | Where-Object -FilterScript {'GetConstructors' -in @($_ | Get-Member -MemberType Methods | Select-Object -ExpandProperty Name)}
-        $exceptionsWithGetConstructorsMethod | Select-Object -ExpandProperty FullName
     <#  
         .Synopsis      Retrieves all available Exceptions to construct ErrorRecord objects.
         .Description      Retrieves all available Exceptions in the current session to construct ErrorRecord objects.
@@ -114,83 +108,18 @@ function Get-AvailableExceptionsList
         .Outputs     System.String
         .Link      New-ErrorRecord
         .Notes Name:  Get-AvailableExceptionsList  Original Author: Robert Robelo  ModifiedBy: Mike Campbell
-    #>
-  }#end
+    #>    
+    [CmdletBinding()]
+    param()
+    $irregulars = 'Dispose|OperationAborted|Unhandled|ThreadAbort|ThreadStart|TypeInitialization'
+    $appDomains = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {-not $_.IsDynamic}
+    $ExportedTypes = $appDomains | ForEach-Object {$_.GetExportedTypes()}
+    $Exceptions = $ExportedTypes | Where-Object {$_.name -like '*exception*' -and $_.name -notmatch $irregulars}
+    $exceptionsWithGetConstructorsMethod = $Exceptions | Where-Object -FilterScript {'GetConstructors' -in @($_ | Get-Member -MemberType Methods | Select-Object -ExpandProperty Name)}
+    $exceptionsWithGetConstructorsMethod | Select-Object -ExpandProperty FullName
 }
 function New-ErrorRecord
 {
-  param(
-    [Parameter(Mandatory, Position = 0)]
-    [string]
-    $Exception
-    ,
-    [Parameter(Mandatory, Position = 1)]
-    [Alias('ID')]
-    [string]
-    $ErrorId
-    ,
-    [Parameter(Mandatory, Position = 2)]
-    [Alias('Category')]
-    [Management.Automation.ErrorCategory]
-    [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
-            'DeadlockDetected', 'InvalidArgument', 'InvalidData', 'InvalidOperation',
-            'InvalidResult', 'InvalidType', 'MetadataError', 'NotImplemented',
-            'NotInstalled', 'ObjectNotFound', 'OperationStopped', 'OperationTimeout',
-            'SyntaxError', 'ParserError', 'PermissionDenied', 'ResourceBusy',
-            'ResourceExists', 'ResourceUnavailable', 'ReadError', 'WriteError',
-    'FromStdErr', 'SecurityError')]
-    $ErrorCategory
-    ,
-    [Parameter(Mandatory, Position = 3)]
-    $TargetObject
-    ,
-    [string]
-    $Message
-    ,
-    [Exception]
-    $InnerException
-  )
-  begin
-  {
-    Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
-    if (-not (Test-Path -Path variable:script:AvailableExceptionsList))
-    {$script:AvailableExceptionsList = Get-AvailableExceptionsList}
-    if (-not $Exception -in $script:AvailableExceptionsList)
-    {
-        $message2 = "Exception '$Exception' is not available."
-        $exception2 = New-Object System.InvalidOperationException $message2
-        $errorID2 = 'BadException'
-        $errorCategory2 = 'InvalidOperation'
-        $targetObject2 = 'Get-AvailableExceptionsList'
-        $errorRecord2 = New-Object Management.Automation.ErrorRecord $exception2, $errorID2,
-        $errorCategory2, $targetObject2
-        $PSCmdlet.ThrowTerminatingError($errorRecord2)
-    }
-  }
-  process
-  {
-    # trap for any of the "exceptional" Exception objects that made through the filter
-    trap [Microsoft.PowerShell.Commands.NewObjectCommand] {
-        $PSCmdlet.ThrowTerminatingError($_)
-    }
-    # ...build and save the new Exception depending on present arguments, if it...
-    $newObjectParams1 = @{
-        TypeName = $Exception
-    }
-    if ($PSBoundParameters.ContainsKey('Message'))
-    {
-        $newObjectParams1.ArgumentList = @()
-        $newObjectParams1.ArgumentList += $Message
-        if ($PSBoundParameters.ContainsKey('InnerException'))
-        {
-            $newObjectParams1.ArgumentList += $InnerException
-        }
-    }
-    $ExceptionObject = New-Object @newObjectParams1
-
-    # now build and output the new ErrorRecord
-    New-Object Management.Automation.ErrorRecord $ExceptionObject, $ErrorID, $ErrorCategory, $TargetObject
-  }#Process
   <#  
       .Synopsis      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
       .Description      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
@@ -282,6 +211,80 @@ function New-ErrorRecord
       OriginalAuthor:    Robert Robelo
       ModifiedBy: Mike Campbell
   #>
+  [cmdletbinding()]    
+  param
+  (
+    [Parameter(Mandatory, Position = 0)]
+    [string]
+    $Exception
+    ,
+    [Parameter(Mandatory, Position = 1)]
+    [Alias('ID')]
+    [string]
+    $ErrorId
+    ,
+    [Parameter(Mandatory, Position = 2)]
+    [Alias('Category')]
+    [Management.Automation.ErrorCategory]
+    [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
+            'DeadlockDetected', 'InvalidArgument', 'InvalidData', 'InvalidOperation',
+            'InvalidResult', 'InvalidType', 'MetadataError', 'NotImplemented',
+            'NotInstalled', 'ObjectNotFound', 'OperationStopped', 'OperationTimeout',
+            'SyntaxError', 'ParserError', 'PermissionDenied', 'ResourceBusy',
+            'ResourceExists', 'ResourceUnavailable', 'ReadError', 'WriteError',
+    'FromStdErr', 'SecurityError')]
+    $ErrorCategory
+    ,
+    [Parameter(Mandatory, Position = 3)]
+    $TargetObject
+    ,
+    [string]
+    $Message
+    ,
+    [Exception]
+    $InnerException
+  )
+  begin
+  {
+    Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
+    if (-not (Test-Path -Path variable:script:AvailableExceptionsList))
+    {$script:AvailableExceptionsList = Get-AvailableExceptionsList}
+    if (-not $Exception -in $script:AvailableExceptionsList)
+    {
+        $message2 = "Exception '$Exception' is not available."
+        $exception2 = New-Object System.InvalidOperationException $message2
+        $errorID2 = 'BadException'
+        $errorCategory2 = 'InvalidOperation'
+        $targetObject2 = 'Get-AvailableExceptionsList'
+        $errorRecord2 = New-Object Management.Automation.ErrorRecord $exception2, $errorID2,
+        $errorCategory2, $targetObject2
+        $PSCmdlet.ThrowTerminatingError($errorRecord2)
+    }
+  }
+  process
+  {
+    # trap for any of the "exceptional" Exception objects that made through the filter
+    trap [Microsoft.PowerShell.Commands.NewObjectCommand] {
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
+    # ...build and save the new Exception depending on present arguments, if it...
+    $newObjectParams1 = @{
+        TypeName = $Exception
+    }
+    if ($PSBoundParameters.ContainsKey('Message'))
+    {
+        $newObjectParams1.ArgumentList = @()
+        $newObjectParams1.ArgumentList += $Message
+        if ($PSBoundParameters.ContainsKey('InnerException'))
+        {
+            $newObjectParams1.ArgumentList += $InnerException
+        }
+    }
+    $ExceptionObject = New-Object @newObjectParams1
+
+    # now build and output the new ErrorRecord
+    New-Object Management.Automation.ErrorRecord $ExceptionObject, $ErrorID, $ErrorCategory, $TargetObject
+  }#Process
 }
 function Get-CallerPreference
 {
@@ -651,58 +654,59 @@ function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
 function New-SplitArrayRange
 {
-<#  
-  .SYNOPSIS   
+    <#  
+    .SYNOPSIS 
     Provides Start and End Ranges to Split an array into a specified number of parts (new arrays) or parts (new arrays) with a specified number (size) of elements
-  .PARAMETER inArray
-   A one dimensional array you want to split
-  .EXAMPLE  
-   Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -parts 3
-  .EXAMPLE  
-   Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -size 3
-  .NOTE
-  Derived from https://gallery.technet.microsoft.com/scriptcenter/Split-an-array-into-parts-4357dcc1#content
-#>
-[cmdletbinding()]
-param(
-  [parameter(Mandatory)]
-  [array]$inputArray
-  ,
-  [parameter(Mandatory,ParameterSetName ='Parts')]
-  [int]$parts
-  ,
-  [parameter(Mandatory,ParameterSetName ='Size')]
-  [int]$size
-)
-  switch ($PSCmdlet.ParameterSetName)
-  {
-    'Parts'
+    .PARAMETER inArray
+    A one dimensional array you want to split
+    .EXAMPLE  
+    Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -parts 3
+    .EXAMPLE  
+    Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -size 3
+    .NOTE
+    Derived from https://gallery.technet.microsoft.com/scriptcenter/Split-an-array-into-parts-4357dcc1#content
+    #>
+    [cmdletbinding()]
+    param(
+    [parameter(Mandatory)]
+    [array]$inputArray
+    ,
+    [parameter(Mandatory,ParameterSetName ='Parts')]
+    [int]$parts
+    ,
+    [parameter(Mandatory,ParameterSetName ='Size')]
+    [int]$size
+    )
+    switch ($PSCmdlet.ParameterSetName)
     {
-      $PartSize = [Math]::Ceiling($inputArray.count / $parts)
-    } 
-    'Size'
+        'Parts'
+        {
+            $PartSize = [Math]::Ceiling($inputArray.count / $parts)
+        }#Parts
+        'Size'
+        {
+            $PartSize = $size
+            $parts = [Math]::Ceiling($inputArray.count / $size)
+        }#Size
+    }#switch
+    for ($i=1; $i -le $parts; $i++)
     {
-      $PartSize = $size
-      $parts = [Math]::Ceiling($inputArray.count / $size)
-    }
-  }
-  for ($i=1; $i -le $parts; $i++)
-  {
-    $start = (($i-1)*$PartSize)
-    $end = (($i)*$PartSize) - 1
-    if ($end -ge $inputArray.count) {$end = $inputArray.count}
-    $SplitArrayRange = [pscustomobject]@{
-      Part = $i
-      Start = $start
-      End = $end
-    }
-    Write-Output -InputObject $SplitArrayRange
-  }
+        $start = (($i-1)*$PartSize)
+        $end = (($i)*$PartSize) - 1
+        if ($end -ge $inputArray.count) {$end = $inputArray.count}
+        $SplitArrayRange = [pscustomobject]@{
+            Part = $i
+            Start = $start
+            End = $end
+        }
+        Write-Output -InputObject $SplitArrayRange
+    }#for
 }
 function Convert-HashtableToObject
 {
     [CmdletBinding()]
-    PARAM(
+    PARAM
+    (
         [Parameter(ValueFromPipeline, Mandatory)]
         [HashTable]$hashtable
         ,
@@ -710,11 +714,14 @@ function Convert-HashtableToObject
         ,
         [switch]$Recurse
     )
-    BEGIN {
+    BEGIN
+    {
         $output = @()
     }
-    PROCESS {
-        if($recurse) {
+    PROCESS
+    {
+        if($recurse)
+        {
             $keys = $hashtable.Keys | ForEach-Object { $_ }
             Write-Verbose -Message "Recursing $($Keys.Count) keys"
             foreach($key in $keys) {
@@ -723,18 +730,24 @@ function Convert-HashtableToObject
                 }
             }
         }
-        if($combine) {
+        if($combine)
+        {
             $output += @(New-Object -TypeName PSObject -Property $hashtable)
             Write-Verbose -Message "Combining Output = $($Output.Count) so far"
-        } else {
+        }
+        else
+        {
             New-Object -TypeName PSObject -Property $hashtable
         }
     }
     END {
-        if($combine -and $output.Count -gt 1) {
+        if($combine -and $output.Count -gt 1)
+        {
             Write-Verbose -Message "Combining $($Output.Count) cached outputs"
             $output | Join-Object
-        } else {
+        }
+        else
+        {
             $output
         }
     }
@@ -1488,54 +1501,54 @@ param(
 }#function
 function Get-DuplicateEmailAddresses
 {
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-$ExchangeOrganization
-)
-Write-Verbose -Message "Building Exchange Proxy Address Hashtable with New-TestExchangeProxyAddress"
-New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
-#$TestExchangeProxyAddress = Get-OneShellVariableValue -Name TestExchangeProxyAddress
-Write-Verbose -Message "Filtering Exchange Proxy Address Hashtable for Addresses Assigned to Multiple Recipients"
-$duplicateAddresses = $TestExchangeProxyAddress.GetEnumerator() | Where-Object -FilterScript {$_.Value.count -gt 1}
-Write-Verbose -Message "Iterating through duplicate addresses and creating output"
-$duplicatnum = 0
-foreach ($dup in $duplicateAddresses)
-{
-    $duplicatnum++
-    foreach ($val in $dup.value)
+    [cmdletbinding()]
+    param(
+        [parameter(Mandatory)]
+        $ExchangeOrganization
+    )
+    Write-Verbose -Message "Building Exchange Proxy Address Hashtable with New-TestExchangeProxyAddress"
+    New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
+    #$TestExchangeProxyAddress = Get-OneShellVariableValue -Name TestExchangeProxyAddress
+    Write-Verbose -Message "Filtering Exchange Proxy Address Hashtable for Addresses Assigned to Multiple Recipients"
+    $duplicateAddresses = $TestExchangeProxyAddress.GetEnumerator() | Where-Object -FilterScript {$_.Value.count -gt 1}
+    Write-Verbose -Message "Iterating through duplicate addresses and creating output"
+    $duplicatnum = 0
+    foreach ($dup in $duplicateAddresses)
     {
-        $splat =@{
-            cmdlet = 'get-recipient'
-            ExchangeOrganization = $ExchangeOrganization
-            ErrorAction = 'Stop'
-            splat = @{
-                Identity = $val
+        $duplicatnum++
+        foreach ($val in $dup.value)
+        {
+            $splat =@{
+                cmdlet = 'get-recipient'
+                ExchangeOrganization = $ExchangeOrganization
                 ErrorAction = 'Stop'
-            }#innersplat
-        }#outersplat
-        try
-        {
-            $Recipient = Invoke-ExchangeCommand @splat
-        }#try
-        catch
-        {
-            $message = "Get-Recipient $val in Exchange Organization $ExchangeOrganization"
-            Write-Log -Message $message -EntryType Failed -ErrorLog
-        }#catch
-        $duplicateobject = [pscustomobject]@{
-            DuplicateAddress = $dup.Name
-            DuplicateNumber = $duplicatnum
-            DuplicateRecipientCount = $dup.Value.Count
-            RecipientDN = $Recipient.distinguishedName
-            RecipientAlias = $recipient.alias
-            RecipientPrimarySMTPAddress = $recipient.primarysmtpaddress
-            RecipientGUID = $Recipient.guid
-            RecipientTypeDetails = $Recipient.RecipientTypeDetails
-        }
-        Write-Output -InputObject $duplicateobject
-    }#Foreach
-}
+                splat = @{
+                    Identity = $val
+                    ErrorAction = 'Stop'
+                }#innersplat
+            }#outersplat
+            try
+            {
+                $Recipient = Invoke-ExchangeCommand @splat
+            }#try
+            catch
+            {
+                $message = "Get-Recipient $val in Exchange Organization $ExchangeOrganization"
+                Write-Log -Message $message -EntryType Failed -ErrorLog
+            }#catch
+            $duplicateobject = [pscustomobject]@{
+                DuplicateAddress = $dup.Name
+                DuplicateNumber = $duplicatnum
+                DuplicateRecipientCount = $dup.Value.Count
+                RecipientDN = $Recipient.distinguishedName
+                RecipientAlias = $recipient.alias
+                RecipientPrimarySMTPAddress = $recipient.primarysmtpaddress
+                RecipientGUID = $Recipient.guid
+                RecipientTypeDetails = $Recipient.RecipientTypeDetails
+            }
+            Write-Output -InputObject $duplicateobject
+        }#Foreach
+    }
 }#function
 Function Test-DirectorySynchronization
 {
@@ -1559,7 +1572,8 @@ Function Test-DirectorySynchronization
     [switch]$InitiateSynchronization
   )
   Begin {}
-  Process {
+  Process
+  {
     Connect-Exchange -ExchangeOrganization $ExchangeOrganization
     $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $ExchangeOrganization -string "-Identity $Identity -ErrorAction SilentlyContinue" -ErrorAction SilentlyContinue
     if ($Recipient.$RecipientAttributeToCheck -eq $RecipientAttributeValue) {
