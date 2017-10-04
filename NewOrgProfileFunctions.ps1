@@ -96,7 +96,7 @@ function New-OrgProfile
     #return the admin profile raw object to the pipeline
     if ($passthru) {Write-Output -InputObject $OrgProfile}
 } #New-AdminUserProfile
-function New-OrgProfileSystem
+function NewOrgSystemObject
 {
     [cmdletbinding()]
     param
@@ -119,12 +119,16 @@ function New-OrgProfileSystem
         ,
         [parameter()]
         [bool]$isDefault
-        
-    )
-
-
-}
-function GetGenericNewSystemObject
+    )#end param
+    $NewOrgSystemObject = GetNewGenericSystemObject
+    $NewOrgSystemObject.ServiceType = $ServiceType
+    $NewOrgSystemObject.Name = $Name
+    if (-not [string]::IsNullOrWhiteSpace($Description)) {$NewOrgSystemObject.Description = $Description}
+    if ($isDefault -ne $null) {$NewOrgSystemObject.IsDefault = $isDefault}
+    if ($AuthenticationRequired -ne $null) {$NewOrgSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
+    $NewOrgSystemObject = AddServiceTypeAttributes -OrgSystemObject $NewOrgSystemObject -ServiceType $ServiceType
+}#end function New-OrgProfileSystem
+function GetNewGenericSystemObject
 {
     [cmdletbinding()]
     param()
@@ -136,13 +140,13 @@ function GetGenericNewSystemObject
         SystemObjectVersion = .01
         Version = .01
         IsDefault = $null
-        AuthenticationRequired = $null
-        AuthMethod = $null
         RequiredModule = @()
         Defaults = [PSCustomObject]@{
             ProxyEnabled = $null
             CommandPrefix = $null
-            
+            AuthenticationRequired = $null
+            AuthMethod = $null
+            UseTLS = $null            
         }
         Endpoints = @(
             [PSCustomObject]@{
@@ -152,8 +156,30 @@ function GetGenericNewSystemObject
                 ServicePort = $null
                 IsDefault = $null
                 UseTLS = $null
+                ProxyEnabled = $null
+                CommandPrefix = $null
+                AuthenticationRequired = $null
+                AuthMethod = $null             
             }
         )
         ServiceTypeAttributes = [PSCustomObject]@{}
     }
-}
+}#end function GetNewGenericSystemObject
+function AddServiceTypeAttributes
+{
+    [CmdletBinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $OrgSystemObject
+        ,
+        [parameter(Mandatory)]
+        $ServiceType
+    )#end param
+    switch ($ServiceType)
+    {
+        #one entry for each ServiceType with ServiceTypeAttributes
+        ''
+        {}
+    }#end switch
+}#end function AddServiceTypeAttributes
