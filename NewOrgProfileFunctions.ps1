@@ -102,7 +102,7 @@ function NewOrgSystemObject
     param
     (
         [parameter(Mandatory)]
-        [ValidateSet('PowerShellSystems','SQLDatabases','ExchangeOrganizations','AADSyncServers','AzureADTenants','Office365Tenants','ActiveDirectoryInstances','MailRelayEndpoints','SkypeOrganizations')]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization')]
         [string]$ServiceType
         ,
         [parameter(Mandatory)]
@@ -116,17 +116,15 @@ function NewOrgSystemObject
         ,
         [parameter()]
         [bool]$AuthenticationRequired
-        ,
-        [parameter()]
-        [bool]$isDefault
     )#end param
-    $NewOrgSystemObject = GetNewGenericSystemObject
-    $NewOrgSystemObject.ServiceType = $ServiceType
-    $NewOrgSystemObject.Name = $Name
-    if (-not [string]::IsNullOrWhiteSpace($Description)) {$NewOrgSystemObject.Description = $Description}
-    if ($isDefault -ne $null) {$NewOrgSystemObject.IsDefault = $isDefault}
-    if ($AuthenticationRequired -ne $null) {$NewOrgSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
-    $NewOrgSystemObject = AddServiceTypeAttributes -OrgSystemObject $NewOrgSystemObject -ServiceType $ServiceType
+    $GenericSystemObject = GetNewGenericSystemObject
+    $GenericSystemObject.ServiceType = $ServiceType
+    $GenericSystemObject.Name = $Name
+    if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
+    if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
+    if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
+    $GenericSystemObject = AddServiceTypeAttributes -OrgSystemObject $GenericSystemObject -ServiceType $ServiceType
+    Write-Output -InputObject $GenericSystemObject
 }#end function New-OrgProfileSystem
 function GetNewGenericSystemObject
 {
@@ -149,18 +147,7 @@ function GetNewGenericSystemObject
             UseTLS = $null            
         }
         Endpoints = @(
-            [PSCustomObject]@{
-                Identity = [guid]::NewGuid()
-                ServiceFqdn = $null
-                ServiceIPAddress = $null
-                ServicePort = $null
-                IsDefault = $null
-                UseTLS = $null
-                ProxyEnabled = $null
-                CommandPrefix = $null
-                AuthenticationRequired = $null
-                AuthMethod = $null             
-            }
+            GetNewGenericSystemEndpointObject
         )
         ServiceTypeAttributes = [PSCustomObject]@{}
     }
@@ -179,7 +166,55 @@ function AddServiceTypeAttributes
     switch ($ServiceType)
     {
         #one entry for each ServiceType with ServiceTypeAttributes
-        ''
-        {}
+        'Office365Tenant'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
+        'AzureADTenant'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
+        'ExchangeOrganization'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'OrgType' -Value $null}
+        'ActiveDirectoryInstance'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value $null
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GlobalCatalog' -Value $null
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'UserAttributes' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GroupAttributes' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ContactAttributes' -Value @()
+        }
+        'PowerShell'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value @()
+        }
+        'SQLDatabase'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'Database' -Value @()
+        }
+        'AADSyncServer'
+        {
+
+        }
     }#end switch
+    Write-Output -InputObject $OrgSystemObject
 }#end function AddServiceTypeAttributes
+function GetNewGenericSystemEndpointObject {
+    [cmdletbinding()]
+    param()
+    [PSCustomObject]@{
+        Identity = [guid]::NewGuid()
+        ServiceFqdn = $null
+        ServiceIPAddress = $null
+        ServicePort = $null
+        IsDefault = $null
+        UseTLS = $null
+        ProxyEnabled = $null
+        CommandPrefix = $null
+        AuthenticationRequired = $null
+        AuthMethod = $null
+        EndPointGroup = $null
+        EndPointType = $null
+        ServiceTypeAttributes = [PSCustomObject]@{}
+    }
+}#end function GetNewGenericSystemEndpointObject
+#ExchangeEndpoints
+##Needs PreferredDomainControllers
+##Needs MRSProxyServer Endpoints and AdministrativePowershell Endpoints
