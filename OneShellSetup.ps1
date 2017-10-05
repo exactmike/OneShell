@@ -1,13 +1,20 @@
-﻿function Get-UninstallEntry
-{
-[cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
-param(
-[parameter(ParameterSetName = 'Raw')]
-[switch]$raw
-,
-[parameter(ParameterSetName = 'SpecifiedProperties')]
-[string[]]$property = @('DisplayName','DisplayVersion','InstallDate','Publisher')
+﻿param
+(
+    [parameter()]
+    [validateset('PowerShellModules','MyModules')]
+    $InstallModuleIn
 )
+function Get-UninstallEntry
+{
+    [cmdletbinding(DefaultParameterSetName = 'SpecifiedProperties')]
+    param
+    (
+        [parameter(ParameterSetName = 'Raw')]
+        [switch]$raw
+        ,
+        [parameter(ParameterSetName = 'SpecifiedProperties')]
+        [string[]]$property = @('DisplayName','DisplayVersion','InstallDate','Publisher')
+    )
     # paths: x86 and x64 registry keys are different
     if ([IntPtr]::Size -eq 4) {
         $path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
@@ -29,7 +36,7 @@ param(
     else {
         $UninstallEntries | Sort-Object -Property DisplayName | Select-Object -Property $property
     }
-} 
+}#end function Get-UninstallEntry
 #region TestPrereqs
 $SoftwareInstalled = @(Get-UninstallEntry)
 
@@ -41,7 +48,8 @@ $PreReqsTest = @{
     Git = Test-CommandExists -command 'git'
 }
 
-if ($PreReqsTest.ContainsValue($false)){
+if ($PreReqsTest.ContainsValue($false))
+{
     $PreReqsTest
     Throw "Missing a OneShell PreRequisite"
 }
@@ -66,9 +74,18 @@ if (Test-Path "$MyDocsPath\WindowsPowerShell")
        New-Item -Path "$MyDocsPath\WindowsPowerShell" -Name 'Modules' -ItemType Directory 
     }
 }
+
 $MyWPSPath = "$MyDocsPath\WindowsPowerShell"
 $MyPSModulesPath = "$MyWPSPath\Modules"
-cd $MyPSModulesPath
+$PSModulesPath = "$env:ProgramFiles\WindowsPowershell\Modules"
+switch ($InstallModuleIn)
+{
+    'MyModules'
+    {Set-Location $MyPSModulesPath}
+    'PowerShellModules'
+    {Set-Location $PSModulesPath}
+}
+
 git clone https://github.com/exactmike/OneShell.git
 git clone https://github.com/exactmike/AdvancedOneShell.git
 git clone https://github.com/exactmike/PublicFolderMigration.git
