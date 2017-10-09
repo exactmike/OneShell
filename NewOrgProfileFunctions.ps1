@@ -1,4 +1,4 @@
-﻿function GetGenericNewOrgProfileObject
+﻿function NewGenericOrgProfileObject
 {
     [cmdletbinding()]
     param()
@@ -13,6 +13,151 @@
             Systems = @()
     }
 } #GetGenericNewOrgProfileObject
+function New-OrgProfile
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [string]$Name
+        ,
+        [parameter(Mandatory)]
+        [bool]$IsDefault
+        ,
+        [parameter(Mandatory,ParameterSetName = 'OrgProfileBuilder')]
+        [switch]$OrgProfileBuilder
+    )
+    $GenericOrgProfileObject = NewGenericOrgProfileObject
+    $GenericOrgProfileObject.Name = $Name
+    $GenericOrgProfileObject.IsDefault = $IsDefault
+    Write-Output -InputObject $GenericOrgProfileObject
+}
+function NewGenericOrgSystemObject
+{
+    [cmdletbinding()]
+    param()
+    [pscustomobject]@{
+        Identity = [guid]::NewGuid()
+        Name = ''
+        Description = ''
+        ServiceType = ''
+        SystemObjectVersion = .01
+        Version = .01
+        IsDefault = $null
+        RequiredModule = @()
+        Defaults = [PSCustomObject]@{
+            ProxyEnabled = $null
+            CommandPrefix = $null
+            AuthenticationRequired = $null
+            AuthMethod = $null
+            UseTLS = $null            
+        }
+        Endpoints = @(
+            GetNewGenericSystemEndpointObject
+        )
+        ServiceTypeAttributes = [PSCustomObject]@{}
+    }
+}#end function NewGenericOrgSystemObject
+function AddServiceTypeAttributesToGenericOrgSystemObject
+{
+    [CmdletBinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $OrgSystemObject
+        ,
+        [parameter(Mandatory)]
+        $ServiceType
+    )#end param
+    switch ($ServiceType)
+    {
+        #one entry for each ServiceType with ServiceTypeAttributes
+        'Office365Tenant'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
+        'AzureADTenant'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
+        'ExchangeOrganization'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'OrgType' -Value $null}
+        'ActiveDirectoryInstance'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value $null
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GlobalCatalog' -Value $null
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'UserAttributes' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GroupAttributes' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ContactAttributes' -Value @()
+        }
+        'PowerShell'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value @()
+        }
+        'SQLDatabase'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'Database' -Value @()
+        }
+        'AADSyncServer'
+        {
+
+        }
+    }#end switch
+    Write-Output -InputObject $OrgSystemObject
+}#end function AddServiceTypeAttributesToGenericOrgSystemObject
+function GetNewGenericSystemEndpointObject {
+    [cmdletbinding()]
+    param()
+    [PSCustomObject]@{
+        Identity = [guid]::NewGuid()
+        ServiceFqdn = $null
+        ServiceIPAddress = $null
+        ServicePort = $null
+        IsDefault = $null
+        UseTLS = $null
+        ProxyEnabled = $null
+        CommandPrefix = $null
+        AuthenticationRequired = $null
+        AuthMethod = $null
+        EndPointGroup = $null
+        EndPointType = $null
+        ServiceTypeAttributes = [PSCustomObject]@{}
+    }
+}#end function GetNewGenericSystemEndpointObject
+function New-OrgSystemObject
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization')]
+        [string]$ServiceType
+        ,
+        [parameter(Mandatory)]
+        [string]$Name
+        ,
+        [parameter()]
+        [string]$Description
+        ,
+        [parameter()]
+        [bool]$isDefault
+        ,
+        [parameter()]
+        [bool]$AuthenticationRequired
+    )#end param
+    $GenericSystemObject = NewGenericOrgSystemObject
+    $GenericSystemObject.ServiceType = $ServiceType
+    $GenericSystemObject.Name = $Name
+    if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
+    if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
+    if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
+    $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject -OrgSystemObject $GenericSystemObject -ServiceType $ServiceType
+    Write-Output -InputObject $GenericSystemObject
+}#end function New-OrgProfileSystem
+
+#ExchangeEndpoints
+##Needs PreferredDomainControllers
+##Needs MRSProxyServer Endpoints and AdministrativePowershell Endpoints
+
+##############################
+#User Interface
 function GetOrgProfileMenuMessage
 {
     param($OrgProfile)
@@ -26,7 +171,7 @@ function GetOrgProfileMenuMessage
 "@
     $Message
 } #GetOrgProfileMenuMessage
-function New-OrgProfile
+function Start-OrgProfileBuilder
 {
     [cmdletbinding()]
     param
@@ -35,7 +180,7 @@ function New-OrgProfile
     )
     Write-Verbose -Message 'NOTICE: This function uses interactive windows/dialogs which may sometimes appear underneath the active window.  If things seem to be locked up, check for a hidden window.' -Verbose
     #Build the basic Org profile object
-    $OrgProfile = GetGenericNewOrgProfileObject
+    $OrgProfile = NewGenericOrgProfileObject
     #Let user configure the profile
     $quit = $false
     $choices = 'Profile Name', 'Set Default','Organization Specific Modules','SharePoint Site','Systems','Save','Save and Quit','Cancel'
@@ -96,125 +241,3 @@ function New-OrgProfile
     #return the admin profile raw object to the pipeline
     if ($passthru) {Write-Output -InputObject $OrgProfile}
 } #New-AdminUserProfile
-function NewOrgSystemObject
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        [ValidateSet('PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization')]
-        [string]$ServiceType
-        ,
-        [parameter(Mandatory)]
-        [string]$Name
-        ,
-        [parameter()]
-        [string]$Description
-        ,
-        [parameter()]
-        [bool]$isDefault
-        ,
-        [parameter()]
-        [bool]$AuthenticationRequired
-    )#end param
-    $GenericSystemObject = GetNewGenericSystemObject
-    $GenericSystemObject.ServiceType = $ServiceType
-    $GenericSystemObject.Name = $Name
-    if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
-    if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
-    if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
-    $GenericSystemObject = AddServiceTypeAttributes -OrgSystemObject $GenericSystemObject -ServiceType $ServiceType
-    Write-Output -InputObject $GenericSystemObject
-}#end function New-OrgProfileSystem
-function GetNewGenericSystemObject
-{
-    [cmdletbinding()]
-    param()
-    [pscustomobject]@{
-        Identity = [guid]::NewGuid()
-        Name = ''
-        Description = ''
-        ServiceType = ''
-        SystemObjectVersion = .01
-        Version = .01
-        IsDefault = $null
-        RequiredModule = @()
-        Defaults = [PSCustomObject]@{
-            ProxyEnabled = $null
-            CommandPrefix = $null
-            AuthenticationRequired = $null
-            AuthMethod = $null
-            UseTLS = $null            
-        }
-        Endpoints = @(
-            GetNewGenericSystemEndpointObject
-        )
-        ServiceTypeAttributes = [PSCustomObject]@{}
-    }
-}#end function GetNewGenericSystemObject
-function AddServiceTypeAttributes
-{
-    [CmdletBinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        $OrgSystemObject
-        ,
-        [parameter(Mandatory)]
-        $ServiceType
-    )#end param
-    switch ($ServiceType)
-    {
-        #one entry for each ServiceType with ServiceTypeAttributes
-        'Office365Tenant'
-        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
-        'AzureADTenant'
-        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
-        'ExchangeOrganization'
-        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'OrgType' -Value $null}
-        'ActiveDirectoryInstance'
-        {
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value $null
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GlobalCatalog' -Value $null
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'UserAttributes' -Value @()
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GroupAttributes' -Value @()
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ContactAttributes' -Value @()
-        }
-        'PowerShell'
-        {
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value @()
-        }
-        'SQLDatabase'
-        {
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value @()
-            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'Database' -Value @()
-        }
-        'AADSyncServer'
-        {
-
-        }
-    }#end switch
-    Write-Output -InputObject $OrgSystemObject
-}#end function AddServiceTypeAttributes
-function GetNewGenericSystemEndpointObject {
-    [cmdletbinding()]
-    param()
-    [PSCustomObject]@{
-        Identity = [guid]::NewGuid()
-        ServiceFqdn = $null
-        ServiceIPAddress = $null
-        ServicePort = $null
-        IsDefault = $null
-        UseTLS = $null
-        ProxyEnabled = $null
-        CommandPrefix = $null
-        AuthenticationRequired = $null
-        AuthMethod = $null
-        EndPointGroup = $null
-        EndPointType = $null
-        ServiceTypeAttributes = [PSCustomObject]@{}
-    }
-}#end function GetNewGenericSystemEndpointObject
-#ExchangeEndpoints
-##Needs PreferredDomainControllers
-##Needs MRSProxyServer Endpoints and AdministrativePowershell Endpoints
