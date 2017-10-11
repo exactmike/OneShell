@@ -2778,11 +2778,62 @@ foreach ($p in $Dictionary.Keys)
 }
 }
 Function Get-CommonParameter
-{
-[cmdletbinding(SupportsShouldProcess)]
-param()
-$MyInvocation.MyCommand.Parameters.Keys
-}
+    {
+        [cmdletbinding(SupportsShouldProcess)]
+        param()
+        $MyInvocation.MyCommand.Parameters.Keys
+    }
+function Get-AllParameters
+    {
+        [cmdletbinding()]
+        param
+        (
+            $BoundParameters
+            ,
+            $AllParameters
+            ,
+            [switch]$IncludeCommon
+        )
+        $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
+        $allKeys = $AllKeys | Sort-Object -Unique
+        if ($IncludeCommon -ne $true)
+        {
+            $allKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
+        }
+        Write-Output -InputObject $AllKeys
+    }
+function Get-AllParametersWithAValue
+    {
+        [cmdletbinding()]
+        param
+        (
+            $BoundParameters
+            ,
+            $AllParameters
+            ,
+            [switch]$IncludeCommon
+        )
+        $getAllParametersParams = @{
+            BoundParameters = $BoundParameters
+            AllParameters = $AllParameters
+        }
+        if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
+        $allParameterKeys = Get-AllParameters @getAllParametersParams
+        $AllParametersWithAValue = @(
+            foreach ($k in $allParameterKeys)
+            {
+                try
+                {
+                    Get-Variable -Name $k -Scope 1 -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
+                }
+                catch
+                {
+                    #don't care if a particular variable is not found
+                }
+            }
+        )
+        Write-Output -InputObject $AllParametersWithAValue
+    }
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
