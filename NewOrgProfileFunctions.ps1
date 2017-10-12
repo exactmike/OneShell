@@ -66,36 +66,42 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
             ,
             [parameter(Mandatory)]
             $ServiceType
+            ,
+            [parameter()]
+            $dictionary
         )#end param
+        if ($null -ne $dictionary)
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+        }
         switch ($ServiceType)
         {
             #one entry for each ServiceType with ServiceTypeAttributes
             'Office365Tenant'
-            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
+            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $TenantSubDomain}
             'AzureADTenant'
-            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $null}
+            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $TenantSubDomain}
             'ExchangeOrganization'
-            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'OrgType' -Value $null}
+            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ExchangeOrgType' -Value $ExchangeOrgType}
             'ActiveDirectoryInstance'
             {
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value $null
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GlobalCatalog' -Value $null
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'UserAttributes' -Value @()
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GroupAttributes' -Value @()
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ContactAttributes' -Value @()
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADInstanceType' -Value $ADInstanceType
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GlobalCatalog' -Value $GlobalCatalog
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADUserAttributes' -Value $ADUserAttributes
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADGroupAttributes' -Value $ADGroupAttributes
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADContactAttributes' -Value $ADContactAttributes
             }
             'PowerShell'
             {
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value @()
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value $SessionManagementGroups
             }
             'SQLDatabase'
             {
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'InstanceType' -Value @()
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SQLInstanceType' -Value @()
                 $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'Database' -Value @()
             }
             'AADSyncServer'
             {
-
             }
         }#end switch
         Write-Output -InputObject $OrgSystemObject
@@ -131,17 +137,63 @@ function New-OrgSystem
             [parameter()]
             [bool]$UseTLS
         )#end param
-        $GenericSystemObject = NewGenericOrgSystemObject
-        $GenericSystemObject.ServiceType = $ServiceType
-        $GenericSystemObject.Name = $Name
-        if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
-        if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
-        if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
-        if ($commandPrefix -ne $null) {$GenericSystemObject.Defaults.CommandPrefix = $CommandPrefix}
-        if ($ProxyEnabled -ne $null) {$GenericSystemObject.Defaults.ProxyEnabled = $ProxyEnabled}
-        if ($UseTLS -ne $null) {$GenericSystemObject.Defaults.UseTLS = $UseTLS}                
-        $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject -OrgSystemObject $GenericSystemObject -ServiceType $ServiceType
-        Write-Output -InputObject $GenericSystemObject
+        DynamicParam
+        {
+            #build any service typ specific parameters that may be needed
+            switch -Wildcard ($ServiceType)
+            {
+                'ExchangeOrganization'
+                {
+                    $Dictionary = New-DynamicParameter -Name 'ExchangeOrgType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','Online','ComplianceCenter'
+
+                }
+                '*Tenant'
+                {
+                    $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$true
+                }
+                'ActiveDirectoryInstance'
+                {
+                    $Dictionary = New-DynamicParameter -Name 'ADInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'AD','ADLDS'
+                    $Dictionary = New-DynamicParameter -Name 'GlobalCatalog' -Type $([bool]) -Mandatory:$true -ValidateSet $true,$false -DPDictionary $Dictionary
+                    $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+                    $Dictionary = New-DynamicParameter -Name 'ADGroupAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+                    $Dictionary = New-DynamicParameter -Name 'ADContactAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+                }
+                'PowerShell'
+                {
+                    $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false
+                }
+                'SQLDatabase'
+                {
+                    $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','AzureSQL'
+                    $Dictionary = New-DynamicParameter -Name 'Database' -Type $([string]) -Mandatory:$true -DPDictionary $Dictionary
+                }
+            }
+            if ($null -ne $Dictionary)
+            {
+                Write-Output -InputObject $dictionary
+            }
+        }#End DynamicParam
+        End
+        {
+            $GenericSystemObject = NewGenericOrgSystemObject
+            $GenericSystemObject.ServiceType = $ServiceType
+            $GenericSystemObject.Name = $Name
+            if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
+            if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
+            if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
+            if ($commandPrefix -ne $null) {$GenericSystemObject.Defaults.CommandPrefix = $CommandPrefix}
+            if ($ProxyEnabled -ne $null) {$GenericSystemObject.Defaults.ProxyEnabled = $ProxyEnabled}
+            if ($UseTLS -ne $null) {$GenericSystemObject.Defaults.UseTLS = $UseTLS}
+            $addServiceTypeAttributesParams = @{
+                OrgSystemObject = $GenericSystemObject
+                ServiceType = $ServiceType
+            }
+            if ($null -ne $Dictionary)
+            {$addServiceTypeAttributesParams.Dictionary = $Dictionary}
+            $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject @addServiceTypeAttributesParams
+            Write-Output -InputObject $GenericSystemObject    
+        }   
     }#end function New-OrgSystemObject
 
 function NewGenericSystemEndpointObject
@@ -257,9 +309,6 @@ function New-OrgSystemEndpoint
             Write-Output -InputObject $GenericEndpointObject            
         }
     }
-    #ExchangeEndpoints
-##Needs PreferredDomainControllers
-##Needs MRSProxyServer Endpoints and AdministrativePowershell Endpoints
 
 ##############################
 #User Interface
