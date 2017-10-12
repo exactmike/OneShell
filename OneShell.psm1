@@ -6615,7 +6615,7 @@ function New-AdminUserProfile
 } #New-AdminUserProfile
 function Set-AdminUserProfile
 {
-  [cmdletbinding()]
+  [cmdletbinding(DefaultParameterSetName="Default")]
   param(
     [Parameter(ParameterSetName = 'Object',ValueFromPipeline,Mandatory)]
     [ValidateScript({$_.ProfileType -eq 'OneShellAdminUserProfile'})]
@@ -6667,6 +6667,14 @@ function Set-AdminUserProfile
         }
         $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
       }
+	  'Default'
+	  {
+		$GetAdminUserProfileParams = @{
+			GetDefault = $Name
+            Raw = $true
+        }
+		$AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+	  }
     }
     $OrganizationIdentity = $AdminUserProfile.General.OrganizationIdentity
     $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
