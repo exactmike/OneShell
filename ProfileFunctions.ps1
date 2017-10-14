@@ -261,182 +261,193 @@ Function Initialize-AdminEnvironment
   }#Process
 }
 Function Export-OrgProfile
-{
-    [cmdletbinding()]
-    param(
-        [parameter(Mandatory=$true)]
-        [hashtable]$profile
-        ,
-        [parameter(Mandatory=$true)]
-        [validateset('New','Update')]
-        $operation
-    )
-    $profileobject = $profile | Convert-HashTableToObject
-    $name = $profileobject.Identity
-    $path = "$($Script:OneShellModuleFolderPath)\$name.json"
-    $JSONparams =@{
-        InputObject = $profileobject
-        ErrorAction = 'Stop'
-        Depth = 3
-    }
-    switch ($operation){
-        'Update' {$params.Force = $true}
-        'New' {$params.NoClobber = $true}
-    }#switch
-
-    try {
-        ConvertTo-Json @JSONparams | Out-File -FilePath $path -Encoding ascii -ErrorAction Stop
-        Write-Output -InputObject $true
-    }#try
-    catch {
-        $_
-        throw "FAILED: Could not write Org Profile data to $path"
-    }#catch
-
-}#Function Export-OrgProfile
-Function Get-OrgProfile
-{
-  [cmdletbinding(DefaultParameterSetName = 'All')]
-  param(
-    [parameter(ParameterSetName = 'All')]
-    [parameter(ParameterSetName = 'Identity')]
-    [parameter(ParameterSetName = 'OrgName')]
-    [parameter(ParameterSetName = 'GetDefault')]
-    [ValidateScript({Test-DirectoryPath -path $_})]
-    [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
-    ,
-    [parameter(ParameterSetName = 'All')]
-    [parameter(ParameterSetName = 'Identity')]
-    [parameter(ParameterSetName = 'OrgName')]
-    [parameter(ParameterSetName = 'GetDefault')]
-    $OrgProfileType = 'OneShellOrgProfile'
-    ,
-    [parameter(ParameterSetName = 'All')]
-    [parameter(ParameterSetName = 'Identity')]
-    [parameter(ParameterSetName = 'OrgName')]
-    [parameter(ParameterSetName = 'GetDefault')]
-    [parameter(ParameterSetName = 'GetCurrent')]
-    [switch]$raw
-    ,
-    [parameter(ParameterSetName = 'Identity')]
-    $Identity
-    , 
-    [parameter(ParameterSetName = 'OrgName')]
-    $OrgName
-    ,
-    [parameter(ParameterSetName = 'GetCurrent')]
-    [switch]$GetCurrent
-    ,
-    [parameter(ParameterSetName = 'GetDefault')]
-    [switch]$GetDefault
-  )
-  $outputprofiles = @(
-    switch ($PSCmdlet.ParameterSetName)
     {
-      'GetCurrent'
-      {
-        $Script:CurrentOrgProfile
-      }
-      Default
-      {
-        foreach ($loc in $Path)
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory=$true)]
+            $profile
+            ,
+            [parameter(Mandatory=$true)]
+            [validateset('New','Update')]
+            $operation
+            ,
+            [parameter()]
+            [AllowNull()]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            $ProfileExportFolderPath
+        )
+        $name = [string]$($profile.Identity.tostring()) + '.json'
+        if ($null -eq $ProfileExportFolderPath)
         {
-            $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
-            if ($JSONProfiles.Count -ge 1)
-            {
-                $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
-                $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
-                switch ($PSCmdlet.ParameterSetName)
-                {
-                    'Identity'
-                    {
-                        $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity})
-                        $OrgProfiles
-                    }#Identity
-                    'OrgName'
-                    {
-                        $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName})
-                        $OrgProfiles
-                    }#OrgName
-                    'All'
-                    {
-                        $OrgProfiles = @($FoundOrgProfiles)
-                        $OrgProfiles
-                    }#All
-                    'GetDefault'
-                    {
-                        $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.General.Default -eq $true})
-                        switch ($OrgProfiles.Count)
-                        {
-                            {$_ -eq 1}
-                            {
-                                $OrgProfiles[0]
-                            }
-                            {$_ -gt 1}
-                            {
-                                throw "FAILED: Multiple Org Profiles Are Set as Default: $($OrgProfiles.Identity -join ',')"
-                            }
-                            {$_ -lt 1}
-                            {
-                                throw 'FAILED: No Org Profiles Are Set as Default'
-                            }
-                        }#Switch $DefaultOrgProfile.Count
-                    }
-                }#switch
-            }#if
-        }#foreach
-      }#Default
-    }#switch
-  )
-  #output the profiles
-  if ($raw)
-  {
-    $outputprofiles
-  }
-  else
-  {
-    $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}}
-  }
-}#Function Get-OrgProfile
-Function Get-OrgProfileSystem
-{
-[cmdletbinding(DefaultParameterSetName = 'GetCurrent')]
-param(
-[parameter(ParameterSetName = 'Identity')]
-[string]$OrgIdentity,
-[parameter(ParameterSetName = 'OrgName')]
-[string]$OrgName
-)
-  begin
-  {
-    switch ($PSCmdlet.ParameterSetName)
+            Write-Verbose -Message "Using Default Profile Location"
+            $path = Join-Path $script:OneShellOrgProfilePath[0] $name
+        }
+        else
+        {
+            $path = Join-Path $ProfileExportFolderPath $name
+        }
+        Write-Verbose -Message "Profile File Export Path is $path"
+        $JSONparams=@{
+            InputObject = $profile
+            ErrorAction = 'Stop'
+            Depth = 3
+        }
+        $OutParams = @{
+            ErrorAction = 'Stop'
+            FilePath = $path
+            Encoding = 'ascii'
+        }
+        switch ($operation)
+        {
+            'Update' {$OutParams.Force = $true}
+            'New' {$OutParams.NoClobber = $true}
+        }#end switch
+        try
+        {
+            ConvertTo-Json @JSONparams | Out-File @OutParams
+        }#end try
+        catch
+        {
+            $_
+            throw "FAILED: Could not write Org Profile data to $path"
+        }#end catch
+    }#Function Export-OrgProfile
+Function Get-OrgProfile
     {
+    [cmdletbinding(DefaultParameterSetName = 'All')]
+    param(
+        [parameter(ParameterSetName = 'All')]
+        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'OrgName')]
+        [parameter(ParameterSetName = 'GetDefault')]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+        ,
+        [parameter(ParameterSetName = 'All')]
+        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'OrgName')]
+        [parameter(ParameterSetName = 'GetDefault')]
+        $OrgProfileType = 'OneShellOrgProfile'
+        ,
+        [parameter(ParameterSetName = 'All')]
+        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'OrgName')]
+        [parameter(ParameterSetName = 'GetDefault')]
+        [parameter(ParameterSetName = 'GetCurrent')]
+        [switch]$raw
+        ,
+        [parameter(ParameterSetName = 'Identity')]
+        $Identity
+        , 
+        [parameter(ParameterSetName = 'OrgName')]
+        $OrgName
+        ,
+        [parameter(ParameterSetName = 'GetCurrent')]
+        [switch]$GetCurrent
+        ,
+        [parameter(ParameterSetName = 'GetDefault')]
+        [switch]$GetDefault
+    )
+    $outputprofiles = @(
+        switch ($PSCmdlet.ParameterSetName)
+        {
         'GetCurrent'
         {
-            $profile = Get-OrgProfile -GetCurrent -raw
+            $Script:CurrentOrgProfile
         }
-        'Identity'
+        Default
         {
-            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity} | Select-Object -First 1
-        }
-        'OrgName'
-        {
-            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName} | Select-Object -First 1
-        }
-    }
-  }#begin
-  process
-  {
-    $RawSystems = $profile | Select-Object -Property * -ExcludeProperty Identity,ProfileType,General
-    $SystemTypes = $RawSystems | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
-    foreach ($ST in $SystemTypes)
+            foreach ($loc in $Path)
+            {
+                $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
+                if ($JSONProfiles.Count -ge 1)
+                {
+                    $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+                    $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
+                    switch ($PSCmdlet.ParameterSetName)
+                    {
+                        'Identity'
+                        {
+                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity})
+                            Write-Output -inputobject $OrgProfiles
+                        }#Identity
+                        'OrgName'
+                        {
+                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Name -eq $OrgName})
+                            Write-Output -inputobject $OrgProfiles
+                        }#OrgName
+                        'All'
+                        {
+                            $OrgProfiles = @($FoundOrgProfiles)
+                            Write-Output -inputobject $OrgProfiles
+                        }#All
+                        'GetDefault'
+                        {
+                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Default -eq $true})
+                            switch ($OrgProfiles.Count)
+                            {
+                                {$_ -eq 1}
+                                {
+                                    Write-Output -inputobject $OrgProfiles[0]
+                                }
+                                {$_ -gt 1}
+                                {
+                                    throw "FAILED: Multiple Org Profiles Are Set as Default: $($OrgProfiles.Identity -join ',')"
+                                }
+                                {$_ -lt 1}
+                                {
+                                    throw 'FAILED: No Org Profiles Are Set as Default'
+                                }
+                            }#Switch $DefaultOrgProfile.Count
+                        }
+                    }#switch
+                }#if
+            }#foreach
+        }#Default
+        }#switch
+    )
+    #output the profiles
+    if ($raw)
     {
-        $profile.$ST | Select-Object -Property @{n='SystemType';e={$ST}},* | Sort-Object -Property SystemType
+        $outputprofiles
     }
-  }
-}
+    else
+    {
+        $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.Name}},@{n='Default';e={$_.IsDefault}}
+    }
+    }#Function Get-OrgProfile
+Function Get-OrgProfileSystem
+    {
+        [cmdletbinding(DefaultParameterSetName = 'GetCurrent')]
+        param
+        (
+            [parameter(ParameterSetName = 'Identity')]
+            [string]$OrgIdentity,
+            [parameter(ParameterSetName = 'OrgName')]
+            [string]$OrgName
+        )
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'GetCurrent'
+            {
+                $profile = Get-OrgProfile -GetCurrent -raw
+            }
+            'Identity'
+            {
+                $profile = Get-OrgProfile -Identity $OrgIdentity -raw
+            }
+            'OrgName'
+            {
+                $profile = Get-OrgProfile -OrgName $OrgName -raw
+            }
+        }
+        $RawSystems = $profile.systems
+        Write-Output -InputObject $RawSystems
+    }
 Function Use-OrgProfile
 {
+  [cmdletbinding()]
   param
   (
     [parameter(ParameterSetName = 'Object')]
@@ -448,66 +459,49 @@ Function Use-OrgProfile
     [parameter(ParameterSetName = 'OrgName')]
     $OrgName
   )
-  begin
-  {
     switch ($PSCmdlet.ParameterSetName)
     {
         'Object'
         {}
         'Identity'
         {
-            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity} | Select-Object -First 1
+            $profile = Get-OrgProfile -Identity $Identity
         }
         'OrgName'
         {
-            $profile = $script:OrgProfiles | Where-Object -FilterScript {$_.General.Name -eq $OrgName} | Select-Object -First 1
+            $profile = Get-OrgProfile -OrgName $OrgName
         }
-    }
-  }#begin
-    process
+    }# end switch
+    if ($null -ne $script:CurrentOrgProfile -and $profile.Identity -ne $script:CurrentOrgProfile.Identity)
     {
-        if ($script:CurrentOrgProfile -and $profile.Identity -ne $script:CurrentOrgProfile.Identity)
-        {
-            $script:CurrentOrgProfile = $profile
-            Write-Log -message "Org Profile has been changed to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name).  Remove PSSessions and select an Admin Profile to load." -EntryType Notification -Verbose
-        }
-        else
-        {
-            $script:CurrentOrgProfile = $profile
-            Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.general.name)." -EntryType Notification -Verbose
-        }
-        $Script:CurrentOrgAdminProfileSystems = @()
-        Write-Output -InputObject $true
-    }#process
-}
+        $script:CurrentOrgProfile = $profile
+        Write-Log -message "Org Profile has been changed to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name).  Remove PSSessions and select an Admin Profile to load." -EntryType Notification -Verbose
+    }
+    else
+    {
+        $script:CurrentOrgProfile = $profile
+        Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name)." -EntryType Notification -Verbose
+    }    
+}# end function Use-OrgProfile
 function GetOrgProfileSystem
-{
-  param(
-    $OrganizationIdentity
-  )
-  $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
-  switch ($targetOrgProfile.Count)
-  {
-    1
-    {}
-    0
-    {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
-    Default 
-    {throw "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"}
-  }
-  $systemtypes = $targetOrgProfile | Select-Object -Property * -ExcludeProperty Identity,General,ProfileType | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
-  $systems = @()
-  foreach ($systemtype in $systemtypes)
-  {
-    foreach ($sys in $targetorgprofile.$systemtype)
     {
-        $system = $sys.psobject.copy()
-        $system | Add-Member -MemberType NoteProperty -Name SystemType -Value $systemtype
-        $systems += $system
+        [cmdletbinding()]
+        param
+        (
+            $OrganizationIdentity
+        )
+        $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
+        switch ($targetOrgProfile.Count)
+        {
+            1
+            {}
+            0
+            {throw "No matching Organization Profile was found for identity $OrganizationIdentity"}
+            Default 
+            {throw "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"}
+        }
+        Write-Output -InputObject $targetOrgProfile.systems
     }
-  }
-  $systems
-}
 Function Use-AdminUserProfile
 {
   [cmdletbinding()]

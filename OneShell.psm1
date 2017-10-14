@@ -3794,6 +3794,7 @@ function Set-OneShellVariables
         Param()
         #Write-Log -message 'Setting OneShell Module Variables'
         $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
+        $script:OneShellOrgProfilePath = @(Join-Path $env:ProgramData OneShell)
         <#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
         [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
         [string]$Script:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
@@ -3891,6 +3892,7 @@ function Set-OneShellVariables
 . $(Join-Path $PSScriptRoot 'NewOrgProfileFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'UtilityFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'SystemConnectionFunctions.ps1')
+. $(Join-Path $PSScriptRoot 'ProfileFunctions.ps1')
 ##########################################################################################################
 #Initialization
 ##########################################################################################################
