@@ -336,9 +336,6 @@ Function Get-OrgProfile
         [parameter(ParameterSetName = 'GetDefault')]
         [parameter(ParameterSetName = 'GetCurrent')]
         [switch]$raw
-        ,
-        [parameter(ParameterSetName = 'Identity')]
-        $Identity
         , 
         [parameter(ParameterSetName = 'OrgName')]
         $OrgName
@@ -349,32 +346,41 @@ Function Get-OrgProfile
         [parameter(ParameterSetName = 'GetDefault')]
         [switch]$GetDefault
     )
-    $outputprofiles = @(
-        switch ($PSCmdlet.ParameterSetName)
-        {
-        'GetCurrent'
-        {
-            $Script:CurrentOrgProfile
-        }
-        Default
-        {
-            foreach ($loc in $Path)
+    DynamicParam
+    {
+        $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+        $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet @(GetPotentialOrgProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
+        Write-Output -InputObject $dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
+        $outputprofiles = @(
+            Write-Verbose -Message "Parameter Set is $($pscmdlet.ParameterSetName)"
+            switch ($PSCmdlet.ParameterSetName)
             {
-                $JSONProfiles = @(Get-ChildItem -Path $loc -Filter *.json)
-                if ($JSONProfiles.Count -ge 1)
+            'GetCurrent'
+            {
+                $Script:CurrentOrgProfile
+            }
+            Default
+            {
+                $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $path)
+                if ($PotentialOrgProfiles.Count -ge 1)
                 {
-                    $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
                     $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
+                    Write-Verbose -Message "Found $($FoundOrgProfiles.Count) Org Profiles."
                     switch ($PSCmdlet.ParameterSetName)
                     {
                         'Identity'
                         {
-                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity})
+                            Write-Verbose -Message "Identity is set to $($identity -join ',')"
+                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -in $Identity})
                             Write-Output -inputobject $OrgProfiles
                         }#Identity
                         'OrgName'
                         {
-                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Name -eq $OrgName})
+                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Name -in $OrgName})
                             Write-Output -inputobject $OrgProfiles
                         }#OrgName
                         'All'
@@ -384,7 +390,7 @@ Function Get-OrgProfile
                         }#All
                         'GetDefault'
                         {
-                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Default -eq $true})
+                            $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.IsDefault -eq $true})
                             switch ($OrgProfiles.Count)
                             {
                                 {$_ -eq 1}
@@ -403,19 +409,19 @@ Function Get-OrgProfile
                         }
                     }#switch
                 }#if
-            }#foreach
-        }#Default
-        }#switch
-    )
-    #output the profiles
-    if ($raw)
-    {
-        $outputprofiles
-    }
-    else
-    {
-        $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.Name}},@{n='Default';e={$_.IsDefault}}
-    }
+            }#Default
+            }#switch
+        )
+        #output the profiles
+        if ($raw)
+        {
+            #$outputprofiles
+        }
+        else
+        {
+            #$outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.Name}},@{n='Default';e={$_.IsDefault}}
+        }    
+    }#end End
     }#Function Get-OrgProfile
 Function Get-OrgProfileSystem
     {
@@ -423,27 +429,49 @@ Function Get-OrgProfileSystem
         param
         (
             [parameter(ParameterSetName = 'Identity')]
-            [string]$OrgIdentity,
+            [string]$OrgIdentity
+            ,
             [parameter(ParameterSetName = 'OrgName')]
             [string]$OrgName
+            ,
+            [parameter()]
+            [switch]$IsDefault
         )
-        switch ($PSCmdlet.ParameterSetName)
+        DynamicParam
         {
-            'GetCurrent'
-            {
-                $profile = Get-OrgProfile -GetCurrent -raw
-            }
-            'Identity'
-            {
-                $profile = Get-OrgProfile -Identity $OrgIdentity -raw
-            }
-            'OrgName'
-            {
-                $profile = Get-OrgProfile -OrgName $OrgName -raw
-            }
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(getorgservicetypes) -HelpMessage 'Specify one or more system types to include'
+            Write-Output -InputObject $dictionary
         }
-        $RawSystems = $profile.systems
-        Write-Output -InputObject $RawSystems
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            switch ($PSCmdlet.ParameterSetName)
+            {
+                'GetCurrent'
+                {
+                    $profile = Get-OrgProfile -GetCurrent -raw
+                }
+                'Identity'
+                {
+                    $profile = Get-OrgProfile -Identity $OrgIdentity -raw
+                }
+                'OrgName'
+                {
+                    $profile = Get-OrgProfile -OrgName $OrgName -raw
+                }
+            }
+            $OutputSystems = @($profile.systems)
+            #Filter outputSystems if required by specified parameters
+            if ($null -ne $ServiceType)
+            {
+                $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType})
+            }
+            if ($IsDefault -eq $true)
+            {
+                $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.IsDefault -eq $true})
+            }
+            Write-Output -InputObject $OutputSystems
+        }
     }
 Function Use-OrgProfile
 {

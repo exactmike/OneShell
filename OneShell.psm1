@@ -794,49 +794,48 @@ Function Test-DirectoryPath
     {Write-Output -InputObject $false}
     }
 function Test-IsWriteableDirectory
-{
-  #Credits to the following:
-  #http://poshcode.org/2236
-  #http://stackoverflow.com/questions/9735449/how-to-verify-whether-the-share-has-write-access
-  [CmdletBinding()]
-  param (
-    [parameter()]
-    [ValidateScript({
-          $IsContainer = Test-Path -Path ($_) -PathType Container
-          if ($IsContainer)
-          {
-            $Item = Get-Item -Path $_
-            if ($item.PsProvider.Name -eq 'FileSystem')
-            {
-                $true
-            }
-            else
-            {
-                $false
-            }
-          }
-          else
-          {
+    {
+        #Credits to the following:
+        #http://poshcode.org/2236
+        #http://stackoverflow.com/questions/9735449/how-to-verify-whether-the-share-has-write-access
+        [CmdletBinding()]
+        param
+        (
+            [parameter()]
+            [ValidateScript(
+                {
+                    $IsContainer = Test-Path -Path ($_) -PathType Container
+                    if ($IsContainer)
+                    {
+                        $Item = Get-Item -Path $_
+                        if ($item.PsProvider.Name -eq 'FileSystem') {$true}
+                        else {$false}
+                    }
+                    else {$false}
+                }
+            )]
+            [string]$Path
+        )
+        try
+        {
+            $testPath = Join-Path -Path $Path -ChildPath ([IO.Path]::GetRandomFileName())
+                New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
+            $true
+        }
+        catch
+        {
             $false
-          }
-    })]
-    [string]$Path
-  )
-  try {
-    $testPath = Join-Path -Path $Path -ChildPath ([IO.Path]::GetRandomFileName())
-        New-Item -Path $testPath -ItemType File -ErrorAction Stop > $null
-    $true
-  } catch {
-    $false
-  } finally {
-    Remove-Item -Path $testPath -ErrorAction SilentlyContinue
-  }
-}
+        }
+        finally
+        {
+            Remove-Item -Path $testPath -ErrorAction SilentlyContinue
+        }
+    }#end function Test-IsWriteableDirectory
 function Test-CurrentPrincipalIsAdmin
-{
-    $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
-    $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator') 
-}
+    {
+        $currentPrincipal = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent())
+        $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator') 
+    }
 Function Test-ForInstalledModule
 {
   Param(

@@ -1,4 +1,25 @@
-﻿function NewGenericOrgProfileObject
+﻿function GetPotentialOrgProfiles
+{
+    [cmdletbinding()]
+    param
+    (
+        [string[]]$path
+    )
+    $JSONProfiles = @(
+        foreach ($loc in $Path)
+        {
+            (Get-ChildItem -Path $loc -Filter *.json)
+        }
+    )
+    $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+    Write-Output -InputObject $PotentialOrgProfiles
+}
+function GetOrgServiceTypes
+{
+    #change this list in other functions as well when you modify here.  
+    'PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization'
+}
+function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
         param()
