@@ -260,6 +260,357 @@ Function Initialize-AdminEnvironment
     }#Switch
   }#Process
 }
+function GetPotentialOrgProfiles
+{
+    [cmdletbinding()]
+    param
+    (
+        [string[]]$path
+    )
+    $JSONProfiles = @(
+        foreach ($loc in $Path)
+        {
+            Write-Verbose -Message "Getting JSON Files From $loc"
+            (Get-ChildItem -Path $loc -Filter *.json)
+        }
+    )
+    $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+    Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
+    Write-Output -InputObject $PotentialOrgProfiles
+}
+function GetOrgServiceTypes
+{
+    #change this list in other functions as well when you modify here.  
+    'PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization'
+}
+function NewGenericOrgProfileObject
+{
+    [cmdletbinding()]
+    param()
+    [pscustomobject]@{
+            Identity = [guid]::NewGuid()
+            Name = ''
+            ProfileType = 'OneShellOrgProfile'
+            ProfileTypeVersion = 1.2
+            Version = .01
+            IsDefault = $null
+            OrganizationSpecificModules = @()
+            Systems = @()
+    }
+} #GetGenericNewOrgProfileObject
+function New-OrgProfile
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory,ParameterSetName = 'default')]
+        [string]$Name
+        ,
+        [parameter(Mandatory,ParameterSetName = 'default')]
+        [bool]$IsDefault
+        ,
+        [parameter(Mandatory,ParameterSetName = 'OrgProfileBuilder')]
+        [switch]$OrgProfileBuilder
+    )
+    $GenericOrgProfileObject = NewGenericOrgProfileObject
+    $GenericOrgProfileObject.Name = $Name
+    $GenericOrgProfileObject.IsDefault = $IsDefault
+    Write-Output -InputObject $GenericOrgProfileObject
+}
+function NewGenericOrgSystemObject
+{
+    [cmdletbinding()]
+    param()
+    [pscustomobject]@{
+        Identity = [guid]::NewGuid()
+        Name = ''
+        Description = ''
+        ServiceType = ''
+        SystemObjectVersion = .01
+        Version = .01
+        IsDefault = $null
+        RequiredModule = @()
+        Defaults = [PSCustomObject]@{
+            ProxyEnabled = $null
+            AuthenticationRequired = $null
+            UseTLS = $null
+            AuthMethod = $null
+            CommandPrefix = $null
+        }
+        Endpoints = @()
+        ServiceTypeAttributes = [PSCustomObject]@{}
+    }
+}#end function NewGenericOrgSystemObject
+function AddServiceTypeAttributesToGenericOrgSystemObject
+{
+    [CmdletBinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $OrgSystemObject
+        ,
+        [parameter(Mandatory)]
+        $ServiceType
+        ,
+        [parameter()]
+        $dictionary
+    )#end param
+    if ($null -ne $dictionary)
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
+    }
+    switch ($ServiceType)
+    {
+        #one entry for each ServiceType with ServiceTypeAttributes
+        'Office365Tenant'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $TenantSubDomain}
+        'AzureADTenant'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $TenantSubDomain}
+        'ExchangeOrganization'
+        {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ExchangeOrgType' -Value $ExchangeOrgType}
+        'ActiveDirectoryInstance'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADInstanceType' -Value $ADInstanceType
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'GlobalCatalog' -Value $GlobalCatalog
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADUserAttributes' -Value $ADUserAttributes
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADGroupAttributes' -Value $ADGroupAttributes
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADContactAttributes' -Value $ADContactAttributes
+        }
+        'PowerShell'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value $SessionManagementGroups
+        }
+        'SQLDatabase'
+        {
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SQLInstanceType' -Value @()
+            $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'Database' -Value @()
+        }
+        'AADSyncServer'
+        {
+        }
+    }#end switch
+    Write-Output -InputObject $OrgSystemObject
+}#end function AddServiceTypeAttributesToGenericOrgSystemObject
+function New-OrgSystem
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization')] #convert to dynamic parameter sourced from single place to ease adding systems types later
+        [string]$ServiceType
+        ,
+        [parameter(Mandatory)]
+        [string]$Name
+        ,
+        [parameter()]
+        [string]$Description
+        ,
+        [parameter()]
+        [bool]$isDefault
+        ,
+        [parameter()]
+        [bool]$AuthenticationRequired
+        ,
+        [parameter()]
+        [ValidateLength(2,5)]
+        [string]$CommandPrefix
+        ,
+        [parameter()]
+        [bool]$ProxyEnabled
+        ,
+        [parameter()]
+        [bool]$UseTLS
+    )#end param
+    DynamicParam
+    {
+        #build any service typ specific parameters that may be needed
+        switch -Wildcard ($ServiceType)
+        {
+            'ExchangeOrganization'
+            {
+                $Dictionary = New-DynamicParameter -Name 'ExchangeOrgType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','Online','ComplianceCenter'
+
+            }
+            '*Tenant'
+            {
+                $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$true
+            }
+            'ActiveDirectoryInstance'
+            {
+                $Dictionary = New-DynamicParameter -Name 'ADInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'AD','ADLDS'
+                $Dictionary = New-DynamicParameter -Name 'GlobalCatalog' -Type $([bool]) -Mandatory:$true -ValidateSet $true,$false -DPDictionary $Dictionary
+                $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+                $Dictionary = New-DynamicParameter -Name 'ADGroupAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+                $Dictionary = New-DynamicParameter -Name 'ADContactAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+            }
+            'PowerShell'
+            {
+                $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false
+            }
+            'SQLDatabase'
+            {
+                $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','AzureSQL'
+                $Dictionary = New-DynamicParameter -Name 'Database' -Type $([string]) -Mandatory:$true -DPDictionary $Dictionary
+            }
+        }
+        if ($null -ne $Dictionary)
+        {
+            Write-Output -InputObject $dictionary
+        }
+    }#End DynamicParam
+    End
+    {
+        $GenericSystemObject = NewGenericOrgSystemObject
+        $GenericSystemObject.ServiceType = $ServiceType
+        $GenericSystemObject.Name = $Name
+        if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
+        if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
+        if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
+        if ($commandPrefix -ne $null) {$GenericSystemObject.Defaults.CommandPrefix = $CommandPrefix}
+        if ($ProxyEnabled -ne $null) {$GenericSystemObject.Defaults.ProxyEnabled = $ProxyEnabled}
+        if ($UseTLS -ne $null) {$GenericSystemObject.Defaults.UseTLS = $UseTLS}
+        $addServiceTypeAttributesParams = @{
+            OrgSystemObject = $GenericSystemObject
+            ServiceType = $ServiceType
+        }
+        if ($null -ne $Dictionary)
+        {$addServiceTypeAttributesParams.Dictionary = $Dictionary}
+        $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject @addServiceTypeAttributesParams
+        Write-Output -InputObject $GenericSystemObject    
+    }   
+}#end function New-OrgSystemObject
+
+function NewGenericSystemEndpointObject
+{
+    [cmdletbinding()]
+    param()
+    [PSCustomObject]@{
+        Identity = [guid]::NewGuid()
+        AddressType = $null
+        Address = $null
+        ServicePort = $null
+        IsDefault = $null
+        UseTLS = $null
+        ProxyEnabled = $null
+        CommandPrefix = $null
+        AuthenticationRequired = $null
+        AuthMethod = $null
+        EndPointGroup = $null
+        EndPointType = $null
+        ServiceTypeAttributes = [PSCustomObject]@{}
+        ServiceType = $null
+    }
+}#end function NewGenericSystemEndpointObject
+function New-OrgSystemEndpoint
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization')] #convert to dynamic parameter sourced from single place to ease adding systems types later            
+        [string]$ServiceType
+        ,
+        [Parameter(Mandatory)]
+        [ValidateSet('URL','IPAddress','FQDN')]
+        [String]$AddressType
+        ,
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [String]$Address
+        ,
+        [Parameter()]
+        [AllowNull()]
+        [ValidatePattern("^\d{1,5}$")]
+        $ServicePort
+        ,
+        [parameter()]
+        [AllowNull()]
+        [ValidateSet($true,$false,$null)]
+        $IsDefault
+        ,
+        [parameter()]
+        [AllowNull()]
+        [ValidateSet($true,$false,$null)]
+        $UseTLS
+        ,
+        [parameter()]
+        [AllowNull()]
+        [validateSet($true,$false,$null)]
+        $ProxyEnabled = $false
+        ,
+        [parameter()]
+        [ValidateLength(2,5)]
+        $CommandPrefix
+        ,
+        [parameter()]
+        [AllowNull()]
+        [validateSet($true,$false,$null)]
+        $AuthenticationRequired
+        ,
+        [parameter()]
+        [ValidateSet('Basic','Kerberos','Integrated')]
+        $AuthMethod
+        ,
+        [parameter()]
+        $EndPointGroup
+        ,
+        [parameter()]
+        [ValidateSet('Admin','MRSProxyServer')]
+        [string]$EndPointType = 'Admin'
+    )
+    DynamicParam
+    {
+        #build any service typ specific parameters that may be needed
+        switch ($ServiceType)
+        {
+            'ExchangeOrganization'
+            {
+                $Dictionary = New-DynamicParameter -Name 'PreferredDomainControllers' -Type $([string[]]) -Mandatory:$false
+                Write-Output -InputObject $dictionary
+             }
+        }
+    }#End DynamicParam
+    End
+    {
+        $GenericEndpointObject = NewGenericSystemEndpointObject
+        $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+        foreach ($vp in $AllValuedParameters)
+        {
+            $GenericEndpointObject.$($vp.name) = $($vp.value)
+        }
+        #Add any servicetype specific attributes that were specified
+        if (-not $null -eq $Dictionary)
+        {
+            Set-DynamicParameterVariable -dictionary $Dictionary
+        }
+        switch ($ServiceType)
+        {
+            'ExchangeOrganization'
+            {
+                $GenericEndpointObject.ServiceTypeAttributes | Add-Member -Name 'PreferredDomainControllers' -Value $PreferredDomainControllers -MemberType NoteProperty
+            }
+        }
+        Write-Output -InputObject $GenericEndpointObject            
+    }
+}
+function GetPotentialAdminUserProfiles
+{
+    [cmdletbinding()]
+    param
+    (
+        [string[]]$path
+    )
+    $JSONProfiles =@(
+        foreach ($loc in $Path)
+        {
+            Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue
+        }
+    )    
+    $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+    Write-Output -InputObject $PotentialAdminUserProfiles
+}
+
 Function Export-OrgProfile
     {
         [cmdletbinding()]
