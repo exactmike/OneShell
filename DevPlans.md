@@ -1,4 +1,5 @@
 # Org Profile Editing/Creation functions.  Creation functions now exist in OrgProfileDev branch
+# Separate UI from functions for AdminUserProfiles
 # AD Properties/Schema info into AD systems in Org Profiles - this is in OrgProfileDev branch now
 # Fix Skype Connectivity
 # Notes/Domino LDAP Connections or ODBC or ? (COM support in place with PSLotusNotes)
