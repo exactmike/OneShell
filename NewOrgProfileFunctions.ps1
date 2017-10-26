@@ -1,24 +1,26 @@
 ﻿function GetPotentialOrgProfiles
-{
-    [cmdletbinding()]
-    param
-    (
-        [string[]]$path
-    )
-    $JSONProfiles = @(
-        foreach ($loc in $Path)
-        {
-            (Get-ChildItem -Path $loc -Filter *.json)
-        }
-    )
-    $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
-    Write-Output -InputObject $PotentialOrgProfiles
-}
+    {
+        [cmdletbinding()]
+        param
+        (
+            [string[]]$path
+        )
+        $JSONProfiles = @(
+            foreach ($loc in $Path)
+            {
+                Write-Verbose -Message "Getting JSON Files From $loc"
+                (Get-ChildItem -Path $loc -Filter *.json)
+            }
+        )
+        $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+        Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
+        Write-Output -InputObject $PotentialOrgProfiles
+    }
 function GetOrgServiceTypes
-{
-    #change this list in other functions as well when you modify here.  
-    'PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization'
-}
+    {
+        #change this list in other functions as well when you modify here.  
+        'PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization'
+    }
 function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
@@ -330,6 +332,22 @@ function New-OrgSystemEndpoint
             Write-Output -InputObject $GenericEndpointObject            
         }
     }
+function GetPotentialAdminUserProfiles
+{
+    [cmdletbinding()]
+    param
+    (
+        [string[]]$path
+    )
+    $JSONProfiles =@(
+        foreach ($loc in $Path)
+        {
+            Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue
+        }
+    )    
+    $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+    Write-Output -InputObject $PotentialAdminUserProfiles
+}
 
 ##############################
 #User Interface

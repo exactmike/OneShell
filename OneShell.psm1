@@ -2810,6 +2810,8 @@ function Get-AllParametersWithAValue
             $AllParameters
             ,
             [switch]$IncludeCommon
+            ,
+            $Scope = 1
         )
         $getAllParametersParams = @{
             BoundParameters = $BoundParameters
@@ -2822,7 +2824,7 @@ function Get-AllParametersWithAValue
             {
                 try
                 {
-                    Get-Variable -Name $k -Scope 1 -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
+                    Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
                 }
                 catch
                 {
