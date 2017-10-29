@@ -1110,42 +1110,104 @@ Function Get-AdminUserProfile
 }#Get-AdminUserProfile
 function New-AdminUserProfile
 {
-  [cmdletbinding()]
-  param
-  (
-    [parameter(Mandatory)]
-    [string]$OrganizationIdentity
-    ,
-    [string]$Name #Overrides the default name of Org-Machine-User
-    ,
-    [bool]$IsDefault = $false #sets this profile as the default for the specified Organization
-    ,
-    [string]$ProfileDirectory #The folder to use for logs, exports, etc.
-    ,
-    [string]$MailFromEmailAddress
-    ,
-    [pscredential[]]$Credentials
-    ,
-    [psobject[]]$Systems
-    ,
-    [switch]$Passthru
-  )
-    $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
-    switch ($targetOrgProfile.Count)
+    [cmdletbinding(DefaultParameterSetName = 'OrgName')]
+    param
+    (
+        [Parameter(Mandatory,ParameterSetName = 'OrgName')]
+        [Parameter(Mandatory,ParameterSetName = 'OrgIdentity')]
+        [ValidateScript({Test-IsWriteableDirectory -path $_})]
+        [string]$ProfileDirectory #The folder to use for logs, exports, etc.
+        ,
+        [Parameter(Mandatory,ParameterSetName = 'OrgName')]
+        [Parameter(Mandatory,ParameterSetName = 'OrgIdentity')]
+        [string]$MailFromEmailAddress
+        ,
+        [Parameter(ParameterSetName = 'OrgName')]
+        [Parameter(ParameterSetName = 'OrgIdentity')]        
+        [pscredential[]]$Credentials = @()
+        ,
+        [Parameter(ParameterSetName = 'OrgName')]
+        [Parameter(ParameterSetName = 'OrgIdentity')]        
+        [psobject[]]$Systems = @()
+        ,
+        [Parameter(ParameterSetName = 'OrgName')]
+        [Parameter(ParameterSetName = 'OrgIdentity')]        
+        [string]$Name #Overrides the default name of Org-Machine-User
+        ,
+        [Parameter(ParameterSetName = 'OrgName')]
+        [Parameter(ParameterSetName = 'OrgIdentity')]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        #[parameter(ParameterSetName = 'OrgIdentity')]
+        #[ValidateScript({Test-DirectoryPath -path $_})]
+        [string]$OrgProfilePath
+        ,
+        [Parameter(ParameterSetName = 'OrgName')]
+        [Parameter(ParameterSetName = 'OrgIdentity')]
+        [bool]$IsDefault = $false #sets this profile as the default for the specified Organization
+        ,
+        [Parameter(ParameterSetName = 'OrgName')]
+        [Parameter(ParameterSetName = 'OrgIdentity')]
+        [switch]$Passthru
+    )
+    DynamicParam
     {
-        1 {}
-        0
+        if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath))
         {
-            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
+            Write-Verbose -Message "Populating the OrgProfilePath with the default value" -Verbose
+            $OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
         }
-        Default
+        $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
+        $Names = @($PotentialOrgProfiles.Name | Where-Object -FilterScript {-not [string]::IsNullOrWhiteSpace($_)})
+        $Identities = @($PotentialOrgProfiles.Identity | Where-Object -FilterScript {-not [string]::IsNullOrWhiteSpace($_)})
+        switch ($PSCmdlet.ParameterSetName)
         {
-            $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
+            'OrgName'
+            {$dictionary = New-DynamicParameter -Name 'OrgName' -Type $([String]) -ValidateSet $Names -Mandatory $true -Position 1 -ParameterSetName 'OrgName'}
+            'OrgIdentity'
+            {$dictionary = New-DynamicParameter -Name 'OrgIdentity' -Type $([String]) -ValidateSet $Identities -Mandatory $true -Position 1 -ParameterSetName 'OrgIdentity'}
         }
+        Write-Output -InputObject $dictionary
     }
-} #New-AdminUserProfile
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
+        $GetOrgProfileParams = @{ErrorAction = 'Stop';Raw = $true}
+        if ($PSBoundParameters.ContainsKey('OrgProfilePath')) {$GetOrgProfileParams.Path = $OrgProfilePath}
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'OrgName'
+            {
+                $OrgIDUsed = $OrgName
+                $GetOrgProfileParams.OrgName = $OrgName
+            }
+            'OrgIdentity'
+            {
+                $OrgIDUsed = $OrgIdentity
+                $GetOrgProfileParams.Identity = $OrgIdentity
+            }
+        }
+        $targetOrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
+        switch ($targetOrgProfile.Count)
+        {
+            1 {}
+            0
+            {
+                $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrgIDUsed -Message "No matching Organization Profile was found for identity $OrgIDUsed"
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+            Default
+            {
+                $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrgIDUsed -Message "Multiple matching Organization Profiles were found for identity $OrgIDUsed"
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+        }
+        $AdminUserProfile = GetGenericNewAdminsUserProfileObject -OrganizationIdentity $targetOrgProfile.Identity
+        if ($Passthru -eq $true)
+        {
+            Write-Output -InputObject $AdminUserProfile
+        }
+    }#end End
+}#end function New-AdminUserProfile
 function Set-AdminUserProfile
 {
     [cmdletbinding(DefaultParameterSetName="Default")]
@@ -1457,27 +1519,45 @@ Oneshell: Admin User Profile Menu
 } #GetAdminUserProfileMenuMessage
 function GetGenericNewAdminsUserProfileObject
 {
-  param(
-    $OrganizationIdentity
-  )
-  [pscustomobject]@{
+    [cmdletbinding()]
+    param
+    (
+        $OrganizationIdentity
+    )
+    [pscustomobject]@{
         Identity = [guid]::NewGuid()
         ProfileType = 'OneShellAdminUserProfile'
         ProfileTypeVersion = 1.0
-        General = [pscustomobject]@{
-            Name = $targetOrgProfile.general.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
-            Host = $env:COMPUTERNAME
-            User = $env:USERNAME
-            OrganizationIdentity = $targetOrgProfile.identity
-            ProfileFolder = ''
-            MailFrom = ''
-            MailRelayEndpointToUse = ''
-            Default = $false
+        Name = $targetOrgProfile.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
+        Host = $env:COMPUTERNAME
+        User = $env:USERNAME
+        Organization = [pscustomobject]@{
+            Name = $targetOrgProfile.Name
+            Identity = $targetOrgProfile.identity
         }
-        Systems = @(GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity) | ForEach-Object {[pscustomobject]@{'Identity' = $_.Identity;'AutoConnect' = $null;'Credential'=$null}}
+        ProfileFolder = ''
+        MailFrom = ''
+        Default = $false
+        Systems = @(GetOrgProfileSystemForAdminProfile -OrganizationIdentity $OrganizationIdentity)
         Credentials = @()
     }
-} #GetGenericNewAdminsUserProfileObject
+}#end function GetGenericNewAdminsUserProfileObject
+function GetOrgProfileSystemForAdminProfile
+{
+    [cmdletbinding()]
+    param($OrganizationIdentity)
+    $OrgProfileSystems = GetOrgProfileSystem -OrganizationIdentity $OrganizationIdentity
+    foreach ($s in $OrgProfileSystems)
+    {
+        [PSCustomObject]@{
+            Identity = $s.Identity
+            AutoConnect = $null
+            Credential = $null
+            PreferredEndpoint = $null
+            PreferredPrefix = $null
+        }
+    }
+}
 function UpdateAdminUserProfileObjectVersion
 {
   param($AdminUserProfile)
