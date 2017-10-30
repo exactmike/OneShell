@@ -31,11 +31,9 @@ Function Initialize-AdminEnvironment
   {
     $GetOrgProfileParams = @{
       ErrorAction = 'Stop'
-      Raw = $true
     }
     $GetAdminUserProfileParams = @{
       ErrorAction = 'Stop'
-      Raw = $true
     }
     if ($PSBoundParameters.ContainsKey('OrgProfilePath'))
     {
@@ -587,7 +585,7 @@ function New-OrgSystemEndpoint
                 $GenericEndpointObject.ServiceTypeAttributes | Add-Member -Name 'PreferredDomainControllers' -Value $PreferredDomainControllers -MemberType NoteProperty
             }
         }
-        Write-Output -InputObject $GenericEndpointObject            
+        Write-Output -InputObject $GenericEndpointObject
     }
 }
 function GetPotentialAdminUserProfiles
@@ -675,13 +673,6 @@ Function Get-OrgProfile
         [parameter(ParameterSetName = 'OrgName')]
         [parameter(ParameterSetName = 'GetDefault')]
         $OrgProfileType = 'OneShellOrgProfile'
-        ,
-        [parameter(ParameterSetName = 'All')]
-        [parameter(ParameterSetName = 'Identity')]
-        [parameter(ParameterSetName = 'OrgName')]
-        [parameter(ParameterSetName = 'GetDefault')]
-        [parameter(ParameterSetName = 'GetCurrent')]
-        [switch]$raw
         , 
         [parameter(ParameterSetName = 'GetCurrent')]
         [switch]$GetCurrent
@@ -757,14 +748,8 @@ Function Get-OrgProfile
             }#switch
         )
         #output the profiles
-        if ($raw)
-        {
-            $outputprofiles
-        }
-        else
-        {
-            $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.Name}},@{n='Default';e={$_.IsDefault}}
-        }    
+        write-output -InputObject $outputprofiles
+
     }#end End
     }#Function Get-OrgProfile
 Function Get-OrgProfileSystem
@@ -795,15 +780,15 @@ Function Get-OrgProfileSystem
             {
                 'GetCurrent'
                 {
-                    $profile = Get-OrgProfile -GetCurrent -raw
+                    $profile = Get-OrgProfile -GetCurrent
                 }
                 'Identity'
                 {
-                    $profile = Get-OrgProfile -Identity $OrgIdentity -raw
+                    $profile = Get-OrgProfile -Identity $OrgIdentity
                 }
                 'OrgName'
                 {
-                    $profile = Get-OrgProfile -OrgName $OrgName -raw
+                    $profile = Get-OrgProfile -OrgName $OrgName
                 }
             }
             $OutputSystems = @($profile.systems)
@@ -874,7 +859,7 @@ function GetOrgProfileSystem
         (
             $OrganizationIdentity
         )
-        $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw)
+        $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity)
         switch ($targetOrgProfile.Count)
         {
             1
@@ -910,7 +895,6 @@ Function Use-AdminUserProfile
         {
             $GetAdminUserProfileParams = @{
                 Identity = $Identity
-                Raw = $true
             }
             if ($PSBoundParameters.ContainsKey('Path'))
             {
@@ -1019,13 +1003,6 @@ Function Get-AdminUserProfile
         [parameter(ParameterSetName = 'GetDefault')]
         $OrgIdentity
         ,
-        [parameter(ParameterSetName = 'All')]
-        [parameter(ParameterSetName = 'Identity')]
-        [parameter(ParameterSetName = 'Name')]
-        [parameter(ParameterSetName = 'GetCurrent')]
-        [parameter(ParameterSetName = 'GetDefault')]
-        [switch]$raw
-        ,
         [parameter(ParameterSetName = 'GetCurrent')]
         [switch]$GetCurrent
         ,
@@ -1055,12 +1032,12 @@ Function Get-AdminUserProfile
                 'GetDefault'
                 {
                     if ($PSBoundParameters.ContainsKey('OrgIdentity'))
-                    {$OrgProfile = Get-OrgProfile -Identity $OrgIdentity -raw}
+                    {$OrgProfile = Get-OrgProfile -Identity $OrgIdentity}
                     elseif ($null -ne $script:CurrentOrgProfile)
                     {$OrgProfile = $script:CurrentOrgProfile}
                     else
                     {
-                        $OrgProfile = Get-OrgProfile -GetDefault -raw
+                        $OrgProfile = Get-OrgProfile -GetDefault
                     }
                     $DefaultAdminUserProfile = GetDefaultAdminUserProfile -OrgIdentity $OrgProfile.Identity -path $path
                     Write-Output -InputObject $DefaultAdminUserProfile
@@ -1098,14 +1075,7 @@ Function Get-AdminUserProfile
             $outputprofiles = $outputprofiles | Where-Object -FilterScript {$_.general.organizationidentity -eq $OrgIdentity}
         }
         #output the found profiles
-        if ($raw)
-        {
-            $outputprofiles
-        }#if Raw
-        else
-        {
-            $outputprofiles | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='Name';e={$_.General.Name}},@{n='Default';e={$_.General.Default}},@{n='OrgIdentity';e={$_.general.organizationidentity}},@{n='ProfileTypeVersion';e={$_.ProfileTypeVersion.tostring()}}
-        }#else when not "Raw"
+        Write-Output -InputObject $outputprofiles
     }#end End
 }#Get-AdminUserProfile
 function New-AdminUserProfile
@@ -1171,7 +1141,7 @@ function New-AdminUserProfile
     End
     {
         Set-DynamicParameterVariable -dictionary $dictionary
-        $GetOrgProfileParams = @{ErrorAction = 'Stop';Raw = $true}
+        $GetOrgProfileParams = @{ErrorAction = 'Stop'}
         if ($PSBoundParameters.ContainsKey('OrgProfilePath')) {$GetOrgProfileParams.Path = $OrgProfilePath}
         switch ($PSCmdlet.ParameterSetName)
         {
@@ -1250,7 +1220,6 @@ function Set-AdminUserProfile
             {
                 $GetAdminUserProfileParams = @{
                     Identity = $Identity
-                    Raw = $true
                 }
                 if ($PSBoundParameters.ContainsKey('Path'))
                 {
@@ -1262,7 +1231,6 @@ function Set-AdminUserProfile
             {
                 $GetAdminUserProfileParams = @{
                     Name = $Name
-                    Raw = $true
                 }
                 if ($PSBoundParameters.ContainsKey('Path'))
                 {
@@ -1274,13 +1242,12 @@ function Set-AdminUserProfile
             {
                 $GetAdminUserProfileParams = @{
                     GetDefault = $Name
-                    Raw = $true
                 }
                 $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
             }
         }#end switch ParameterSetName
         $OrganizationIdentity = $AdminUserProfile.General.OrganizationIdentity
-        $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -raw -Verbose)
+        $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -Verbose)
         #Check the Org Identity for validity (exists, not ambiguous)
         switch ($targetOrgProfile.Count)
         {
@@ -1438,7 +1405,6 @@ function Update-AdminUserProfileTypeVersion
   $GetAdminUserProfileParams = @{
     Identity = $Identity
     errorAction = 'Stop'
-    raw = $true
   }
   if ($PSBoundParameters.ContainsKey('Path'))
   {
@@ -1938,7 +1904,6 @@ Function GetDefaultAdminUserProfile
   )
   $GetAdminUserProfileParams=@{
     ErrorAction = 'Stop'
-    Raw = $true
   }
   if ($PSBoundParameters.ContainsKey('OrgIdentity')) {$GetAdminUserProfileParams.OrgIdentity = $OrgIdentity}
   if ($PSBoundParameters.ContainsKey('path')) {$GetAdminUserProfileParams.path = $path}
