@@ -303,10 +303,10 @@ function New-OrgProfile
     [cmdletbinding()]
     param
     (
-        [parameter(Mandatory]
+        [parameter(Mandatory)]
         [string]$Name
         ,
-        [parameter(Mandatory]
+        [parameter(Mandatory)]
         [bool]$IsDefault
     )
     $GenericOrgProfileObject = NewGenericOrgProfileObject

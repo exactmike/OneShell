@@ -1994,17 +1994,3 @@ Function Get-MCTLSourceData
   }
   catch{}
 }
-function Get-OneShellSystemConfiguration
-{
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-[ValidateSet('PowerShellSystems','Office365Tenants','ActiveDirectoryInstances','SQLDatabases','ExchangeOrganizations','LotusNotesDatabases')]
-$SystemType
-,
-[parameter(Mandatory)]
-$Name
-)
-$AllSystems = Get-OneShellVariableValue -Name CurrentOrgAdminProfileSystems 
-$AllSystems | Where-Object -FilterScript {$_.Systemtype -eq $SystemType -and $_.Name -eq $Name}
-}
