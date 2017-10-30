@@ -1493,7 +1493,7 @@ function GetGenericNewAdminsUserProfileObject
     [pscustomobject]@{
         Identity = [guid]::NewGuid()
         ProfileType = 'OneShellAdminUserProfile'
-        ProfileTypeVersion = 1.0
+        ProfileTypeVersion = 1.1
         Name = $targetOrgProfile.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
         Host = $env:COMPUTERNAME
         User = $env:USERNAME
