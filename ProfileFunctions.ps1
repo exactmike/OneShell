@@ -987,27 +987,21 @@ Function Get-AdminUserProfile
         [parameter(ParameterSetName = 'All')]
         [parameter(ParameterSetName = 'Identity')]
         [parameter(ParameterSetName = 'Name')]
-        [parameter(ParameterSetName ='GetDefault')]
         #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
         [string[]]$Path = "$env:UserProfile\OneShell\"
         ,
         [parameter(ParameterSetName = 'All')]
         [parameter(ParameterSetName = 'Identity')]
         [parameter(ParameterSetName = 'Name')]
-        [parameter(ParameterSetName = 'GetDefault')]
         $ProfileType = 'OneShellAdminUserProfile'
         ,
         [parameter(ParameterSetName = 'All')]
         [parameter(ParameterSetName = 'Identity')]
         [parameter(ParameterSetName = 'Name')]
-        [parameter(ParameterSetName = 'GetDefault')]
         $OrgIdentity
         ,
         [parameter(ParameterSetName = 'GetCurrent')]
         [switch]$GetCurrent
-        ,
-        [parameter(ParameterSetName = 'GetDefault')]
-        [switch]$GetDefault
     )#end param
     DynamicParam
     {
@@ -1016,7 +1010,7 @@ Function Get-AdminUserProfile
             $path = "$env:UserProfile\OneShell\"
         }
         $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
-        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | foreach-Object -Process {$_.General.Name} -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
+        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
         Write-Output -InputObject $dictionary
     }
     End
@@ -1060,7 +1054,7 @@ Function Get-AdminUserProfile
                             }
                             'Name'
                             {
-                                $FoundAdminUserProfiles | Where-Object -FilterScript {$_.General.Name -eq $Name}
+                                $FoundAdminUserProfiles | Where-Object -FilterScript {$_.name -eq $Name}
                             }
                         }#end Switch
                     }#end if
@@ -1078,6 +1072,91 @@ Function Get-AdminUserProfile
         Write-Output -InputObject $outputprofiles
     }#end End
 }#Get-AdminUserProfile
+Function Get-AdminUserProfileSystem
+{
+    [cmdletbinding(DefaultParameterSetName='All')]
+    param
+    (
+        #Add Location Validation to Parameter validation script
+        [parameter(ParameterSetName = 'All')]
+        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'Name')]
+        #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
+        [string[]]$Path = "$env:UserProfile\OneShell\"
+        ,
+        [parameter(ParameterSetName = 'All')]
+        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'Name')]
+        $ProfileType = 'OneShellAdminUserProfile'
+        ,
+        [parameter(ParameterSetName = 'GetCurrent')]
+        [switch]$GetCurrent
+    )#end param
+    DynamicParam
+    {
+        if ($null -eq $Path)
+        {
+            $path = "$env:UserProfile\OneShell\"
+        }
+        $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
+        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
+        $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(GetOrgServiceTypes) -DPDictionary $dictionary -Mandatory $false
+        Write-Output -InputObject $dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
+        $auprofiles = @(
+            switch ($PSCmdlet.ParameterSetName)
+            {
+                'GetCurrent'
+                {
+                    $script:CurrentAdminUserProfile
+                }
+                Default
+                {
+                    $PotentialAdminUserProfiles = GetPotentialAdminUserProfiles -path $Path
+                    $FoundAdminUserProfiles = @($PotentialAdminUserProfiles | Where-Object {$_.ProfileType -eq $ProfileType})
+                    if ($FoundAdminUserProfiles.Count -ge 1)
+                    {
+                        switch ($PSCmdlet.ParameterSetName)
+                        {
+                            'All'
+                            {
+                                $FoundAdminUserProfiles
+                            }
+                            'Identity'
+                            {
+                                $FoundAdminUserProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                            }
+                            'Name'
+                            {
+                                $FoundAdminUserProfiles | Where-Object -FilterScript {$_.name -eq $Name}
+                            }
+                        }#end Switch
+                    }#end if
+                }#end Default
+            }#end Switch
+        )#end auprofiles
+        $outputSystems = @(
+            foreach ($aup in $auprofiles)
+            {
+                $orgProfile = Get-OrgProfile -Identity $aup.organization.Identity -ErrorAction Stop
+                foreach ($as in $aup.systems)
+                {
+                    $os = $orgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $as.identity}
+                    $as | Select-Object -Property *,@{n='ServiceType';e={$os.ServiceType}},@{n='Name';e={$os.name}},@{n='AdminProfileName';e={$aup.Name}},@{n='AdminProfileIdentity';e={$aup.Identity}},@{n='OrgName';e={$orgProfile.Name}},@{n='OrgIdentity';e={$orgProfile.Identity}}
+                }
+            }
+        )
+        if ($null -eq $ServiceType)
+        {Write-Output -inputobject $outputSystems}
+        else 
+        {
+            $outputSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType}
+        }
+    }#end End
+}#Get-AdminUserProfile
 function New-AdminUserProfile
 {
     [cmdletbinding(DefaultParameterSetName = 'OrgName')]
@@ -1086,11 +1165,11 @@ function New-AdminUserProfile
         [Parameter(Mandatory,ParameterSetName = 'OrgName')]
         [Parameter(Mandatory,ParameterSetName = 'OrgIdentity')]
         [ValidateScript({Test-IsWriteableDirectory -path $_})]
-        [string]$ProfileDirectory #The folder to use for logs, exports, etc.
+        [string]$ProfileFolder #The folder to use for logs, exports, etc.
         ,
         [Parameter(Mandatory,ParameterSetName = 'OrgName')]
         [Parameter(Mandatory,ParameterSetName = 'OrgIdentity')]
-        [string]$MailFromEmailAddress
+        [string]$MailFromSMTPAddress #email address to use for sending notification emails
         ,
         [Parameter(ParameterSetName = 'OrgName')]
         [Parameter(ParameterSetName = 'OrgIdentity')]        
@@ -1111,9 +1190,9 @@ function New-AdminUserProfile
         #[ValidateScript({Test-DirectoryPath -path $_})]
         [string]$OrgProfilePath
         ,
-        [Parameter(ParameterSetName = 'OrgName')]
-        [Parameter(ParameterSetName = 'OrgIdentity')]
-        [bool]$IsDefault = $false #sets this profile as the default for the specified Organization
+        [Parameter(Mandatory,ParameterSetName = 'OrgName')]
+        [Parameter(Mandatory,ParameterSetName = 'OrgIdentity')]
+        [bool]$IsDefault #sets this profile as the default for the specified Organization
         ,
         [Parameter(ParameterSetName = 'OrgName')]
         [Parameter(ParameterSetName = 'OrgIdentity')]
@@ -1172,10 +1251,16 @@ function New-AdminUserProfile
             }
         }
         $AdminUserProfile = GetGenericNewAdminsUserProfileObject -OrganizationIdentity $targetOrgProfile.Identity
+        foreach ($p in $PSBoundParameters.GetEnumerator())
+        {
+            if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','IsDefault','Credentials','Systems')
+            {$AdminUserProfile.$($p.key) = $p.value}
+        }
         if ($Passthru -eq $true)
         {
             Write-Output -InputObject $AdminUserProfile
         }
+        #$ValuedParams
     }#end End
 }#end function New-AdminUserProfile
 function Set-AdminUserProfile
@@ -1203,7 +1288,7 @@ function Set-AdminUserProfile
             $path = "$env:UserProfile\OneShell\"
         }
         $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity -Mandatory $true
-        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | foreach-Object -Process {$_.General.Name} -ErrorAction SilentlyContinue) -Mandatory $true -ParameterSetName Name -DPDictionary $dictionary 
+        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue) -Mandatory $true -ParameterSetName Name -DPDictionary $dictionary 
         Write-Output -InputObject $dictionary
     }
     Process
@@ -1246,7 +1331,7 @@ function Set-AdminUserProfile
                 $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
             }
         }#end switch ParameterSetName
-        $OrganizationIdentity = $AdminUserProfile.General.OrganizationIdentity
+        $OrganizationIdentity = $AdminUserProfile.Organization.Identity
         $targetOrgProfile = @(Get-OrgProfile -Identity $OrganizationIdentity -Verbose)
         #Check the Org Identity for validity (exists, not ambiguous)
         switch ($targetOrgProfile.Count)
@@ -1417,7 +1502,7 @@ function Update-AdminUserProfileTypeVersion
     $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
     if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
     {
-        if ($Folder -ne $AdminUserProfile.General.ProfileFolder)
+        if ($Folder -ne $AdminUserProfile.General.ProfileFolder -and $folder -ne $AdminUserProfile.ProfileFolder)
         {
             Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop  > $null
         }
@@ -1428,7 +1513,7 @@ function Update-AdminUserProfileTypeVersion
     }
   }
   $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
-  Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.general.profilefolder  > $null
+  Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.profilefolder  > $null
 }
 Function Export-AdminUserProfile
 {
@@ -1502,8 +1587,8 @@ function GetGenericNewAdminsUserProfileObject
             Identity = $targetOrgProfile.identity
         }
         ProfileFolder = ''
-        MailFrom = ''
-        Default = $false
+        MailFromSMTPAddress = ''
+        IsDefault = $false
         Systems = @(GetOrgProfileSystemForAdminProfile -OrganizationIdentity $OrganizationIdentity)
         Credentials = @()
     }
@@ -1526,73 +1611,110 @@ function GetOrgProfileSystemForAdminProfile
 }
 function UpdateAdminUserProfileObjectVersion
 {
-  param($AdminUserProfile)
-  #Check Admin User Profile Version
-  $RequiredVersion = 1
-  if (! $AdminUserProfile.ProfileTypeVersion -ge $RequiredVersion) {
-    #Profile Version Upgrades
-    #MailFrom
-    if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailFrom))
-    {
-        $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
-    }
-    #UserName
-    if (-not (Test-Member -InputObject $AdminUserProfile.General -Name User))
-    {
-        $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name User -Value $env:USERNAME
-    }
-    #MailRelayEndpointToUse
-    if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailRelayEndpointToUse))
-    {
-        $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $null
-    }
-    #ProfileTypeVersion
-    if (-not (Test-Member -InputObject $AdminUserProfile -Name ProfileTypeVersion))
-    {
-        $AdminUserProfile | Add-Member -MemberType NoteProperty -Name ProfileTypeVersion -Value 1.0
-    }
-    #Credentials add Identity
-    foreach ($Credential in $AdminUserProfile.Credentials)
-    {
-        if (-not (Test-Member -InputObject $Credential -Name Identity))
-        {
-            $Credential | Add-Member -MemberType NoteProperty -Name Identity -Value $(New-Guid).guid
-        }
-    }
-    #SystemEntries
-    foreach ($se in $AdminUserProfile.Systems)
-    {
-        if (-not (Test-Member -InputObject $se -Name Credential))
-        {
-            $se | Add-Member -MemberType NoteProperty -Name Credential -Value $null
-        }
-        foreach ($credential in $AdminUserProfile.Credentials)
-        {
-            if (Test-Member -InputObject $credential -Name Systems)
-            {
-                if ($se.Identity -in $credential.systems)
-                {$se.credential = $credential.Identity}
-            }
-        }
-    }
-    #Credentials Remove Systems
-    $UpdatedCredentialObjects = @(
-        foreach ($Credential in $AdminUserProfile.Credentials)
-        {
-            if (Test-Member -InputObject $Credential -Name Systems)
-            {
-                $UpdatedCredential = $Credential | Select-Object -Property Identity,Username,Password
-                $UpdatedCredential
-            }
-            else
-            {
-                $Credential
-            }
-        }
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $AdminUserProfile
+        ,
+        $DesiredProfileTypeVersion = 1.1
     )
-    $AdminUserProfile.Credentials = $UpdatedCredentialObjects
-  }
-  Write-Output -InputObject $AdminUserProfile
+    do
+    {
+        switch ($AdminUserProfile.ProfileTypeVersion)
+        {
+            {$_ -lt 1}
+            {
+                #Upgrade ProfileVersion to 1
+                #MailFrom
+                if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailFrom))
+                {
+                    $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailFrom -Value $null
+                }
+                #UserName
+                if (-not (Test-Member -InputObject $AdminUserProfile.General -Name User))
+                {
+                    $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name User -Value $env:USERNAME
+                }
+                #MailRelayEndpointToUse
+                if (-not (Test-Member -InputObject $AdminUserProfile.General -Name MailRelayEndpointToUse))
+                {
+                    $AdminUserProfile.General | Add-Member -MemberType NoteProperty -Name MailRelayEndpointToUse -Value $null
+                }
+                #ProfileTypeVersion
+                if (-not (Test-Member -InputObject $AdminUserProfile -Name ProfileTypeVersion))
+                {
+                    $AdminUserProfile | Add-Member -MemberType NoteProperty -Name ProfileTypeVersion -Value 1.0
+                }
+                #Credentials add Identity
+                foreach ($Credential in $AdminUserProfile.Credentials)
+                {
+                    if (-not (Test-Member -InputObject $Credential -Name Identity))
+                    {
+                        $Credential | Add-Member -MemberType NoteProperty -Name Identity -Value $(New-Guid).guid
+                    }
+                }
+                #SystemEntries
+                foreach ($se in $AdminUserProfile.Systems)
+                {
+                    if (-not (Test-Member -InputObject $se -Name Credential))
+                    {
+                        $se | Add-Member -MemberType NoteProperty -Name Credential -Value $null
+                    }
+                    foreach ($credential in $AdminUserProfile.Credentials)
+                    {
+                        if (Test-Member -InputObject $credential -Name Systems)
+                        {
+                            if ($se.Identity -in $credential.systems)
+                            {$se.credential = $credential.Identity}
+                        }
+                    }
+                }
+                #Credentials Remove Systems
+                $UpdatedCredentialObjects = @(
+                    foreach ($Credential in $AdminUserProfile.Credentials)
+                    {
+                        if (Test-Member -InputObject $Credential -Name Systems)
+                        {
+                            $UpdatedCredential = $Credential | Select-Object -Property Identity,Username,Password
+                            $UpdatedCredential
+                        }
+                        else
+                        {
+                            $Credential
+                        }
+                    }
+                )
+                $AdminUserProfile.Credentials = $UpdatedCredentialObjects   
+            }#end $_ -lt 1
+            {$_ -eq 1}
+            {
+                $NewMembers = ('ProfileFolder','Name','MailFromSMTPAddress','IsDefault')
+                foreach ($nm in $NewMembers)
+                {
+                    if (-not (Test-Member -InputObject $AdminUserProfile -Name $nm))
+                    {
+                        $AdminUserProfile | Add-Member -MemberType NoteProperty -Name $nm -Value $null
+                    }
+                    switch ($nm)
+                    {
+                        'MailFromSMTPAddress'
+                        {$AdminUserProfile.$nm = $AdminUserProfile.General.MailFrom}
+                        'IsDefault'
+                        {$AdminUserProfile.$nm = $AdminUserProfile.general.default}
+                        Default
+                        {$AdminUserProfile.$nm = $AdminUserProfile.General.$nm}
+                    }
+                }
+                $AdminUserProfile | Add-Member -MemberType NoteProperty -Value $([pscustomobject]@{Identity = $null;Name = $null}) -name Organization
+                $AdminUserProfile.Organization.Identity = $AdminUserProfile.General.OrganizationIdentity
+                $AdminUserProfile | Remove-member -member General
+                $AdminUserProfile.ProfileTypeVersion = 1.1
+            }
+        }#end switch
+    }
+    Until ($AdminUserProfile.ProfileTypeVersion -eq $DesiredProfileTypeVersion)
+    Write-Output -InputObject $AdminUserProfile
 } #UpdateAdminUserProfileObjectVersion
 function GetAdminUserProfileFolder
 {
