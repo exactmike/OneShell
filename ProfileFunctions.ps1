@@ -1193,10 +1193,6 @@ function New-AdminUserProfile
         [Parameter(Mandatory,ParameterSetName = 'OrgName')]
         [Parameter(Mandatory,ParameterSetName = 'OrgIdentity')]
         [bool]$IsDefault #sets this profile as the default for the specified Organization
-        ,
-        [Parameter(ParameterSetName = 'OrgName')]
-        [Parameter(ParameterSetName = 'OrgIdentity')]
-        [switch]$Passthru
     )
     DynamicParam
     {
@@ -1255,12 +1251,8 @@ function New-AdminUserProfile
         {
             if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','IsDefault','Credentials','Systems')
             {$AdminUserProfile.$($p.key) = $p.value}
-        }
-        if ($Passthru -eq $true)
-        {
-            Write-Output -InputObject $AdminUserProfile
-        }
-        #$ValuedParams
+        }#end foreach
+        Write-Output -InputObject $AdminUserProfile
     }#end End
 }#end function New-AdminUserProfile
 function Set-AdminUserProfile
@@ -1939,83 +1931,7 @@ function AddAdminUserProfileFolders
   }
   $true
 }
-function SetAdminUserProfileCredentials
-{
-    [cmdletbinding(DefaultParameterSetName='New')]
-    param(
-        [parameter(ParameterSetName='New',Mandatory = $true)]
-        [parameter(ParameterSetName='Edit',Mandatory = $true)]
-        $systems
-        ,
-        [parameter(ParameterSetName='Edit')]
-        [switch]$edit
-        ,
-        [parameter(ParameterSetName='Edit',Mandatory = $true)]
-        [psobject[]]$Credentials
-    )
-    switch ($PSCmdlet.ParameterSetName)
-    {
-        'Edit' {
-            $editableCredentials = @($Credentials | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
-        }
-        'New' {$editableCredentials = @()}
-    }
-    #$systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
-    $labels = $systems | Select-Object -Property @{n='name';e={$_.SystemType + ': ' + $_.Name}}
-    do {
-        $prompt = @"
-You may associate a credential with each of the following systems for auto connection or on demand connections/usage:
 
-$($labels.name -join "`n")
-
-You have created the following credentials so far:
-$($editableCredentials.UserName -join "`n")
-
-In the next step, you may modify the association of these credentials with the systems above.
-
-Would you like to add, edit, or remove a credential?"
-"@
-        $response = Read-Choice -Message $prompt -Choices 'Add','Edit','Remove','Done' -DefaultChoice 0 -Title 'Add/Remove Credential?'
-        switch ($response) {
-            0
-            {#Add
-                $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
-                if ($NewCredential -is [PSCredential])
-                {
-                    $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
-                    $editableCredentials += $NewCredential
-                }
-            }
-            1 {#Edit
-                if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to edit'}
-                else {
-                    $CredChoices = @($editableCredentials.UserName)
-                    $whichcred = Read-Choice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'
-                    $OriginalCredential = $editableCredentials[$whichcred]
-                    $NewCredential = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
-                    if ($NewCredential -is [PSCredential])
-                    {
-                        $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
-                        $editableCredentials[$whichcred] = $NewCredential
-                    }
-                }
-            }
-            2 {#Remove
-                if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to remove'}
-                else {
-                    $CredChoices = @($editableCredentials.UserName)
-                    $whichcred = Read-Choice -Message 'Select a credential to remove' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Remove'
-                    $editableCredentials = @($editableCredentials | Where-Object -FilterScript {$editableCredentials[$whichcred] -ne $_})
-                }
-                
-            }
-            3 {$noMoreCreds = $true} #Done
-        }
-    }
-    until ($noMoreCreds -eq $true)
-    $exportcredentials = @($editableCredentials | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
-    Write-Output -InputObject $exportcredentials
-}
 Function GetDefaultAdminUserProfile
 {
   [cmdletbinding()]
@@ -2054,4 +1970,83 @@ Function GetDefaultAdminUserProfile
   {
     throw "FAILED: Find Default Admin User Profile Set as Default for $OrgIdentity"
   }
+}
+function GetAdminUserProfileCredentialPrompt
+{
+    [cmdletbinding()]
+    param
+    (
+        $labels
+        ,
+        $editableCredentials
+    )
+$prompt = 
+@"
+You may associate a credential with each of the following systems for auto connection or on demand connections/usage:
+
+$($labels.name -join "`n")
+
+You have created the following credentials so far:
+$($editableCredentials.UserName -join "`n")
+
+In the next step, you may modify the association of these credentials with the systems above.
+
+Would you like to add, edit, or remove a credential?"
+"@
+    Write-Output -InputObject $prompt
+}
+function New-AdminUserProfileCredential
+{
+    [cmdletbinding(DefaultParameterSetName = 'Name')]
+    param
+    (
+        #Add Location Validation to Parameter validation script
+        [parameter(ParameterSetName = 'Identity')]
+        [parameter(ParameterSetName = 'Name')]
+        #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
+        [string[]]$Path = "$env:UserProfile\OneShell\"
+    )#end param
+    DynamicParam
+    {
+        if ($null -eq $Path)
+        {
+            $path = "$env:UserProfile\OneShell\"
+        }
+        $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
+        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
+        Write-Output -InputObject $dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
+        $getAdminUserProfileParams = @{
+            ErrorAction = 'Stop'
+        }
+        if ($null -ne $path)
+        {$getAdminUserProfileParams.path = $path}
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'Name'
+            {
+                $getAdminUserProfileParams.Name = $name
+            }
+            'Identity'
+            {
+                $getAdminUserProfileParams.identity = $identity
+            }
+        }
+        $AdminProfile = Get-AdminUserProfile @getAdminUserProfileParams
+        $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+        if ($NewCredential -is [PSCredential])
+        {
+            $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
+            $AdminProfile.Credentials += $NewCredential
+            $exportAdminUserProfileParams = @{
+                profile = $AdminProfile
+                path = $Path
+                ErrorAction = 'Stop'
+            }
+            Export-AdminUserProfile @exportAdminUserProfileParams
+        }
+    }
 }
