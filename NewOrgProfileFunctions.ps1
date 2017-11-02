@@ -437,4 +437,93 @@ function Start-AdminUserProfileEditor
     }#Process
 }# Set-AdminUserProfile
 
-
+function Start-AdminUserProfileCredentialEditor
+{
+    [cmdletbinding(DefaultParameterSetName='New')]
+    param(
+        [parameter(ParameterSetName='New',Mandatory = $true)]
+        [parameter(ParameterSetName='Edit',Mandatory = $true)]
+        $systems
+        ,
+        [parameter(ParameterSetName='Edit')]
+        [switch]$edit
+        ,
+        [parameter(ParameterSetName='Edit',Mandatory = $true)]
+        [psobject[]]$Credentials
+        ,
+        [switch]$UseGUI
+    )
+    switch ($PSCmdlet.ParameterSetName)
+    {
+        'Edit' {
+            $editableCredentials = @($Credentials | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertTo-SecureString}})
+        }
+        'New' {$editableCredentials = @()}
+    }
+    #$systems = $systems | Where-Object -FilterScript {$_.AuthenticationRequired -eq $null -or $_.AuthenticationRequired -eq $true} #null is for backwards compatibility if the AuthenticationRequired property is missing.
+    $labels = $systems | Select-Object -Property @{n='name';e={$_.ServiceType + ': ' + $_.Name}}
+    do
+    {
+        $prompt = GetAdminUserProfileCredentialPrompt -labels $labels -editableCredentials $editableCredentials
+        $response = 
+            switch ($UseGUI -or $host.Name -notlike 'Console*')
+            {
+                $true
+                {Read-Choice -Message $prompt -Choices 'Add','Edit','Remove','Done' -DefaultChoice 0 -Title 'Add/Edit/Remove Credential'}
+                $false
+                {Read-PromptForChoice -Message $prompt -Choices 'Add','Edit','Remove','Done' -DefaultChoice 0 -Title 'Add/Edit/Remove Credential'}
+            }
+        switch ($response)
+        {
+            0
+            {#Add
+                $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+                if ($NewCredential -is [PSCredential])
+                {
+                    $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $(New-Guid).guid
+                    $editableCredentials += $NewCredential
+                }
+            }
+            1 {#Edit
+                if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to edit'}
+                else {
+                    $CredChoices = @($editableCredentials.UserName)
+                    $whichcred = 
+                        switch ($UseGUI -or $host.Name -notlike 'Console*')
+                        {
+                            $true
+                            {Read-Choice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'}
+                            $false
+                            {Read-PromptForChoice -Message 'Select a credential to edit' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Edit'}
+                        }
+                    $OriginalCredential = $editableCredentials[$whichcred]
+                    $NewCredential = $host.ui.PromptForCredential('Edit Credential','Specify the Username and Password for your credential',$editableCredentials[$whichcred].UserName,'')
+                    if ($NewCredential -is [PSCredential])
+                    {
+                        $NewCredential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $OriginalCredential.Identity
+                        $editableCredentials[$whichcred] = $NewCredential
+                    }
+                }
+            }
+            2 {#Remove
+                if ($editableCredentials.Count -lt 1) {Write-Error -Message 'There are no credentials to remove'}
+                else {
+                    $CredChoices = @($editableCredentials.UserName)
+                    switch ($UseGUI -or $host.Name -notlike 'Console*')
+                    {
+                        $true
+                        {Read-Choice -Message 'Select a credential to remove' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Remove'}
+                        $false
+                        {Read-PromptForChoice -Message 'Select a credential to remove' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Remove'}
+                    }
+                    $editableCredentials = @($editableCredentials | Where-Object -FilterScript {$editableCredentials[$whichcred] -ne $_})
+                }
+                
+            }
+            3 {$noMoreCreds = $true} #Done
+        }
+    }
+    until ($noMoreCreds -eq $true)
+    $exportcredentials = @($editableCredentials | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}})#,@{n='Systems';e={[string[]]@()}}
+    Write-Output -InputObject $exportcredentials
+}
