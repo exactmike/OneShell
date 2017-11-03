@@ -2005,6 +2005,7 @@ function New-AdminUserProfileCredential
         [parameter(ParameterSetName = 'Name')]
         #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
         [string[]]$Path = "$env:UserProfile\OneShell\"
+        #Add Username and Password params for non-interactive use
     )#end param
     DynamicParam
     {
@@ -2013,7 +2014,7 @@ function New-AdminUserProfileCredential
             $path = "$env:UserProfile\OneShell\"
         }
         $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
-        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
+        $dictionary = New-DynamicParameter -Name 'ProfileName' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
         Write-Output -InputObject $dictionary
     }
     End
@@ -2028,7 +2029,7 @@ function New-AdminUserProfileCredential
         {
             'Name'
             {
-                $getAdminUserProfileParams.Name = $name
+                $getAdminUserProfileParams.Name = $ProfileName
             }
             'Identity'
             {
@@ -2052,16 +2053,24 @@ function New-AdminUserProfileCredential
 }
 function Remove-AdminUserProfileCredential
 {
-    [cmdletbinding(DefaultParameterSetName = 'Name')]
+    [cmdletbinding(DefaultParameterSetName = 'ProfileNameCredentialUserName')]
     param
     (
         #Add Location Validation to Parameter validation script
-        [parameter(ParameterSetName = 'Identity')]
-        [parameter(ParameterSetName = 'Name')]
+        [parameter(ParameterSetName = 'ProfileIdentityCredentialIdentity')]
+        [parameter(ParameterSetName = 'ProfileIdentityCredentialUserName')]
+        [parameter(ParameterSetName = 'ProfileNameCredentialUserName')]
+        [parameter(ParameterSetName = 'ProfileNameCredentialIdentity')]
         #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
         [string[]]$Path = "$env:UserProfile\OneShell\"
         ,
+        [parameter(ParameterSetName = 'ProfileIdentityCredentialIdentity')]
+        [parameter(ParameterSetName = 'ProfileNameCredentialIdentity')]
         [string]$Identity
+        ,
+        [parameter(ParameterSetName = 'ProfileIdentityCredentialUserName')]
+        [parameter(ParameterSetName = 'ProfileNameCredentialUserName')]
+        [string]$Username
     )#end param
     DynamicParam
     {
@@ -2069,8 +2078,19 @@ function Remove-AdminUserProfileCredential
         {
             $path = "$env:UserProfile\OneShell\"
         }
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
-        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
+        switch -Wildcard ($PSCmdlet.ParameterSetName)
+        {
+            'ProfileName*'
+            {
+                $profileNames = @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue)
+                $dictionary = New-DynamicParameter -Name 'ProfileName' -Type $([String[]]) -ValidateSet $profileNames 
+            }
+            'ProfileIdentity*'
+            {
+                $profileIdentities = @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity)                
+                $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String[]]) -ValidateSet $profileIdentities
+            }
+        }
         Write-Output -InputObject $dictionary
     }
     End
@@ -2081,35 +2101,44 @@ function Remove-AdminUserProfileCredential
         }
         if ($null -ne $path)
         {$getAdminUserProfileParams.path = $path}
-        switch ($PSCmdlet.ParameterSetName)
+        switch -Wildcard ($PSCmdlet.ParameterSetName)
         {
-            'Name'
+            'ProfileName*'
             {
-                $getAdminUserProfileParams.Name = $name
+                $getAdminUserProfileParams.Name = $ProfileName
             }
-            'Identity'
+            'ProfileIdentity*'
             {
                 $getAdminUserProfileParams.identity = $ProfileIdentity
             }
         }
         $AdminProfile = Get-AdminUserProfile @getAdminUserProfileParams
-        if ($null -eq $identity -or [string]::IsNullOrWhiteSpace($Identity))
+        if ($AdminProfile.Credentials.Count -eq 0) {throw('There are no credentials to remove')}
+        if (-not $PSBoundParameters.ContainsKey('Identity') -and -not $PSBoundParameters.ContainsKey('UserName'))
         {
-            if ($AdminProfile.Credentials.Count -lt 1) {Write-Error -Message 'There are no credentials to remove'}
-            else {
-                $CredChoices = @($AdminProfile.Credentials.UserName)
-                $whichcred = 
-                    switch ($host.Name -notlike 'Console*')
-                    {
-                        $true
-                        {Read-Choice -Message 'Select a credential to remove' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Remove' -Numbered}
-                        $false
-                        {Read-PromptForChoice -Message 'Select a credential to remove' -Choices $CredChoices -DefaultChoice 0 -Title 'Select Credential to Remove' -Numbered}
-                    }
-                $AdminProfile.Credentials = @($AdminProifle.Credentials | Where-Object -FilterScript {$AdminProfile.Credentials[$whichcred] -ne $_})
+            $SelectedCredential = Select-AdminUserProfileCredential -Credentials $AdminProfile.Credentials -Operation Remove
+        }
+        else
+        {
+            switch -Wildcard ($PSCmdlet.ParameterSetName)
+            {
+                '*CredentialUserName'
+                {
+                    $SelectedCredential = $AdminProfile.Credentials | Where-Object -FilterScript {$_.Username -eq $UserName}
+                }
+                '*CredentialIdentity'
+                {
+                    $SelectedCredential = $AdminProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                }
             }
-        }        
-        $adminProfile.Credentials = $AdminProfile.Credentials | Where-Object -FilterScript {$_.Identity -ne $Identity}
+        }
+        $adminProfile.Credentials = $AdminProfile.Credentials | Where-Object -FilterScript {$_ -ne $SelectedCredential}
+        $exportAdminUserProfileParams = @{
+            profile = $AdminProfile
+            path = $Path
+            ErrorAction = 'Stop'
+        }
+        Export-AdminUserProfile @exportAdminUserProfileParams
     }
 }
 function Get-AdminUserProfileCredential
@@ -2134,7 +2163,7 @@ function Get-AdminUserProfileCredential
             $path = "$env:UserProfile\OneShell\"
         }
         $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity) -ParameterSetName Identity
-        $dictionary = New-DynamicParameter -Name 'Name' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
+        $dictionary = New-DynamicParameter -Name 'ProfileName' -Type $([String[]]) -ValidateSet @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue) -ParameterSetName Name -DPDictionary $dictionary
         Write-Output -InputObject $dictionary
     }
     End
@@ -2149,7 +2178,7 @@ function Get-AdminUserProfileCredential
         {
             'Name'
             {
-                $getAdminUserProfileParams.Name = $name
+                $getAdminUserProfileParams.Name = $ProfileName
             }
             'Identity'
             {
@@ -2176,4 +2205,28 @@ function Convert-CredentialToAdminProfileCredential
     {$Identity = $(New-Guid).guid}
     $credential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $Identity
     $credential | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}}
+}
+function Select-AdminUserProfileCredential
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $Credentials
+        ,
+        [parameter(Mandatory)]
+        [ValidateSet('Remove','Edit')]
+        [string]$Operation
+    )
+    $message = "Select credential to $Operation"
+    $CredChoices = @($Credentials.UserName)
+    $whichcred = 
+        switch ($host.Name -notlike 'Console*')
+        {
+            $true
+            {Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
+            $false
+            {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
+        }
+    Write-Output -InputObject $credentials[$whichcred]
 }
