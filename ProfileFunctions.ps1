@@ -1473,39 +1473,41 @@ function Set-AdminUserProfile
 }# Set-AdminUserProfile
 function Update-AdminUserProfileTypeVersion
 {
-  [cmdletbinding()]
-  param(
-    [parameter(Mandatory=$true)]
-    $Identity
-    ,
-  $Path)
-  $GetAdminUserProfileParams = @{
-    Identity = $Identity
-    errorAction = 'Stop'
-  }
-  if ($PSBoundParameters.ContainsKey('Path'))
-  {
-    $GetAdminUserProfileParams.Path = $Path
-  }
-  $AdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-  $BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the Admin User Profile $($AdminUserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes','No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
-  if ($BackupProfileUserChoice -eq 'Yes')
-  {
-    $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
-    if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory=$true)]
+        $Identity
+        ,
+        $Path
+    )
+    $GetAdminUserProfileParams = @{
+        Identity = $Identity
+        errorAction = 'Stop'
+    }
+    if ($PSBoundParameters.ContainsKey('Path'))
     {
-        if ($Folder -ne $AdminUserProfile.General.ProfileFolder -and $folder -ne $AdminUserProfile.ProfileFolder)
+        $GetAdminUserProfileParams.Path = $Path
+    }
+    $AdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams
+    $BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the Admin User Profile $($AdminUserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes','No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
+    if ($BackupProfileUserChoice -eq 'Yes')
+    {
+        $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
+        if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
         {
-            Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop  > $null
-        }
-        else
-        {
-            throw 'Choose a different directory.'
+            if ($Folder -ne $AdminUserProfile.General.ProfileFolder -and $folder -ne $AdminUserProfile.ProfileFolder)
+            {
+                Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop  > $null
+            }
+            else
+            {
+                throw 'Choose a different directory.'
+            }
         }
     }
-  }
-  $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
-  Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.profilefolder  > $null
+    $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+    Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.profilefolder  > $null
 }
 Function Export-AdminUserProfile
 {
@@ -2003,9 +2005,15 @@ function New-AdminUserProfileCredential
         #Add Location Validation to Parameter validation script
         [parameter(ParameterSetName = 'Identity')]
         [parameter(ParameterSetName = 'Name')]
-        #[ValidateScript({AddAdminUserProfileFolders -path $_; Test-DirectoryPath -Path $_})]
         [string[]]$Path = "$env:UserProfile\OneShell\"
-        #Add Username and Password params for non-interactive use
+        ,
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$Username
+        ,
+        [parameter()]
+        [ValidateNotNullOrEmpty()]
+        [securestring]$Password
     )#end param
     DynamicParam
     {
@@ -2037,7 +2045,29 @@ function New-AdminUserProfileCredential
             }
         }
         $AdminProfile = Get-AdminUserProfile @getAdminUserProfileParams
-        $NewCredential = $host.ui.PromptForCredential('Add Credential','Specify the Username and Password for your credential','','')
+        $NewCredential = $(
+            switch ($PSBoundParameters.ContainsKey('Username'))
+            {
+                $true
+                {
+                    switch ($PSBoundParameters.ContainsKey('Password'))
+                    {
+                        $true
+                        {
+                            New-Object System.Management.Automation.PSCredential ($Username,$Password)
+                        }
+                        $false
+                        {
+                            $host.ui.PromptForCredential('New Credential','Specify the Password for the credential',$Username,'')
+                        }
+                    }
+                }
+                $false
+                {
+                    $host.ui.PromptForCredential('New Credential','Specify the Username and Password for the credential','','')
+                }
+            }
+        )
         if ($NewCredential -is [PSCredential])
         {
             $AdminProfileCredential = Convert-CredentialToAdminProfileCredential -credential $NewCredential
@@ -2132,7 +2162,125 @@ function Remove-AdminUserProfileCredential
                 }
             }
         }
-        $adminProfile.Credentials = $AdminProfile.Credentials | Where-Object -FilterScript {$_ -ne $SelectedCredential}
+        $adminProfile.Credentials = @($AdminProfile.Credentials | Where-Object -FilterScript {$_ -ne $SelectedCredential})
+        $exportAdminUserProfileParams = @{
+            profile = $AdminProfile
+            path = $Path
+            ErrorAction = 'Stop'
+        }
+        Export-AdminUserProfile @exportAdminUserProfileParams
+    }
+}
+function Set-AdminUserProfileCredential
+{
+    [cmdletbinding(DefaultParameterSetName = 'ProfileName')]
+    param
+    (
+        #Add Location Validation to Parameter validation script
+        [parameter(ParameterSetName = 'ProfileName')]
+        [parameter(ParameterSetName = 'ProfileIdentity')]
+        [string[]]$Path = "$env:UserProfile\OneShell\"
+        ,
+        [parameter(ParameterSetName = 'ProfileName')]
+        [parameter(ParameterSetName = 'ProfileIdentity')]
+        [string]$Identity
+        ,
+        [parameter(ParameterSetName = 'ProfileName')]
+        [ValidateNotNullOrEmpty()]
+        [parameter(ParameterSetName = 'ProfileIdentity')]
+        [ValidateNotNullOrEmpty()]
+        [string]$Username
+        ,
+        [parameter(ParameterSetName = 'ProfileName')]
+        [ValidateNotNullOrEmpty()]
+        [parameter(ParameterSetName = 'ProfileIdentity')]
+        [ValidateNotNullOrEmpty()]
+        [securestring]$Password
+    )#end param
+    DynamicParam
+    {
+        if ($null -eq $Path)
+        {
+            $path = "$env:UserProfile\OneShell\"
+        }
+        $profileNames = @(GetPotentialAdminUserProfiles -path $Path | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue)
+        $profileIdentities = @(GetPotentialAdminUserProfiles -path $Path | Select-Object -ExpandProperty Identity)
+        $dictionary = New-DynamicParameter -Name 'ProfileName' -Type $([String[]]) -ValidateSet $profileNames -ParameterSetName 'ProfileName'
+        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String[]]) -ValidateSet $profileIdentities -DPDictionary $dictionary -ParameterSetName 'ProfileIdentity'
+        Write-Output -InputObject $dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
+        $getAdminUserProfileParams = @{
+            ErrorAction = 'Stop'
+        }
+        if ($null -ne $path)
+        {$getAdminUserProfileParams.path = $path}
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'ProfileName'
+            {
+                $getAdminUserProfileParams.Name = $ProfileName
+            }
+            'ProfileIdentity'
+            {
+                $getAdminUserProfileParams.identity = $ProfileIdentity
+            }
+        }
+        $AdminProfile = Get-AdminUserProfile @getAdminUserProfileParams
+        if ($AdminProfile.Credentials.Count -eq 0) {throw('There are no credentials to set')}
+        $SelectedCredential = $(
+            if (-not $PSBoundParameters.ContainsKey('Identity') -and -not $PSBoundParameters.ContainsKey('UserName'))
+            {
+                Select-AdminUserProfileCredential -Credentials $AdminProfile.Credentials -Operation Remove
+            }
+            else
+            {
+                switch ('')
+                {
+                    {$PSBoundParameters.ContainsKey('Identity')}
+                    {
+                        $AdminProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                        break
+                    }
+                    {$PSBoundParameters.ContainsKey('Username')}
+                    {
+                        $AdminProfile.Credentials | Where-Object -FilterScript {$_.Username -eq $UserName} | Select-Object -First 1
+                        break
+                    }
+                }
+            }
+        )
+        if ($null -eq $SelectedCredential) {throw('No cedential found')}
+        $EditedCredential = $(
+            switch ($SelectedCredential)
+            {
+                #Both Username and Password Specified with Identity - Update Both
+                {$PSBoundParameters.ContainsKey('Identity') -and $PSBoundParameters.ContainsKey('Username') -and $PSBoundParameters.ContainsKey('Password')}
+                {
+                    New-Object System.Management.Automation.PSCredential ($Username,$Password)
+                }
+                #Only Username Specified with Identity - Update Username, Preserve Password
+                {$PSBoundParameters.ContainsKey('Identity') -and $PSBoundParameters.ContainsKey('Username') -and -not $PSBoundParameters.ContainsKey('Password')}
+                {
+                    New-Object System.Management.Automation.PSCredential ($Username,$($SelectedCredential.Password | ConvertTo-SecureString))
+                }
+                #Only Password Specified with Identity  - Update Password, Preserve Username
+                {$PSBoundParameters.ContainsKey('Identity') -and  -not $PSBoundParameters.ContainsKey('Username') -and $PSBoundParameters.ContainsKey('Password')}
+                {
+                    New-Object System.Management.Automation.PSCredential ($SelectedCredential.Username,$Password)
+                }
+                #nothing Specified except Identity - suggest preserving username, prompt to update password
+                {$PSBoundParameters.ContainsKey('Identity') -and -not $PSBoundParameters.ContainsKey('Username') -and -not $PSBoundParameters.ContainsKey('Password')}
+                {
+                    $host.ui.PromptForCredential('Set Credential','Specify the Password for the credential',$SelectedCredential.Username,'')
+                }
+            }
+        )
+        $AdminProfileCredential = Convert-CredentialToAdminProfileCredential -credential $EditedCredential -Identity $SelectedCredential.Identity
+        $Index = Get-ArrayIndexForValue -array $AdminProfile.Credentials -value $SelectedCredential.Identity -property Identity -ErrorAction Stop
+        $adminProfile.Credentials[$Index] = $AdminProfileCredential
         $exportAdminUserProfileParams = @{
             profile = $AdminProfile
             path = $Path
