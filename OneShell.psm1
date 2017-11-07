@@ -3890,7 +3890,7 @@ function Set-OneShellVariables
 ##########################################################################################################
 #Import functions from included ps1 files
 ##########################################################################################################
-. $(Join-Path $PSScriptRoot 'NewOrgProfileFunctions.ps1')
+#. $(Join-Path $PSScriptRoot 'ProfileWizardFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'UtilityFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'SystemConnectionFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'ProfileFunctions.ps1')
