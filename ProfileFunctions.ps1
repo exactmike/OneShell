@@ -1837,3 +1837,7 @@ Function Initialize-AdminEnvironment
         }#Switch
     }#Process
 }
+#################################################
+# Need to add
+#################################################
+#Set functions for OrgProfile,OrgSystem,OrgSystemEndpoint,AdminUserProfileSystem
