@@ -495,9 +495,13 @@ Function Get-OrgProfileSystem
         param
         (
             [parameter()]
+            [ValidateNotNullOrEmpty()]
+            [string[]]$Identity #System Identity or Name
+            ,
+            [parameter()]
             [switch]$IsDefault
             ,
-            [parameter(ParameterSetName = 'Identity')]
+            [parameter(ParameterSetName = 'ProfileIdentity')]
             [parameter(ParameterSetName = 'All')]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
@@ -510,8 +514,8 @@ Function Get-OrgProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'Identity'
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(getorgservicetypes) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary
+            $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(getorgservicetypes) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
             Write-Output -InputObject $dictionary
         }
         End
@@ -524,7 +528,7 @@ Function Get-OrgProfileSystem
                     {
                         Get-OrgProfile -GetCurrent -ErrorAction Stop
                     }
-                    'Identity'
+                    'ProfileIdentity'
                     {
                         Get-OrgProfile -Identity $OrgProfileIdentity -ErrorAction Stop
                     }
@@ -548,6 +552,10 @@ Function Get-OrgProfileSystem
             if ($IsDefault -eq $true)
             {
                 $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.IsDefault -eq $true})
+            }
+            if ($null -ne $Identity)
+            {
+                $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.Identity -in $Identity -or $_.Name -in $Identity})
             }
             Write-Output -InputObject $OutputSystems
         }
