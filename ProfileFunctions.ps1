@@ -129,7 +129,7 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
         }#end switch
         Write-Output -InputObject $OrgSystemObject
     }#end function AddServiceTypeAttributesToGenericOrgSystemObject
-function New-OrgSystem
+function New-OrgProfileSystem
     {
         [cmdletbinding()]
         param
@@ -159,24 +159,32 @@ function New-OrgSystem
             ,
             [parameter()]
             [bool]$UseTLS
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
         )#end param
         DynamicParam
         {
-            #build any service typ specific parameters that may be needed
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 
+            #build any service type specific parameters that may be needed
             switch -Wildcard ($ServiceType)
             {
                 'ExchangeOrganization'
                 {
-                    $Dictionary = New-DynamicParameter -Name 'ExchangeOrgType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','Online','ComplianceCenter'
+                    $Dictionary = New-DynamicParameter -Name 'ExchangeOrgType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','Online','ComplianceCenter' -DPDictionary $dictionary
 
                 }
                 '*Tenant'
                 {
-                    $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$true
+                    $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$true -DPDictionary $dictionary
                 }
                 'ActiveDirectoryInstance'
                 {
-                    $Dictionary = New-DynamicParameter -Name 'ADInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'AD','ADLDS'
+                    $Dictionary = New-DynamicParameter -Name 'ADInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'AD','ADLDS' -DPDictionary $dictionary
                     $Dictionary = New-DynamicParameter -Name 'GlobalCatalog' -Type $([bool]) -Mandatory:$true -ValidateSet $true,$false -DPDictionary $Dictionary
                     $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
                     $Dictionary = New-DynamicParameter -Name 'ADGroupAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
@@ -184,21 +192,27 @@ function New-OrgSystem
                 }
                 'PowerShell'
                 {
-                    $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false
+                    $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
                 }
                 'SQLDatabase'
                 {
-                    $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','AzureSQL'
+                    $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','AzureSQL' -DPDictionary $dictionary
                     $Dictionary = New-DynamicParameter -Name 'Database' -Type $([string]) -Mandatory:$true -DPDictionary $Dictionary
                 }
             }
-            if ($null -ne $Dictionary)
-            {
-                Write-Output -InputObject $dictionary
-            }
+            Write-Output -InputObject $dictionary
         }#End DynamicParam
         End
         {
+            #Get the Org Profile
+            Set-DynamicParameterVariable -dictionary $dictionary
+            $GetOrgProfileParams = @{
+                ErrorAction = 'Stop'
+                Identity = $ProfileIdentity
+                Path = $Path
+            }
+            $OrgProfile = $(Get-OrgProfile @GetOrgProfileParams)
+            #Build the System Object
             $GenericSystemObject = NewGenericOrgSystemObject
             $GenericSystemObject.ServiceType = $ServiceType
             $GenericSystemObject.Name = $Name
@@ -215,8 +229,9 @@ function New-OrgSystem
             if ($null -ne $Dictionary)
             {$addServiceTypeAttributesParams.Dictionary = $Dictionary}
             $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject @addServiceTypeAttributesParams
-            Write-Output -InputObject $GenericSystemObject    
-        }   
+            $OrgProfile.Systems += $GenericSystemObject
+            Export-OrgProfile -profile $OrgProfile -Path $Path
+        }
     }#end function New-OrgSystemObject
 function NewGenericSystemEndpointObject
     {
@@ -239,7 +254,7 @@ function NewGenericSystemEndpointObject
             ServiceType = $null
         }
     }#end function NewGenericSystemEndpointObject
-function New-OrgSystemEndpoint
+function New-OrgProfileSystemEndpoint
     {
         [cmdletbinding()]
         param
@@ -355,26 +370,22 @@ Function Export-OrgProfile
             [parameter(Mandatory=$true)]
             $profile
             ,
-            [parameter(Mandatory=$true)]
-            [validateset('New','Update')]
-            $operation
-            ,
             [parameter()]
             [AllowNull()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            $ProfileExportFolderPath
+            $Path
         )
         $name = [string]$($profile.Identity.tostring()) + '.json'
-        if ($null -eq $ProfileExportFolderPath)
+        if ($null -eq $Path)
         {
             Write-Verbose -Message "Using Default Profile Location"
-            $path = Join-Path $script:OneShellOrgProfilePath[0] $name
+            $FilePath = Join-Path $script:OneShellOrgProfilePath[0] $name
         }
         else
         {
-            $path = Join-Path $ProfileExportFolderPath $name
+            $FilePath = Join-Path $Path $name
         }
-        Write-Verbose -Message "Profile File Export Path is $path"
+        Write-Verbose -Message "Profile File Export Path is $FilePath"
         $JSONparams=@{
             InputObject = $profile
             ErrorAction = 'Stop'
@@ -382,14 +393,10 @@ Function Export-OrgProfile
         }
         $OutParams = @{
             ErrorAction = 'Stop'
-            FilePath = $path
+            FilePath = $FilePath
             Encoding = 'ascii'
+            Force = $true
         }
-        switch ($operation)
-        {
-            'Update' {$OutParams.Force = $true}
-            'New' {$OutParams.NoClobber = $true}
-        }#end switch
         try
         {
             ConvertTo-Json @JSONparams | Out-File @OutParams
@@ -397,7 +404,7 @@ Function Export-OrgProfile
         catch
         {
             $_
-            throw "FAILED: Could not write Org Profile data to $path"
+            throw "FAILED: Could not write Org Profile data to $FilePath"
         }#end catch
     }#Function Export-OrgProfile
 Function Get-OrgProfile
@@ -514,7 +521,7 @@ Function Get-OrgProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
             $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(getorgservicetypes) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
             Write-Output -InputObject $dictionary
         }
@@ -530,7 +537,7 @@ Function Get-OrgProfileSystem
                     }
                     'ProfileIdentity'
                     {
-                        Get-OrgProfile -Identity $OrgProfileIdentity -ErrorAction Stop
+                        Get-OrgProfile -Identity $ProfileIdentity -ErrorAction Stop
                     }
                     'All'
                     {
@@ -774,7 +781,7 @@ function New-AdminUserProfile
             ,
             [Parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string]$OrgProfilePath
+            [string]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
             ,
             [bool]$IsDefault #sets this profile as the default for the specified Organization
         )
@@ -796,8 +803,8 @@ function New-AdminUserProfile
             $GetOrgProfileParams = @{
                 ErrorAction = 'Stop'
                 Identity = $OrgProfileIdentity
+                Path = $OrgProfilePath
             }
-            if ($PSBoundParameters.ContainsKey('OrgProfilePath')) {$GetOrgProfileParams.Path = $OrgProfilePath}
             $targetOrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
             switch ($targetOrgProfile.Count)
             {
@@ -813,7 +820,9 @@ function New-AdminUserProfile
                     $PSCmdlet.ThrowTerminatingError($errorRecord)
                 }
             }
-            $AdminUserProfile = GetGenericNewAdminsUserProfileObject -TargetOrgProfile $targetOrgProfile
+            $AdminUserProfile = NewGenericAdminsUserProfileObject -TargetOrgProfile $targetOrgProfile
+            $Systems = @(GetOrgProfileSystemForAdminProfile -OrganizationIdentity $TargetOrgProfile)
+            $AdminUserProfile.Systems = $Systems
             foreach ($p in $PSBoundParameters.GetEnumerator())
             {
                 if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','IsDefault','Credentials','Systems')
@@ -892,7 +901,7 @@ Function Export-AdminUserProfile
             throw "FAILED: Could not write Admin User Profile data to $path"
         }#catch
     }
-function GetGenericNewAdminsUserProfileObject
+function NewGenericAdminsUserProfileObject
     {
         [cmdletbinding()]
         param
@@ -913,7 +922,7 @@ function GetGenericNewAdminsUserProfileObject
             ProfileFolder = ''
             MailFromSMTPAddress = ''
             IsDefault = $false
-            Systems = @(GetOrgProfileSystemForAdminProfile -OrganizationIdentity $TargetOrgProfile)
+            Systems = @()
             Credentials = @()
         }
     }#end function GetGenericNewAdminsUserProfileObject
@@ -1585,6 +1594,83 @@ function Set-AdminUserProfile
             Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
         }#End End
     }#end function Set-AdminUserProfile
+function Update-AdminUserProfileSystem
+    {
+        [cmdletbinding()]
+        param
+        (
+            [Parameter(ParameterSetName = 'Object',ValueFromPipeline,Mandatory)]
+            [ValidateScript({$_.ProfileType -eq 'OneShellAdminUserProfile'})]
+            [psobject]$ProfileObject 
+            ,
+            [parameter(ParameterSetName = 'Identity')]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string[]]$Path = "$env:UserProfile\OneShell\"
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
+        )
+        DynamicParam
+        {
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -ParameterSetName 'Identity' -Mandatory $true
+            Write-Output -InputObject $dictionary
+        }
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            switch ($PSCmdlet.ParameterSetName)
+            {
+                'Object'
+                {
+                    #validate the object
+                    $AdminUserProfile = $ProfileObject
+                }
+                'Identity'
+                {
+                    $GetAdminUserProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Identity = $Identity
+                        Path = $Path
+                    }
+                    $AdminUserProfile = $(Get-AdminUserProfile @GetAdminUserProfileParams)
+                }
+            }#end switch ParameterSetName
+            $GetOrgProfileParams = @{
+                ErrorAction = 'Stop'
+                Path = $orgProfilePath
+                Identity = $AdminUserProfile.organization.identity
+            }
+            $targetOrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
+            #Check the Org Identity for validity (exists, not ambiguous)
+            switch ($targetOrgProfile.Count)
+            {
+                1
+                {}
+                0
+                {
+                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+                Default
+                {
+                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+            }
+            $OrgProfileSystems = @(GetOrgProfileSystemForAdminProfile -OrganizationIdentity $TargetOrgProfile)
+            $AdminUserProfileSystems = @($AdminUserProfile.Systems)
+            #Remove those that are no longer in the Org Profile
+            $AdminUserProfileSystems = $AdminUserProfileSystems | Where-Object {$_.Identity -in $OrgProfileSystems.Identity}
+            #Add those that are new to the Org Profile
+            $NewOrgProfileSystems = $OrgProfileSystems | Where-Object {$_.Identity -notin $AdminUserProfileSystems.Identity}
+            $NewAdminUserProfileSystems = $AdminUserProfileSystems + $NewOrgProfileSystems
+            $AdminUserProfile.Systems = $NewAdminUserProfileSystems
+            Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
+        }#End End
+    }
 #################################################
 # Need to update
 #################################################
@@ -1849,4 +1935,177 @@ Function Initialize-AdminEnvironment
 # Need to add
 #################################################
 #Set functions for OrgProfile,OrgSystem,OrgSystemEndpoint,AdminUserProfileSystem
-#? Remove functions for OrgProfile, AdminProfile, OrgSystem, OrgSystemEndpoint
+#? Remove functions for OrgProfile, AdminProfile, OrgProfileSystem, OrgProfileSystemEndpoint
+function Add-OrgProfileSystemEndpoint
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter()]
+        [string]$ProfileIdentity
+        ,
+        [parameter(Mandatory)]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOrganization','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryInstance','MailRelayEndpoint','SkypeOrganization')]
+        [string]$ServiceType
+        ,
+        [Parameter(Mandatory)]
+        [ValidateSet('URL','IPAddress','FQDN')]
+        [String]$AddressType
+        ,
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [String]$Address
+        ,
+        [Parameter()]
+        [AllowNull()]
+        [ValidatePattern("^\d{1,5}$")]
+        $ServicePort
+        ,
+        [parameter()]
+        [AllowNull()]
+        [ValidateSet($true,$false,$null)]
+        $IsDefault
+        ,
+        [parameter()]
+        [AllowNull()]
+        [ValidateSet($true,$false,$null)]
+        $UseTLS
+        ,
+        [parameter()]
+        [AllowNull()]
+        [validateSet($true,$false,$null)]
+        $ProxyEnabled = $false
+        ,
+        [parameter()]
+        [ValidateLength(2,5)]
+        $CommandPrefix
+        ,
+        [parameter()]
+        [AllowNull()]
+        [validateSet($true,$false,$null)]
+        $AuthenticationRequired
+        ,
+        [parameter()]
+        [ValidateSet('Basic','Kerberos','Integrated')]
+        $AuthMethod
+        ,
+        [parameter()]
+        $EndPointGroup
+        ,
+        [parameter()]
+        [ValidateSet('Admin','MRSProxyServer')]
+        [string]$EndPointType = 'Admin'
+        ,
+        [parameter()]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        [string]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+    )
+    DynamicParam
+    {
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:ALLUSERSPROFILE\OneShell\"}
+        $GetOrgProfileSystemParams = @{
+            ErrorAction = 'Stop'
+            Path = $Path
+        }
+        if ($PSBoundParameters.ContainsKey('ProfileIdentity')) {$GetOrgProfileSystemParams.ProfileIdentity = $ProfileIdentity}
+        $OrgProfileSystems = Get-OrgProfileSystem @GetOrgProfileSystemParams
+        $SystemsIdentityLookup = @{}
+        foreach ($s in $OrgProfileSystems)
+        {
+            $key = $s.Identity
+            $SystemsIdentityLookup.$key = $s
+        }
+        $Dictionary = New-DynamicParameter -Name 'Identity' -ValidateSet $SystemsIdentityLookup.Keys -Type $([string]) -Mandatory $true -Position 1
+        #build any service typ specific parameters that may be needed
+        switch ($ServiceType)
+        {
+            'ExchangeOrganization'
+            {
+                $Dictionary = New-DynamicParameter -Name 'PreferredDomainControllers' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+            }
+        }
+        Write-Output -InputObject $dictionary
+    }#End DynamicParam
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        $OrgSystem = $SystemsIdentityLookup.$Identity
+        $OrgProfileIdentity = $OrgSystem.OrgIdentity
+        $GenericEndpointObject = NewGenericSystemEndpointObject
+        $GenericEndpointObject.ServiceType = $OrgSystem.ServiceType
+        $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+        foreach ($vp in $AllValuedParameters)
+        {
+            if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType')
+            {
+                $GenericEndpointObject.$($vp.name) = $($vp.value)
+            }
+        }
+        #Add any servicetype specific attributes that were specified
+        switch ($System.ServiceType)
+        {
+            'ExchangeOrganization'
+            {
+                $GenericEndpointObject.ServiceTypeAttributes | Add-Member -Name 'PreferredDomainControllers' -Value $PreferredDomainControllers -MemberType NoteProperty
+            }
+        }
+        #Add the endpoint to the system
+        $OrgSystem.Endpoints += $GenericEndpointObject
+        #clean up the System (remove the org attributes that are returned with get-orgprofilesystem for reference only)
+        $OrgSystem = $OrgSystem | Select-Object -Property * -ExcludeProperty Org*
+        $OrgProfile = Get-OrgProfile -Identity $OrgProfileIdentity -Path $path
+        $SystemIndex = Get-ArrayIndexForValue -value $OrgSystem.Identity -property Identity -array $OrgProfile.systems
+        $OrgProfile.Systems[$SystemIndex] = $OrgSystem
+        Export-OrgProfile -profile $OrgProfile -Path $path
+    }
+}
+function Remove-OrgProfileSystemEndpoint
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [string]$Identity
+        ,
+        [parameter()]
+        [string]$ProfileIdentity
+        ,
+        [parameter()]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        [string]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+    )
+    DynamicParam
+    {
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:ALLUSERSPROFILE\OneShell\"}
+        $GetOrgProfileSystemParams = @{
+            ErrorAction = 'Stop'
+            Path = $Path
+        }
+        if ($PSBoundParameters.ContainsKey('ProfileIdentity')) {$GetOrgProfileSystemParams.ProfileIdentity = $ProfileIdentity}
+        $OrgProfileSystems = Get-OrgProfileSystem @GetOrgProfileSystemParams
+        $SystemsIdentityLookup = @{}
+        foreach ($s in $OrgProfileSystems)
+        {
+            $key = $s.Identity
+            $SystemsIdentityLookup.$key = $s
+        }
+        $Dictionary = New-DynamicParameter -Name 'SystemIdentity' -ValidateSet $SystemsIdentityLookup.Keys -Type $([string]) -Mandatory $true -Position 1
+        Write-Output -InputObject $Dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        $OrgSystem = $SystemsIdentityLookup.$SystemIdentity
+        $OrgProfileIdentity = $OrgSystem.OrgIdentity
+        $EndpointIndex = Get-ArrayIndexForValue -value $Identity -property Identity -array $OrgSystem.Endpoints
+        $EndpointIndex
+        #cleanup
+        #$OrgSystem = $OrgSystem | Select-Object -Property * -ExcludeProperty Org*
+        #$updatedEndpoints = @($OrgSystem.Endpoints | Where-Object -FilterScript {$_.identity -ne $OrgSystem.Endpoints[$EndpointIndex].identity})
+        #$OrgSystem.Endpoints = $updatedEndpoints
+        #$orgProfile = Get-OrgProfile -Identity $OrgProfileIdentity -Path $Path -ErrorAction Stop
+        #$systemsIndex = Get-ArrayIndexForValue -value $OrgSystem.Identity -array $orgProfile.systems -property Identity
+        #$OrgProfile.Systems[$systemsIndex] = $OrgSystem
+        #$orgProfile.Systems
+    }
+}
