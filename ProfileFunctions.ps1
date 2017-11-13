@@ -2022,81 +2022,81 @@ Function Set-AdminUserProfileSystemPreferredEndpoint
     }
 #end function Set-AdminUserProfileSystemPreferredEndpoint
 Function Set-AdminUserProfileSystemCredential
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter()]
-        [string]$SystemIdentity
-        ,
-        [parameter()]
-        [string]$CredentialIdentity
-        ,
-        [parameter()]
-        [ValidateScript({Test-DirectoryPath -Path $_})]
-        [string[]]$Path = "$env:UserProfile\OneShell\"
-        ,
-        [parameter()]
-        [ValidateScript({Test-DirectoryPath -Path $_})]
-        [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
-    )#end param
-    DynamicParam
     {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
-        $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $true -Position 2
-        Write-Output -inputobject $dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
-        $GetAdminUserProfileParams = @{
-            ErrorAction = 'Stop'
-            Path = $Path
-            Identity = $ProfileIdentity
+        [cmdletbinding()]
+        param
+        (
+            [parameter()]
+            [string]$SystemIdentity
+            ,
+            [parameter()]
+            [string]$CredentialIdentity
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string[]]$Path = "$env:UserProfile\OneShell\"
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+        )#end param
+        DynamicParam
+        {
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $true -Position 2
+            Write-Output -inputobject $dictionary
         }
-        $AdminProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-        #Get/Select the System
-        $System = $(
-            if ($PSBoundParameters.ContainsKey('SystemIdentity'))
-            {
-                if ($SystemIdentity -in $AdminProfile.systems.Identity)
-                {$AdminProfile.systems | Where-Object -FilterScript {$_.Identity -eq $SystemIdentity}}
-                else
-                {throw("Invalid System Identity $SystemIdentity was provided. No such system exists in AdminProfile $ProfileIdentity.")}
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            $GetAdminUserProfileParams = @{
+                ErrorAction = 'Stop'
+                Path = $Path
+                Identity = $ProfileIdentity
             }
-            else
-            {
-                $Systems = Get-AdminUserProfileSystem -ProfileIdentity $ProfileIdentity -Path $Path -ErrorAction 'Stop'
-                Select-ProfileSystem -Systems $Systems -Operation Edit | Select-Object -Property "Identity","AutoConnect","Credential","PreferredEndpoint","PreferredPrefix"
-            }
-        )
-        if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
-        #Get/Select the Credential
-        $Credentials = @(Get-AdminUserProfileCredential -ProfileIdentity $ProfileIdentity -ErrorAction 'Stop' -Path $path)
-        $SelectedCredentialIdentity = $(
-            if ($PsBoundParameters.ContainsKey('CredentialIdentity'))
-            {
-                if ($CredentialIdentity -in $Credentials.Identity)
-                {$CredentialIdentity}
+            $AdminProfile = Get-AdminUserProfile @GetAdminUserProfileParams
+            #Get/Select the System
+            $System = $(
+                if ($PSBoundParameters.ContainsKey('SystemIdentity'))
+                {
+                    if ($SystemIdentity -in $AdminProfile.systems.Identity)
+                    {$AdminProfile.systems | Where-Object -FilterScript {$_.Identity -eq $SystemIdentity}}
+                    else
+                    {throw("Invalid System Identity $SystemIdentity was provided. No such system exists in AdminProfile $ProfileIdentity.")}
+                }
                 else
                 {
-                    throw("Invalid Credential Identity $CredentialIdentity was provided. No such Credential exists for admin profiel $ProfileIdentity.")
+                    $Systems = Get-AdminUserProfileSystem -ProfileIdentity $ProfileIdentity -Path $Path -ErrorAction 'Stop'
+                    Select-ProfileSystem -Systems $Systems -Operation Edit | Select-Object -Property "Identity","AutoConnect","Credential","PreferredEndpoint","PreferredPrefix"
                 }
-            }
-            else
-            {
-                Select-AdminUserProfileCredential -Credentials $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
-            }
-        )
-        if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
-        $system.Credential = $SelectedCredentialIdentity
-        #Save the system changes to the Admin Profile
-        $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
-        Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
-    }#end End
-}
-#end function Set-AdminUserProfileSystemPreferredEndpoint
+            )
+            if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
+            #Get/Select the Credential
+            $Credentials = @(Get-AdminUserProfileCredential -ProfileIdentity $ProfileIdentity -ErrorAction 'Stop' -Path $path)
+            $SelectedCredentialIdentity = $(
+                if ($PsBoundParameters.ContainsKey('CredentialIdentity'))
+                {
+                    if ($CredentialIdentity -in $Credentials.Identity)
+                    {$CredentialIdentity}
+                    else
+                    {
+                        throw("Invalid Credential Identity $CredentialIdentity was provided. No such Credential exists for admin profiel $ProfileIdentity.")
+                    }
+                }
+                else
+                {
+                    Select-AdminUserProfileCredential -Credentials $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
+                }
+            )
+            if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
+            $system.Credential = $SelectedCredentialIdentity
+            #Save the system changes to the Admin Profile
+            $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
+            Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
+        }#end End
+    }
+#end function Set-AdminUserProfileSystemCredential
 function Update-AdminUserProfileTypeVersion
     {
         [cmdletbinding()]
@@ -2559,30 +2559,30 @@ function Select-OrgProfileSystemEndpoint
     }
 #end function Select-OrgProfileSystemEndpoint
 function Select-AdminUserProfileCredential
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        $Credentials
-        ,
-        [parameter(Mandatory)]
-        [ValidateSet('Remove','Edit','Associate')]
-        [string]$Operation
-    )
-    $message = "Select credential to $Operation"
-    $Choices = @(foreach ($i in $Credentials){"$($i.username):$($i.Identity)"})
-    $whichone = $(
-        switch ($host.Name -notlike 'Console*')
-        {
-            $true
-            {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-            $false
-            {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-        }
-    )
-    Write-Output -InputObject $Credentials[$whichone]
-}
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory)]
+            $Credentials
+            ,
+            [parameter(Mandatory)]
+            [ValidateSet('Remove','Edit','Associate')]
+            [string]$Operation
+        )
+        $message = "Select credential to $Operation"
+        $Choices = @(foreach ($i in $Credentials){"$($i.username):$($i.Identity)"})
+        $whichone = $(
+            switch ($host.Name -notlike 'Console*')
+            {
+                $true
+                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+                $false
+                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+            }
+        )
+        Write-Output -InputObject $Credentials[$whichone]
+    }
 #end function Select-AdminUserProfileCredential
 #################################################
 # Need to update
