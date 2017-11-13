@@ -1108,6 +1108,145 @@ function Remove-OrgProfileSystemEndpoint
             Export-OrgProfile -Path $Path -profile $OrgProfile -ErrorAction Stop
         }
     }
+#end function Remove-OrgProfileSystemEndpoint
+function Set-OrgProfileSystemEndpoint
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$Identity
+        ,
+        [parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$SystemIdentity
+        ,
+        [Parameter()]
+        [ValidateSet('URL','IPAddress','FQDN')]
+        [String]$AddressType
+        ,
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [String]$Address
+        ,
+        [Parameter()]
+        [AllowNull()]
+        [ValidatePattern("^\d{1,5}$")]
+        $ServicePort
+        ,
+        [parameter()]
+        [AllowNull()]
+        [ValidateSet($true,$false,$null)]
+        $IsDefault
+        ,
+        [parameter()]
+        [AllowNull()]
+        [ValidateSet($true,$false,$null)]
+        $UseTLS
+        ,
+        [parameter()]
+        [AllowNull()]
+        [validateSet($true,$false,$null)]
+        $ProxyEnabled = $false
+        ,
+        [parameter()]
+        [ValidateLength(2,5)]
+        $CommandPrefix
+        ,
+        [parameter()]
+        [AllowNull()]
+        [validateSet($true,$false,$null)]
+        $AuthenticationRequired
+        ,
+        [parameter()]
+        [ValidateSet('Basic','Kerberos','Integrated')]
+        $AuthMethod
+        ,
+        [parameter()]
+        $EndPointGroup
+        ,
+        [parameter()]
+        [ValidateSet('Admin','MRSProxyServer')]
+        [string]$EndPointType = 'Admin'
+        ,
+        [parameter()]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        [string]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+    )
+    DynamicParam
+    {
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+        $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+        $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+        $Dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1
+        $Dictionary = New-DynamicParameter -Name 'PreferredDomainControllers' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
+        Write-Output -InputObject $Dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        #Get the specified OrgProfile
+        $GetOrgProfileParams = @{
+            ErrorAction = 'Stop'
+            Identity = $profileIdentity
+            Path = $Path
+        }
+        $OrgProfile = Get-OrgProfile @GetOrgProfileParams
+        #Get/Select the System
+        $System = $(
+            if ($PSBoundParameters.ContainsKey('SystemIdentity'))
+            {
+                if ($SystemIdentity -in $OrgProfile.systems.Identity)
+                {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $SystemIdentity}}
+                else
+                {throw("Invalid SystemIdentity $SystemIdentity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
+            }
+            else
+            {
+                Select-OrgProfileSystem -Systems $OrgProfile.Systems -Operation Edit
+            }
+        )
+        if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
+        #Get/Select the Endpoint
+        $endPoint = $(
+            if ($PSBoundParameters.ContainsKey('Identity'))
+            {
+                if ($Identity -in $system.endpoints.Identity)
+                {$system.Endpoints | Where-Object -FilterScript {$_.Identity -eq $Identity}}
+                else
+                {throw("Invalid EndPoint Identity $Identity was provided.  No such endpoint exists for System $($system.identity).")}
+            }
+            else
+            {
+                Select-OrgProfileSystemEndpoint -Endpoints $System.EndPoints -Operation Edit
+            }
+        )
+        if ($null -eq $endPoint) {throw("No valid endpoint was selected.")}
+        #Set the new endpoint object attributes
+        $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+        foreach ($vp in $AllValuedParameters)
+        {
+            if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType')
+            {$endpoint.$($vp.name) = $($vp.value)}
+        }
+        #Add any servicetype specific attributes that were specified
+        switch ($endpoint.ServiceType)
+        {
+            'ExchangeOrganization'
+            {
+                if ($null -ne $preferredDomainControllers)
+                {
+                    $Endpoint.ServiceTypeAttributes.PreferredDomainControllers = $preferredDomainControllers
+                }
+            }
+        } #end switch
+        $System = update-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $endPoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
+        $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+        Export-OrgProfile -Path $Path -profile $OrgProfile -ErrorAction Stop
+    }#end End
+}
+#end function Remove-OrgProfileSystemEndpoint
 function Get-OrgProfileSystemEndpoint
     {
         [cmdletbinding()]
@@ -2443,5 +2582,5 @@ Function Initialize-AdminEnvironment
 #################################################
 # Need to add
 #################################################
-#Set functions for OrgProfile,OrgProfileSystemEndpoint,AdminUserProfileSystem
+#Set functions for OrgProfileSystemEndpoint,AdminUserProfileSystem
 #? Remove functions for OrgProfile, AdminProfile
