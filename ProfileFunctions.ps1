@@ -420,7 +420,8 @@ Function Get-OrgProfile
             #output the profiles
             write-output -InputObject $outputprofiles
         }#end End
-    }#Function Get-OrgProfile
+    }
+#end Function Get-OrgProfile
 function New-OrgProfile
     {
         [cmdletbinding()]
@@ -436,7 +437,54 @@ function New-OrgProfile
         $GenericOrgProfileObject.Name = $Name
         $GenericOrgProfileObject.IsDefault = $IsDefault
         Write-Output -InputObject $GenericOrgProfileObject
-    }#end function New-OrgProfile
+    }
+#end function New-OrgProfile
+Function Export-OrgProfile
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory=$true)]
+            $profile
+            ,
+            [parameter()]
+            [AllowNull()]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            $Path
+        )
+        $name = [string]$($profile.Identity.tostring()) + '.json'
+        if ($null -eq $Path)
+        {
+            Write-Verbose -Message "Using Default Profile Location"
+            $FilePath = Join-Path $script:OneShellOrgProfilePath[0] $name
+        }
+        else
+        {
+            $FilePath = Join-Path $Path $name
+        }
+        Write-Verbose -Message "Profile File Export Path is $FilePath"
+        $JSONparams=@{
+            InputObject = $profile
+            ErrorAction = 'Stop'
+            Depth = 6
+        }
+        $OutParams = @{
+            ErrorAction = 'Stop'
+            FilePath = $FilePath
+            Encoding = 'ascii'
+            Force = $true
+        }
+        try
+        {
+            ConvertTo-Json @JSONparams | Out-File @OutParams
+        }#end try
+        catch
+        {
+            $_
+            throw "FAILED: Could not write Org Profile data to $FilePath"
+        }#end catch
+    }
+#end Function Export-OrgProfile
 function New-OrgProfileSystem
     {
         [cmdletbinding()]
@@ -456,17 +504,21 @@ function New-OrgProfileSystem
             [bool]$isDefault
             ,
             [parameter()]
+            [bool]$ProxyEnabled
+            ,
+            [parameter()]
             [bool]$AuthenticationRequired
+            ,
+            [parameter()]
+            [bool]$UseTLS
+            ,
+            [parameter()]
+            [ValidateSet('Basic','Kerberos','Integrated')]
+            $AuthMethod
             ,
             [parameter()]
             [ValidateLength(2,5)]
             [string]$CommandPrefix
-            ,
-            [parameter()]
-            [bool]$ProxyEnabled
-            ,
-            [parameter()]
-            [bool]$UseTLS
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
@@ -523,13 +575,20 @@ function New-OrgProfileSystem
             #Build the System Object
             $GenericSystemObject = NewGenericOrgSystemObject
             $GenericSystemObject.ServiceType = $ServiceType
-            $GenericSystemObject.Name = $Name
-            if (-not [string]::IsNullOrWhiteSpace($Description)) {$GenericSystemObject.Description = $Description}
-            if ($isDefault -ne $null) {$GenericSystemObject.IsDefault = $isDefault}
-            if ($AuthenticationRequired -ne $null) {$GenericSystemObject.Defaults.AuthenticationRequired = $AuthenticationRequired}
-            if ($commandPrefix -ne $null) {$GenericSystemObject.Defaults.CommandPrefix = $CommandPrefix}
-            if ($ProxyEnabled -ne $null) {$GenericSystemObject.Defaults.ProxyEnabled = $ProxyEnabled}
-            if ($UseTLS -ne $null) {$GenericSystemObject.Defaults.UseTLS = $UseTLS}
+            #Edit the selected System
+            $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+            #Set the common System Attributes
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in 'Name','Description','IsDefault')
+                {$GenericSystemObject.$($vp.name) = $($vp.value)}
+            }
+            #set the default System Attributes
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in 'UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod')
+                {$GenericSystemObject.defaults.$($vp.name) = $($vp.value)}
+            }
             $addServiceTypeAttributesParams = @{
                 OrgSystemObject = $GenericSystemObject
                 ServiceType = $ServiceType
@@ -540,54 +599,118 @@ function New-OrgProfileSystem
             $OrgProfile.Systems += $GenericSystemObject
             Export-OrgProfile -profile $OrgProfile -Path $Path
         }
-    }#end function New-OrgSystemObject
-
-Function Export-OrgProfile
+    }
+#end function New-OrgSystemObject
+function Set-OrgProfileSystem
     {
         [cmdletbinding()]
         param
         (
-            [parameter(Mandatory=$true)]
-            $profile
+            [parameter()]
+            [ValidateNotNullOrEmpty()]
+            [string[]]$Identity #System Identity or Name
             ,
             [parameter()]
-            [AllowNull()]
+            [string]$Name
+            ,
+            [parameter()]
+            [string]$Description
+            ,
+            [parameter()]
+            [bool]$isDefault
+            ,
+            [parameter()]
+            [bool]$ProxyEnabled
+            ,
+            [parameter()]
+            [bool]$AuthenticationRequired
+            ,
+            [parameter()]
+            [bool]$UseTLS
+            ,
+            [parameter()]
+            [ValidateSet('Basic','Kerberos','Integrated')]
+            $AuthMethod
+            ,
+            [parameter()]
+            [ValidateLength(2,5)]
+            [string]$CommandPrefix
+            ,
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            $Path
-        )
-        $name = [string]$($profile.Identity.tostring()) + '.json'
-        if ($null -eq $Path)
+            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+        )#end param
+        DynamicParam
         {
-            Write-Verbose -Message "Using Default Profile Location"
-            $FilePath = Join-Path $script:OneShellOrgProfilePath[0] $name
-        }
-        else
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 
+            #build  service type specific parameters that may be needed
+            $Dictionary = New-DynamicParameter -Name 'ExchangeOrgType' -Type $([string]) -Mandatory:$false -ValidateSet 'OnPremises','Online','ComplianceCenter' -DPDictionary $dictionary
+            $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$false -DPDictionary $dictionary
+            $Dictionary = New-DynamicParameter -Name 'ADInstanceType' -Type $([string]) -Mandatory:$false -ValidateSet 'AD','ADLDS' -DPDictionary $dictionary
+            $Dictionary = New-DynamicParameter -Name 'GlobalCatalog' -Type $([bool]) -Mandatory:$false -ValidateSet $true,$false -DPDictionary $Dictionary
+            $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+            $Dictionary = New-DynamicParameter -Name 'ADGroupAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+            $Dictionary = New-DynamicParameter -Name 'ADContactAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
+            $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
+            $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$false -ValidateSet 'OnPremises','AzureSQL' -DPDictionary $dictionary
+            $Dictionary = New-DynamicParameter -Name 'Database' -Type $([string]) -Mandatory:$false -DPDictionary $Dictionary
+            Write-Output -InputObject $dictionary
+        }#End DynamicParam
+        End
         {
-            $FilePath = Join-Path $Path $name
+            Set-DynamicParameterVariable -dictionary $dictionary
+            #Get the Org Profile
+            $GetOrgProfileParams = @{
+                ErrorAction = 'Stop'
+                Identity = $ProfileIdentity
+                Path = $Path
+            }
+            $OrgProfile = $(Get-OrgProfile @GetOrgProfileParams)
+            #Get/Select the System
+            $System = $(
+                if ($PSBoundParameters.ContainsKey('Identity'))
+                {
+                    if ($Identity -in $OrgProfile.systems.Identity)
+                    {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity}}
+                    else
+                    {throw("Invalid SystemIdentity $Identity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
+                }
+                else
+                {
+                    Select-OrgProfileSystem -Systems $OrgProfile.Systems -Operation Edit
+                }
+            )
+            if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
+            #Edit the selected System
+            $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+            #Set the common System Attributes
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in 'Name','Description','IsDefault')
+                {$System.$($vp.name) = $($vp.value)}
+            }
+            #set the default System Attributes
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in 'UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod')
+                {$System.defaults.$($vp.name) = $($vp.value)}
+            }            
+            #Set the ServiceType Specific System Attributes
+            $ServiceTypeSpecificAttributeNames = @('ExchangeOrgType','TenantSubDomain','ADInstanceType','GlobalCatalog','ADUserAttributes','ADGroupAttributes','ADContactAttributes','SessionManagementGroups','SQLInstanceType','Database')
+            $SystemServiceTypeSpecificAttributeNames = $System.ServiceTypeAttributes | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in $ServiceTypeSpecificAttributeNames -and $vp.name -in $SystemServiceTypeSpecificAttributeNames)
+                {$System.ServiceTypeAttributes.$($vp.name) = $($vp.value)}
+            }
+            #update the system entry in the org profile
+            $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+            Export-OrgProfile -profile $OrgProfile -Path $Path
         }
-        Write-Verbose -Message "Profile File Export Path is $FilePath"
-        $JSONparams=@{
-            InputObject = $profile
-            ErrorAction = 'Stop'
-            Depth = 6
-        }
-        $OutParams = @{
-            ErrorAction = 'Stop'
-            FilePath = $FilePath
-            Encoding = 'ascii'
-            Force = $true
-        }
-        try
-        {
-            ConvertTo-Json @JSONparams | Out-File @OutParams
-        }#end try
-        catch
-        {
-            $_
-            throw "FAILED: Could not write Org Profile data to $FilePath"
-        }#end catch
-    }#Function Export-OrgProfile
-
+    }#end function New-OrgSystemObject
 Function Get-OrgProfileSystem
     {
         [cmdletbinding(DefaultParameterSetName = 'All')]
@@ -659,6 +782,7 @@ Function Get-OrgProfileSystem
             Write-Output -InputObject $OutputSystems
         }
     }
+#end function Get-OrgProfileSystem
 function New-OrgProfileSystemEndpoint
     {
         [cmdletbinding()]
