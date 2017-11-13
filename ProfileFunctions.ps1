@@ -1363,7 +1363,7 @@ function Get-OrgProfileSystemEndpoint
             Write-Output -InputObject $EndPoints
         }
     }
-
+#end function Get-OrgProfileSystemEndpoint
 Function Get-AdminUserProfile
     {
         [cmdletbinding(DefaultParameterSetName='All')]
@@ -1440,7 +1440,7 @@ Function Get-AdminUserProfile
 #end function Get-AdminUserProfile
 function New-AdminUserProfile
     {
-        [cmdletbinding(DefaultParameterSetName = 'OrgName')]
+        [cmdletbinding()]
         param
         (
             [Parameter(Mandatory)]
@@ -1462,6 +1462,10 @@ function New-AdminUserProfile
             [Parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
             [bool]$IsDefault #sets this profile as the default for the specified Organization
         )
@@ -1508,7 +1512,7 @@ function New-AdminUserProfile
                 if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','IsDefault','Credentials','Systems')
                 {$AdminUserProfile.$($p.key) = $p.value}
             }#end foreach
-            Write-Output -InputObject $AdminUserProfile
+            Export-AdminUserProfile -profile $AdminUserProfile -path $path -errorAction 'Stop'
         }#end End
     }
 #end function New-AdminUserProfile
