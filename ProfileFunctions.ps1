@@ -432,13 +432,75 @@ function New-OrgProfile
             ,
             [parameter(Mandatory)]
             [bool]$IsDefault
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
         )
         $GenericOrgProfileObject = NewGenericOrgProfileObject
         $GenericOrgProfileObject.Name = $Name
         $GenericOrgProfileObject.IsDefault = $IsDefault
-        Write-Output -InputObject $GenericOrgProfileObject
+        Export-OrgProfile -profile $GenericOrgProfileObject -path $path -erroraction Stop
     }
 #end function New-OrgProfile
+function Set-OrgProfile
+    {
+        [cmdletbinding(DefaultParameterSetName = 'Identity')]
+        param
+        (
+            [parameter(ParameterSetName = 'Object')]
+            [ValidateScript({$_.ProfileType -eq 'OneShellOrgProfile'})]
+            [psobject]$OrgProfile
+            ,
+            [parameter()]
+            [ValidateNotNullOrEmpty()]
+            [string]$Name
+            ,
+            [parameter()]
+            [bool]$IsDefault
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+        )
+        DynamicParam
+        {
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'Identity'
+            Write-Output -InputObject $dictionary
+        }
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            switch ($PSCmdlet.ParameterSetName)
+            {
+                'Identity'
+                {
+                    #Get the Org Profile
+                    $GetOrgProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Identity = $Identity
+                        Path = $Path
+                    }
+                    $OrgProfile = $(Get-OrgProfile @GetOrgProfileParams)
+                }
+                'Object'
+                {
+                }
+            }#end Switch
+            foreach ($p in $PSBoundParameters.GetEnumerator())
+            {
+                if ($p.key -in 'Name','IsDefault')
+                {
+                    $OrgProfile.$($p.key) = $p.value
+                }
+            }
+            Export-OrgProfile -profile $OrgProfile -Path $Path -ErrorAction 'Stop'
+        }
+    }
+#end function Set-OrgProfile
 Function Export-OrgProfile
     {
         [cmdletbinding()]
@@ -564,8 +626,8 @@ function New-OrgProfileSystem
         }#End DynamicParam
         End
         {
-            #Get the Org Profile
             Set-DynamicParameterVariable -dictionary $dictionary
+            #Get the Org Profile
             $GetOrgProfileParams = @{
                 ErrorAction = 'Stop'
                 Identity = $ProfileIdentity
@@ -710,7 +772,8 @@ function Set-OrgProfileSystem
             $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
             Export-OrgProfile -profile $OrgProfile -Path $Path
         }
-    }#end function New-OrgSystemObject
+    }
+#end function Set-OrgSystemObject
 Function Get-OrgProfileSystem
     {
         [cmdletbinding(DefaultParameterSetName = 'All')]
@@ -784,57 +847,57 @@ Function Get-OrgProfileSystem
     }
 #end function Get-OrgProfileSystem
 Function Remove-OrgProfileSystem
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string[]]$Identity #System Identity or Name
-        ,
-        [parameter()]
-        [ValidateScript({Test-DirectoryPath -path $_})]
-        [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
-    )
-    DynamicParam
     {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
-        $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-        $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
-        Write-Output -InputObject $dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
-        #Get the Org Profile
-        $GetOrgProfileParams = @{
-            ErrorAction = 'Stop'
-            Identity = $ProfileIdentity
-            Path = $Path
-        }
-        $OrgProfile = $(Get-OrgProfile @GetOrgProfileParams)
-        #Get/Select the System
-        $System = $(
-            if ($PSBoundParameters.ContainsKey('Identity'))
-            {
-                if ($Identity -in $OrgProfile.systems.Identity)
-                {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity}}
-                else
-                {throw("Invalid SystemIdentity $Identity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
-            }
-            else
-            {
-                Select-OrgProfileSystem -Systems $OrgProfile.Systems -Operation Remove
-            }
+        [cmdletbinding()]
+        param
+        (
+            [parameter()]
+            [ValidateNotNullOrEmpty()]
+            [string[]]$Identity #System Identity or Name
+            ,
+            [parameter()]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
         )
-        if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
-        #Remove the system from the Org Profile
-        $OrgProfile = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-        Export-OrgProfile -profile $OrgProfile -Path $path -ErrorAction Stop
+        DynamicParam
+        {
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
+            Write-Output -InputObject $dictionary
+        }
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            #Get the Org Profile
+            $GetOrgProfileParams = @{
+                ErrorAction = 'Stop'
+                Identity = $ProfileIdentity
+                Path = $Path
+            }
+            $OrgProfile = $(Get-OrgProfile @GetOrgProfileParams)
+            #Get/Select the System
+            $System = $(
+                if ($PSBoundParameters.ContainsKey('Identity'))
+                {
+                    if ($Identity -in $OrgProfile.systems.Identity)
+                    {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity}}
+                    else
+                    {throw("Invalid SystemIdentity $Identity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
+                }
+                else
+                {
+                    Select-OrgProfileSystem -Systems $OrgProfile.Systems -Operation Remove
+                }
+            )
+            if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
+            #Remove the system from the Org Profile
+            $OrgProfile = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+            Export-OrgProfile -profile $OrgProfile -Path $path -ErrorAction Stop
+        }
     }
-}
-#end function Get-OrgProfileSystem
+#end function Remove-OrgProfileSystem
 function New-OrgProfileSystemEndpoint
     {
         [cmdletbinding()]
@@ -2381,4 +2444,4 @@ Function Initialize-AdminEnvironment
 # Need to add
 #################################################
 #Set functions for OrgProfile,OrgProfileSystemEndpoint,AdminUserProfileSystem
-#? Remove functions for OrgProfile, AdminProfile, OrgProfileSystem
+#? Remove functions for OrgProfile, AdminProfile
