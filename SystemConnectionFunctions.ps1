@@ -1994,3 +1994,260 @@ Function Get-MCTLSourceData
   }
   catch{}
 }
+Function Initialize-AdminEnvironment
+{
+    [cmdletbinding(defaultparametersetname = 'AutoConnect')]
+    param(
+        [parameter(ParameterSetName = 'AutoConnect')]
+        [switch]$AutoConnect
+        ,
+        [parameter(ParameterSetName = 'ShowMenu')]
+        [switch]$ShowMenu
+        ,
+        [parameter(ParameterSetName = 'SpecifiedProfile',Mandatory)]
+        $OrgProfileIdentity
+        ,
+        [parameter(ParameterSetName = 'SpecifiedProfile',Mandatory)]
+        $AdminUserProfileIdentity
+        ,
+        [parameter()]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        [string[]]$OrgProfilePath
+        ,
+        [parameter()]
+        [ValidateScript({Test-DirectoryPath -path $_})]
+        [string[]]$AdminProfilePath
+        ,
+        [switch]$NoConnections
+    )
+    Process
+    {
+        $GetOrgProfileParams = @{
+        ErrorAction = 'Stop'
+        }
+        $GetAdminUserProfileParams = @{
+        ErrorAction = 'Stop'
+        }
+        if ($PSBoundParameters.ContainsKey('OrgProfilePath'))
+        {
+        $GetOrgProfileParams.Path = $OrgProfilePath
+        }
+        if ($PSBoundParameters.ContainsKey('AdminProfilePath'))
+        {
+        $GetAdminUserProfileParams.Path = $AdminProfilePath
+        }
+        Switch ($PSCmdlet.ParameterSetName)
+        {
+        'AutoConnect'
+        {
+            $DefaultOrgProfile = Get-OrgProfile @GetOrgProfileParams -GetDefault
+            [bool]$OrgProfileLoaded = Use-OrgProfile -Profile $DefaultOrgProfile -ErrorAction Stop
+            if ($OrgProfileLoaded)
+            {
+                $DefaultAdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams -GetDefault
+                $message = "Admin user profile has been set to Name:$($DefaultAdminUserProfile.General.Name), Identity:$($DefaultAdminUserProfile.Identity)."
+                Write-Log -Message $message -Verbose -ErrorAction SilentlyContinue -EntryType Notification
+                [bool]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $DefaultAdminUserProfile
+                if ($AdminUserProfileLoaded)
+                {
+                    if ($NoConnections)
+                    {}
+                    else
+                    {
+                        Write-Log -Message 'Running Connect-RemoteSystems' -EntryType Notification
+                        Connect-RemoteSystems
+                    }
+                }#if
+            }#If $OrgProfileLoaded
+        }#AutoConnect
+        'ShowMenu'
+        {
+            #Getting Organization Profile(s)
+            try
+            {
+                $Message = 'Getting Organization Profile(s)'
+                Write-Log -Message $message -EntryType Attempting
+                $OrgProfiles = Get-OrgProfile @GetOrgProfileParams
+                Write-Log -Message $message -EntryType Succeeded
+                if ($OrgProfiles.Count -eq 0) {
+                    throw "No OrgProfile(s) found in the specified location(s) $($OrgProfilePath -join ';')"
+                }
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            #Get the User Organization Profile Choice
+            try
+            {
+                $message = 'Get the User Organization Profile Choice'
+                Write-Log -Message $message -EntryType Attempting 
+                $Choices = @($OrgProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+                $UserChoice = Read-Choice -Title 'Select OrgProfile' -Message 'Select an organization profile to load:' -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+                $OrgProfile = $OrgProfiles[$UserChoice]
+                Use-OrgProfile -profile $OrgProfile -ErrorAction Stop  > $null
+                Write-Log -Message $message -EntryType Succeeded
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            #Get Admin User Profiles for Current Org Profile
+            Try
+            {
+                $message = 'Get Admin User Profiles for Current Org Profile'
+                Write-Log -Message $message -EntryType Attempting
+                $AdminUserProfiles = @(Get-AdminUserProfile @GetAdminUserProfileParams -OrgIdentity $OrgProfile.Identity)
+                Write-Log -Message $message -EntryType Succeeded
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            #Get the User Admin User Profile Choice OR Create a new Admin User Profile if none exists
+            Try
+            {
+                switch ($AdminUserProfiles.Count) 
+                {
+                    {$_ -ge 1}
+                    {
+                        $message = 'Get the User Admin User Profile Choice'
+                        Write-Log -Message $message -EntryType Attempting
+                        $Choices = @($AdminUserProfiles | ForEach-Object {"$($_.General.Name)`r`n$($_.Identity)"})
+                        $UserChoice = Read-Choice -Title 'Select AdminUserProfile' -Message 'Select an Admin User Profile to load:' -Choices $Choices -DefaultChoice -1 -Vertical -ErrorAction Stop
+                        $AdminUserProfile = $AdminUserProfiles[$UserChoice]
+                        Write-Log -Message $message -EntryType Succeeded
+                    }
+                    {$_ -lt 1}
+                    {
+                        $ShouldCreateNewProfile = Read-Choice -Title 'Create new profile?' -Message "No Admin User profile exists for the following Org Profile:`r`nIdentity:$($OrgProfile.Identity)`r`nName$($OrgProfile.General.Name)" -Choices 'Yes','No' -ReturnChoice
+                        switch ($ShouldCreateNewProfile)
+                        {
+                            'Yes'
+                            {$AdminUserProfile = New-AdminUserProfile -OrganizationIdentity $CurrentOrgProfile.Identity}
+                            'No'
+                            {throw "No Admin User Profile exists for auto connection to Org Profile with Identity $($OrgProfile.Identity) and Name $($OrgProfile.General.Name)"}
+                        }
+                    }
+                }#Switch
+            }#Try
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            #Load/"Use" User Selected Admin User Profile
+            Try
+            {
+                $message = 'Load User Selected Admin User Profile'
+                Write-Log -Message $message -EntryType Attempting
+                [bool]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            if ($AdminUserProfileLoaded)
+            {
+                    if ($NoConnections)
+                    {}
+                    else
+                    {
+                        Write-Log -Message 'Running Connect-RemoteSystems' -EntryType Notification
+                        Connect-RemoteSystems
+                    }
+            }
+        }
+        'SpecifiedProfile'
+        {
+            #Getting Organization Profile(s)
+            try
+            {
+                $GetOrgProfileParams.Identity = $OrgProfileIdentity
+                $Message = 'Getting Organization Profile'
+                Write-Log -Message $message -EntryType Attempting
+                $OrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
+                Write-Log -Message $message -EntryType Succeeded
+                switch ($OrgProfile.Count)
+                {
+                    0
+                    {throw "No OrgProfile(s) found in the specified location(s) $($OrgProfilePath -join ';')"}
+                    1
+                    {
+                        $OrgProfile = $OrgProfile[0]
+                        Use-OrgProfile -profile $OrgProfile -ErrorAction Stop  > $null
+                    }
+                    Default
+                    {throw "Multiple OrgProfile(s) with Identity $OrgProfileIdentity found in the specified location(s) $($OrgProfilePath -join ';')"}
+                }
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            #Get Admin User Profile
+            Try
+            {
+                $GetAdminUserProfileParams.Identity = $AdminUserProfileIdentity
+                $message = 'Get Admin User Profile specified for Current Org Profile'
+                Write-Log -Message $message -EntryType Attempting
+                $AdminUserProfile = @(Get-AdminUserProfile @GetAdminUserProfileParams -OrgIdentity $OrgProfile.Identity)
+                Write-Log -Message $message -EntryType Succeeded
+                switch ($AdminUserProfile.Count)
+                {
+                    0
+                    {throw "No AdminUserProfile(s) found in the specified location(s) $($AdminProfilePath -join ';')"}
+                    1
+                    {
+                        $AdminUserProfile = $AdminUserProfile[0]
+                    }
+                    Default
+                    {throw "Multiple OrgProfile(s) with Identity $OrgProfileIdentity found in the specified location(s) $($OrgProfilePath -join ';')"}
+                }
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            #Load/"Use" User Selected Admin User Profile
+            Try
+            {
+                $message = 'Load User Selected Admin User Profile'
+                Write-Log -Message $message -EntryType Attempting
+                [bool]$AdminUserProfileLoaded = Use-AdminUserProfile -AdminUserProfile $AdminUserProfile -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+            }
+            catch
+            {
+                $myError = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                $PSCmdlet.ThrowTerminatingError($myError)
+            }
+            if ($AdminUserProfileLoaded)
+            {
+                    if ($NoConnections)
+                    {}
+                    else
+                    {
+                        Write-Log -Message 'Running Connect-RemoteSystems' -EntryType Notification
+                        Connect-RemoteSystems
+                    }
+            }
+        }
+        }#Switch
+    }#Process
+}
