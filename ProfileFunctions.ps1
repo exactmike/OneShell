@@ -77,7 +77,7 @@ function NewGenericOrgSystemObject
             RequiredModule = @()
             Defaults = [PSCustomObject]@{
                 ProxyEnabled = $null
-                AuthenticationRequired = $null
+                AuthenticationRequired = $true
                 UseTLS = $null
                 AuthMethod = $null
                 CommandPrefix = $null
@@ -781,7 +781,7 @@ function Set-OrgProfileSystem
                 if ($PSBoundParameters.ContainsKey('Identity'))
                 {
                     if ($Identity -in $OrgProfile.systems.Identity)
-                    {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity}}
+                    {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Name -eq $Identity}}
                     else
                     {throw("Invalid SystemIdentity $Identity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
                 }
