@@ -1860,10 +1860,11 @@ Function Set-AdminUserProfileSystem
             [String]$Credential
             ,
             [parameter()]
-            [ValidateLength(2,5)]
+            [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
             [string]$PreferredPrefix
             ,
             [parameter()]
+            [allowNull()]
             [string]$PreferredEndpoint
             ,        
             [parameter()]
@@ -1916,7 +1917,7 @@ Function Set-AdminUserProfileSystem
                 {$_.key -eq 'PreferredEndpoint'}
                 {
                     $Endpoints = Get-OrgProfileSystemEndpoint -Identity $PreferredEndpoint -SystemIdentity $system.Identity -ProfileIdentity $AdminProfile.Organization.Identity -Path $OrgProfilePath -ErrorAction 'Stop'
-                    if ($_.value -in $Endpoints.Identity)
+                    if ($_.value -in $Endpoints.Identity -or $null -eq $_.value)
                     {
                         $System.PreferredEndpoint = $PreferredEndpoint
                     }
