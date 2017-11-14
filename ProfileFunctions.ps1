@@ -780,7 +780,7 @@ function Set-OrgProfileSystem
             $System = $(
                 if ($PSBoundParameters.ContainsKey('Identity'))
                 {
-                    if ($Identity -in $OrgProfile.systems.Identity)
+                    if ($Identity -in $OrgProfile.systems.Identity -or $Identity -in $OrgProfile.systems.Name)
                     {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Name -eq $Identity}}
                     else
                     {throw("Invalid SystemIdentity $Identity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
