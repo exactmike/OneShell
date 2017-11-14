@@ -1,6 +1,201 @@
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
+function Find-EndPointToUse
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter()]
+            [AllowNull()]
+            $EndPointIdentity
+            ,
+            $ServiceObject
+        )
+        if ($null -eq $EndPointIdentity)
+        {
+            if ($null -eq $ServiceObject.PreferredEndpoint)
+            {
+                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.isDefault -eq $true} | Select-Object -First 1
+            }
+            else
+            {
+                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.Identity -eq $ServiceObject.PreferredEndpoint}
+            }
+        }
+        else
+        {
+            if ($EndPointIdentity -notin $ServiceObject.EndPoints.Identity)
+            {throw("Invalid EndPoint Identity $EndPointIdentity was specified. System $($ServiceObject.Identity) has no such endpoint.")}
+            else
+            {
+                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.Identity -eq $EndPointIdentity}
+            }
+        }
+    }
+#end function Find-EndPointToUse
+function Find-ExchangeOnlineEndpointToUse
+    {
+        [cmdletbinding()]
+        param
+        (
+            $ServiceObject
+        )
+        [PSCustomObject]@{
+            Identity = (New-Guid).guid
+            AddressType = 'URL'
+            Address = 'https://outlook.office365.com/powershell-liveid/'
+            ServicePort = $null
+            IsDefault = $true
+            UseTLS = $false
+            ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
+            CommandPrefix = $ServiceObject.Defaults.CommandPrefix
+            AuthenticationRequired = $true
+            AuthMethod = 'Basic'
+            EndPointGroup = $null
+            EndPointType = 'Admin'
+            ServiceTypeAttributes = $null
+            ServiceType = 'ExchangeOrganization'
+            AllowRedirection = $true
+        }
+    }
+#end function Find-ExchangeOnlineEndpointToUse
+function Find-ComplianceCenterEndpointToUse
+    {
+        [cmdletbinding()]
+        param
+        (
+            $ServiceObject
+        )
+        [PSCustomObject]@{
+            Identity = (New-Guid).guid
+            AddressType = 'URL'
+            Address = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
+            ServicePort = $null
+            IsDefault = $true
+            UseTLS = $false
+            ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
+            CommandPrefix = $ServiceObject.Defaults.CommandPrefix
+            AuthenticationRequired = $true
+            AuthMethod = 'Basic'
+            EndPointGroup = $null
+            EndPointType = 'Admin'
+            ServiceTypeAttributes = $null
+            ServiceType = 'ExchangeOrganization'
+            AllowRedirection = $true
+        }
+    }
+#end function Find-ComplianceCenterEndpointToUse
+function Get-OneShellAvailableSystem
+    {
+        [cmdletbinding()]
+        param
+        (
+        )
+        DynamicParam
+        {
+            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgservicetypes) -Type $([string[]]) -Mandatory $false
+            Write-Output -InputObject $dictionary
+        }
+        end
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            if ($null -eq $script:CurrentOrgProfile)
+            {throw('No OneShell Organization profile is active.  Use function Use-OrgProfile to load an organization profile.')}
+            if ($null -eq $script:CurrentAdminUserProfile)
+            {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
+            Write-Verbose -Message "ServiceType is set to $($serviceType -join ',')"
+            (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
+            Where-object -FilterScript {$null -eq $ServiceType -or $_.ServiceType -in $ServiceType}
+        }
+    }
+#end function Get-OneShellAvailableSystem
+function New-ExchangeOrganizationDynamicParameter
+    {
+        [cmdletbinding()]
+        param
+        (
+            [switch]$Mandatory
+            ,
+            [int]$Position
+            ,
+            [string]$ParameterSetName
+            ,
+            [switch]$Multivalued
+        )
+        $NewDynamicParameterParams=@{
+            Name = 'ExchangeOrganization'
+            ValidateSet = @(Get-OneShellAvailableSystem -ServiceType ExchangeOrganization | Select-Object -ExpandProperty Name)
+            Alias = @('Org','ExchangeOrg')
+        }
+        if ($PSBoundParameters.ContainsKey('Mandatory'))
+        {
+            $NewDynamicParameterParams.Mandatory = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Multivalued'))
+        {
+            $NewDynamicParameterParams.Type = [string[]]
+        }
+        if ($PSBoundParameters.ContainsKey('Position'))
+        {
+            $NewDynamicParameterParams.Position = $Position
+        }
+        if ($PSBoundParameters.ContainsKey('ParameterSetName'))
+        {
+            $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
+        }
+        New-DynamicParameter @NewDynamicParameterParams
+    }
+#end function New-ExchangeOrganizationDynamicParameter
+Function Connect-Exchange
+{
+    [cmdletbinding()]
+    Param
+    (
+        [parameter()]
+        [ValidateNotNullOrEmpty()]
+        $EndPointIdentity #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
+        ,
+        [parameter()]
+        [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
+        [string]$CommandPrefix #Overrides the otherwise specified command prefix.
+    )
+    DynamicParam
+    {
+        $Dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory $true
+        Write-Output -InputObject $dictionary
+    }#DynamicParam
+    end
+    {
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        $ServiceObject = Get-OneShellAvailableSystem -ServiceType ExchangeOrganization | Where-Object -FilterScript {$_.name -eq $ExchangeOrganization}
+        Write-Verbose -Message "Selecting an Endpoint"
+        $EndPoint = $(
+            switch ($ServiceObject.ServiceTypeAttributes.ExchangeOrgType)
+            {
+                'OnPremises'
+                {
+                    Find-EndPointToUse -EndPointIdentity $EndPointIdentity -ServiceObject $ServiceObject -ErrorAction Stop
+                }
+                'Online'
+                {
+                    Find-ExchangeOnlineEndpointToUse -ServiceObject $ServiceObject -ErrorAction Stop
+                }
+                'ComplianceCenter'
+                {
+                    Find-ComplianceCenterEndpointToUse -ServiceObject $ServiceObject -ErrorAction Stop
+                }
+            }
+        )
+        #Test for an existing connection
+            #if the connection is opened, test for functionality
+            #if not remove
+            #if functional leave as is
+            #if not remove
+        #
+        
+    }#end End
+}#function Connect-Exchange
 Function Import-RequiredModule
 {
   [cmdletbinding()]
@@ -48,260 +243,7 @@ Function Import-RequiredModule
     Write-Output -InputObject $true
   }
 }# Function Import-RequiredModule
-Function Connect-Exchange
-{
-    [cmdletbinding(DefaultParameterSetName = 'Organization')]
-    Param(
-        [parameter(ParameterSetName='OnPremises')]
-        [string]$Server
-        ,
-        [parameter(ParameterSetName='OnPremises')]
-        [ValidateSet('Basic','Kerberos','Negotiate','Default','CredSSP','Digest','NegotiateWithImplicitCredential')]
-        [string]$AuthMethod
-        ,
-        [parameter(ParameterSetName='ComplianceCenter')]
-        [parameter(ParameterSetName='OnPremises')]
-        [parameter(ParameterSetName='Online')]
-        $Credential
-        ,
-        [parameter(ParameterSetName='ComplianceCenter')]
-        [parameter(ParameterSetName='OnPremises')]
-        [parameter(ParameterSetName='Online')]
-        [string]$CommandPrefix
-        ,
-        [parameter(ParameterSetName='ComplianceCenter')]
-        [parameter(ParameterSetName='OnPremises')]
-        [parameter(ParameterSetName='Online')]
-        [string]$SessionNamePrefix
-        ,
-        [parameter(ParameterSetName='Online')]
-        [switch]$online
-        ,
-        [parameter(ParameterSetName='ComplianceCenter')]
-        [switch]$ComplianceCenter
-        ,
-        [parameter(ParameterSetName='ComplianceCenter')]
-        [parameter(ParameterSetName='OnPremises')]
-        [parameter(ParameterSetName='Online')]
-        [bool]$ProxyEnabled = $False
-        ,
-        [parameter(ParameterSetName='OnPremises')]
-        [string[]]$PreferredDomainControllers
-        <#    ,
-            [parameter(ParameterSetName='Organization')]
-        [switch]$Profile#>
-    )
-    DynamicParam {
-        $Dictionary = New-ExchangeOrganizationDynamicParameter -ParameterSetName 'Organization' -Mandatory
-        Write-Output -InputObject $dictionary
-    }#DynamicParam
-    Begin {
-        #Dynamic Parameter to Variable Binding
-        Set-DynamicParameterVariable -dictionary $Dictionary
-        switch ($PSCmdlet.ParameterSetName) {
-            'Organization' 
-            {
-                $Org = $ExchangeOrganization
-                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
-                $orgtype = $orgobj.orgtype
-                $credential = $orgobj.credential
-                $orgName = $orgobj.Name
-                $CommandPrefix = $orgobj.CommandPrefix
-                $Server =  $orgobj.Server
-                $AuthMethod = $orgobj.authmethod
-                $ProxyEnabled = $orgobj.ProxyEnabled
-                $SessionName = $orgobj.Identity
-                $PreferredDomainControllers = if (-not [string]::IsNullOrWhiteSpace($orgobj.PreferredDomainControllers)) {@($orgobj.PreferredDomainControllers)} else {$null}
-            }
-            'Online'
-            {
-                $orgtype = $PSCmdlet.ParameterSetName
-                $SessionName = "$SessionNamePrefix-Exchange"
-                $orgName = $SessionNamePrefix
-            }
-            'OnPremises'
-            {
-                $orgtype = $PSCmdlet.ParameterSetName
-                $SessionName = "$SessionNamePrefix-Exchange"
-                $orgName = $SessionNamePrefix
-            }
-            'ComplianceCenter'
-            {
-                $orgtype = $PSCmdlet.ParameterSetName
-                $SessionName = "$SessionNamePrefix-Exchange"
-                $orgName = $SessionNamePrefix
-            }
-        }
-        $ProcessStatus = @{
-            Command = $MyInvocation.MyCommand.Name
-            BoundParameters = $MyInvocation.BoundParameters
-            Outcome = $null
-        }
-    }
-    Process {
-        try {
-            $existingsession = Get-PSSession -Name $SessionName -ErrorAction Stop
-            #Write-Log -Message "Existing session for $SessionName exists"
-            #Write-Log -Message "Checking $SessionName State" 
-            if ($existingsession.State -ne 'Opened') {
-                Write-Log -Message "Existing session for $SessionName exists but is not in state 'Opened'"
-                Remove-PSSession -Name $SessionName 
-                $UseExistingSession = $False
-            }#if
-            else {
-                #Write-Log -Message "$SessionName State is 'Opened'. Using existing Session." 
-                switch ($orgtype){
-                    'OnPremises'
-                    {
-                        try
-                        {
-                            $Global:ErrorActionPreference = 'Stop'
-                            $InvokeExchangeCommandParams = @{
-                                Cmdlet = 'Set-ADServerSettings'
-                                ExchangeOrganization = $orgName
-                                ErrorAction = 'Stop'
-                                WarningAction = 'SilentlyContinue'
-                                splat = @{
-                                    ViewEntireForest = $true
-                                    ErrorAction = 'Stop'
-                                    WarningAction = 'SilentlyContinue'
-                                }
-                            }
-                            Invoke-ExchangeCommand @InvokeExchangeCommandParams
-                            $Global:ErrorActionPreference = 'Continue'
-                            $UseExistingSession = $true
-                        }#try
-                        catch
-                        {
-                            $Global:ErrorActionPreference = 'Continue'
-                            Remove-PSSession -Name $SessionName
-                            $UseExistingSession = $false
-                        }#catch
-                    }#OnPremises
-                    'Online'
-                    {
-                        try
-                        {
-                            $splat = @{Identity = $Credential.UserName;ErrorAction = 'Stop'}
-                            $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat -ErrorAction Stop > $null
-                            $Global:ErrorActionPreference = 'Continue'
-                            $UseExistingSession = $true
-                        }#try
-                        catch
-                        {
-                            $Global:ErrorActionPreference = 'Continue'
-                            Remove-PSSession -Name $SessionName
-                            $UseExistingSession = $false
-                        }#catch
-                    }#Online
-                    'ComplianceCenter'
-                    {
-                        try
-                        {
-                            $splat = @{Identity = $Credential.UserName;ErrorAction = 'Stop'}
-                            $Global:ErrorActionPreference = 'Stop'
-                            Invoke-ExchangeCommand -cmdlet Get-User -ExchangeOrganization $orgName -splat $splat -ErrorAction Stop > $null
-                            $Global:ErrorActionPreference = 'Continue'
-                            $UseExistingSession = $true
-                        }#try
-                        catch
-                        {
-                            $Global:ErrorActionPreference = 'Continue'
-                            Remove-PSSession -Name $SessionName
-                            $UseExistingSession = $false
-                        }#catch
-                    }#ComplianceCenter
-                }#switch $orgtype
-            }#else
-        }#try
-        catch {
-            Write-Log -Message "No existing session for $SessionName exists" 
-            $UseExistingSession = $false
-        }#catch
-        switch ($UseExistingSession) {
-            $true
-            {
-                Write-Output -InputObject $true
-            }#$true
-            $false {
-                $sessionParams = @{
-                    ConfigurationName = 'Microsoft.Exchange'
-                    Credential = $Credential
-                    Name = $SessionName
-                }
-                switch ($orgtype) {
-                    'Online' {
-                        $sessionParams.ConnectionURI = 'https://outlook.office365.com/powershell-liveid/'
-                        $sessionParams.Authentication = 'Basic'
-                        $sessionParams.AllowRedirection = $true
-                        If ($ProxyEnabled) {
-                            $sessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig -ProxyAuthentication basic
-                            Write-Log -message 'Using Proxy Configuration'
-                        }
-                    }
-                    'ComplianceCenter' {
-                        $sessionParams.ConnectionURI = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
-                        $sessionParams.Authentication = 'Basic'
-                        $sessionParams.AllowRedirection = $true
-                        If ($ProxyEnabled) {
-                            $sessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig -ProxyAuthentication basic
-                            Write-Log -message 'Using Proxy Configuration'
-                        }
-                    }
-                    'OnPremises' {
-                        #add option for https + Basic Auth    
-                        $sessionParams.ConnectionURI = 'http://' + $Server + '/PowerShell/'
-                        $sessionParams.Authentication = $AuthMethod
-                        if ($ProxyEnabled) {
-                            $sessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig -ProxyAuthentication basic
-                            Write-Log -message 'Using Proxy Configuration'
-                        }
-                    }
-                }
-                try {
-                    Write-Log -Message "Attempting: Creation of Remote Session $SessionName to Exchange System $orgName"
-                    $Session = New-PSSession @sessionParams -ErrorAction Stop
-                    Write-Log -Message "Succeeded: Creation of Remote Session to Exchange System $orgName"
-                    Write-Log -Message "Attempting: Import Exchange Session $SessionName and Module" 
-                    $ImportPSSessionParams = @{
-                        AllowClobber = $true
-                        DisableNameChecking = $true
-                        ErrorAction = 'Stop'
-                        Session = $Session
-                    }
-                    $ImportModuleParams = @{
-                        DisableNameChecking = $true
-                        ErrorAction = 'Stop'
-                        Global = $true
-                    }
-                    if (-not [string]::IsNullOrWhiteSpace($CommandPrefix)) {
-                        $ImportPSSessionParams.Prefix = $CommandPrefix
-                        $ImportModuleParams.Prefix = $CommandPrefix
-                    }
-                    Import-Module (Import-PSSession @ImportPSSessionParams) @ImportModuleParams
-                    Write-Log -Message "Succeeded: Import Exchange Session $SessionName and Module" 
-                    if ($orgtype -eq 'OnPremises') {
-                        if ($PreferredDomainControllers.Count -ge 1) {
-                            $splat=@{ViewEntireForest=$true;SetPreferredDomainControllers=$PreferredDomainControllers;ErrorAction='Stop'}
-                        }#if
-                        else {
-                            $splat=@{ViewEntireForest=$true;ErrorAction='Stop'}
-                        }#else    
-                        Invoke-ExchangeCommand -cmdlet Set-ADServerSettings -ExchangeOrganization $orgName -splat $splat
-                    }#if
-                    Write-Output -InputObject $true
-                    Write-Log -Message "Succeeded: Connect to Exchange System $orgName"
-                }#try
-                catch {
-                    Write-Log -Message "Failed: Connect to Exchange System $orgName" -Verbose -ErrorLog
-                    Write-Log -Message $_.tostring() -ErrorLog
-                    Write-Output -InputObject $False
-                }#catch
-            }#$false
-        }#switch
-    }#process
-}#function Connect-Exchange
+
 Function Connect-Skype {
     [cmdletbinding(DefaultParameterSetName = 'Organization')]
     Param(
@@ -1865,41 +1807,7 @@ function Invoke-SkypeCommand {
 
     }#Process
 }#Function Invoke-SkypeCommand
-function New-ExchangeOrganizationDynamicParameter
-{
-[cmdletbinding()]
-param(
-[switch]$Mandatory
-,
-[int]$Position
-,
-[string]$ParameterSetName
-,
-[switch]$Multivalued
-)
-        $NewDynamicParameterParams=@{
-            Name = 'ExchangeOrganization'
-            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
-            Alias = @('Org','ExchangeOrg')
-        }
-        if ($PSBoundParameters.ContainsKey('Mandatory'))
-        {
-            $NewDynamicParameterParams.Mandatory = $true
-        }
-        if ($PSBoundParameters.ContainsKey('Multivalued'))
-        {
-            $NewDynamicParameterParams.Type = [string[]]
-        }
-        if ($PSBoundParameters.ContainsKey('Position'))
-        {
-            $NewDynamicParameterParams.Position = $Position
-        }
-        if ($PSBoundParameters.ContainsKey('ParameterSetName'))
-        {
-            $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
-        }
-        New-DynamicParameter @NewDynamicParameterParams
-}
+
 function Export-FunctionToPSSession
 {
   [cmdletbinding()]
