@@ -1023,7 +1023,6 @@ function New-OrgProfileSystemEndpoint
                 }
             }
             Write-Output -InputObject $dictionary
-
         }#End DynamicParam
         End
         {
@@ -1339,7 +1338,7 @@ function Get-OrgProfileSystemEndpoint
                 }
                 else
                 {
-                    Select-ProfileSystem -Systems $OrgProfile.Systems -Operation Edit
+                    Select-ProfileSystem -Systems $OrgProfile.Systems -Operation Get
                 }
             )
             if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
@@ -2517,7 +2516,7 @@ function Select-ProfileSystem
             $Systems
             ,
             [parameter(Mandatory)]
-            [ValidateSet('Remove','Edit')]
+            [ValidateSet('Remove','Edit','Get')]
             [string]$Operation
         )
         $message = "Select system to $Operation"
