@@ -94,7 +94,7 @@ function Get-OneShellAvailableSystem
         )
         DynamicParam
         {
-            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgservicetypes) -Type $([string[]]) -Mandatory $false
+            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgprofilesystemservicetypes) -Type $([string[]]) -Mandatory $false
             Write-Output -InputObject $dictionary
         }
         end
@@ -125,7 +125,7 @@ function New-ExchangeOrganizationDynamicParameter
         )
         $NewDynamicParameterParams=@{
             Name = 'ExchangeOrganization'
-            ValidateSet = @(Get-OneShellAvailableSystem -ServiceType ExchangeOrganization | Select-Object -ExpandProperty Name)
+            ValidateSet = @(Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | Select-Object -ExpandProperty Name)
             Alias = @('Org','ExchangeOrg')
         }
         if ($PSBoundParameters.ContainsKey('Mandatory'))
@@ -147,7 +147,7 @@ function New-ExchangeOrganizationDynamicParameter
         New-DynamicParameter @NewDynamicParameterParams
     }
 #end function New-ExchangeOrganizationDynamicParameter
-Function Connect-Exchange
+Function Connect-OneShellSystem
 {
     [cmdletbinding()]
     Param
@@ -159,34 +159,49 @@ Function Connect-Exchange
         [parameter()]
         [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
         [string]$CommandPrefix #Overrides the otherwise specified command prefix.
+        ,
+        [parameter()]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization')]
+        [string[]]$ServiceType #used only to filter list of available system identities and names
     )
     DynamicParam
     {
-        $Dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory $true
+        if ($null -ne $serviceType)
+        {
+            $AvailableOneShellSystems = @(Get-OneShellAvailableSystem -ServiceType $ServiceType)
+        }
+        else
+        {
+            $AvailableOneShellSystems = @(Get-OneShellAvailableSystem)
+        }
+        $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name;$AvailableOneShellSystems.Identity)
+        $Dictionary = New-DynamicParameter -Name Identity -Type $([String]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities
         Write-Output -InputObject $dictionary
     }#DynamicParam
     end
     {
         Set-DynamicParameterVariable -dictionary $Dictionary
-        $ServiceObject = Get-OneShellAvailableSystem -ServiceType ExchangeOrganization | Where-Object -FilterScript {$_.name -eq $ExchangeOrganization}
+        $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $Identity -or $_.Identity -eq $Identity}
         Write-Verbose -Message "Selecting an Endpoint"
         $EndPoint = $(
-            switch ($ServiceObject.ServiceTypeAttributes.ExchangeOrgType)
+            switch ($ServiceObject.ServiceType)
             {
-                'OnPremises'
-                {
-                    Find-EndPointToUse -EndPointIdentity $EndPointIdentity -ServiceObject $ServiceObject -ErrorAction Stop
-                }
-                'Online'
+                'ExchangeOnline'
                 {
                     Find-ExchangeOnlineEndpointToUse -ServiceObject $ServiceObject -ErrorAction Stop
                 }
-                'ComplianceCenter'
+                'ExchangeComplianceCenter'
                 {
                     Find-ComplianceCenterEndpointToUse -ServiceObject $ServiceObject -ErrorAction Stop
                 }
+                Default
+                {
+                    Find-EndPointToUse -EndPointIdentity $EndPointIdentity -ServiceObject $ServiceObject -ErrorAction Stop
+                }
             }
         )
+        if ($null -eq $EndPoint)
+        {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
         #Test for an existing connection
             #if the connection is opened, test for functionality
             #if not remove

@@ -74,7 +74,6 @@ function NewGenericOrgSystemObject
             SystemObjectVersion = .01
             Version = .01
             IsDefault = $null
-            RequiredModule = @()
             Defaults = [PSCustomObject]@{
                 ProxyEnabled = $null
                 AuthenticationRequired = $true
@@ -151,9 +150,11 @@ function NewGenericSystemEndpointObject
             AuthenticationRequired = $null
             AuthMethod = $null
             EndPointGroup = $null
+            Precedence = $null
             EndPointType = $null
             ServiceTypeAttributes = [PSCustomObject]@{}
             ServiceType = $null
+            PSRemoting = $null
         }
     }
 #end function NewGenericSystemEndpointObject
@@ -430,6 +431,9 @@ function New-OrgProfile
             [parameter(Mandatory)]
             [bool]$IsDefault
             ,
+            [paramter()]
+            [string[]]$OrganizationSpecificModules
+            ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
@@ -437,6 +441,7 @@ function New-OrgProfile
         $GenericOrgProfileObject = NewGenericOrgProfileObject
         $GenericOrgProfileObject.Name = $Name
         $GenericOrgProfileObject.IsDefault = $IsDefault
+        $GenericOrgProfileObject.OrganizationSpecificModules = $OrganizationSpecificModules
         Export-OrgProfile -profile $GenericOrgProfileObject -path $path -erroraction Stop
     }
 #end function New-OrgProfile
@@ -626,15 +631,19 @@ function New-OrgProfileSystem
             [string]$ServiceType
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$isDefault
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$ProxyEnabled
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$AuthenticationRequired
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$UseTLS
             ,
             [parameter()]
@@ -653,8 +662,8 @@ function New-OrgProfileSystem
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 
+            $OrgProfileIdentities = @($PotentialOrgProfiles.Name;$PotentialOrgProfiles.Identity)
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
             #build any service type specific parameters that may be needed
             switch -Wildcard ($ServiceType)
             {
@@ -742,15 +751,19 @@ function Set-OrgProfileSystem
             [string]$Description
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$isDefault
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$ProxyEnabled
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$AuthenticationRequired
             ,
             [parameter()]
+            [validateset('$true','$false')]
             [bool]$UseTLS
             ,
             [parameter()]
@@ -771,7 +784,7 @@ function Set-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string]) -ValidateSet $(GetOrgProfileSystemServiceTypes)
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string]) -ValidateSet $(GetOrgProfileSystemServiceTypes) -DPDictionary $dictionary
             #build  service type specific parameters that may be needed
             $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$false -DPDictionary $dictionary
             $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
@@ -1028,7 +1041,10 @@ function New-OrgProfileSystemEndpoint
             $AuthMethod
             ,
             [parameter()]
-            $EndPointGroup
+            [string]$EndPointGroup
+            ,
+            [parameter()]
+            [int16]$Precedence
             ,
             [parameter()]
             [ValidateSet('Admin','MRSProxyServer')]
@@ -1105,7 +1121,7 @@ function New-OrgProfileSystemEndpoint
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType')
+                if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType','Precedence')
                 {$GenericEndpointObject.$($vp.name) = $($vp.value)}
             }
             #Add any servicetype specific attributes that were specified
@@ -1260,6 +1276,9 @@ function Set-OrgProfileSystemEndpoint
             $EndPointGroup
             ,
             [parameter()]
+            [int16]$Precedence
+            ,
+            [parameter()]
             [ValidateSet('Admin','MRSProxyServer')]
             [string]$EndPointType = 'Admin'
             ,
@@ -1327,7 +1346,7 @@ function Set-OrgProfileSystemEndpoint
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType')
+                if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType','Precedence')
                 {$endpoint.$($vp.name) = $($vp.value)}
             }
             #Add any servicetype specific attributes that were specified
