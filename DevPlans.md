@@ -11,3 +11,9 @@
 # AAD Connect Improvements
 ## add function to report AADConnect/AADSync status - that is, if a synchronization is in progress, what kind of sync it is and when it started. http://www.anexinet.com/blog/scripting-a-manual-dirsync-with-powershell-in-azure-ad-connect-v-1-1/
 ## add function to export connectors, disconnectors, etc. from connector spaces for validation of new AAD Connect instances
+
+# ideas from Joe
+
+## make exchange org types different system types? - yes, did this for exchange and AD types
+## Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead
+## Make Profile Identity parameters non-mandatory and prompt for them with a select-profile function like we do with systems? - yes, done
