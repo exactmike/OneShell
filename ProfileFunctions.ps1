@@ -56,7 +56,6 @@ function NewGenericOrgProfileObject
                 ProfileType = 'OneShellOrgProfile'
                 ProfileTypeVersion = 1.2
                 Version = .01
-                IsDefault = $null
                 OrganizationSpecificModules = @()
                 Systems = @()
         }
@@ -73,7 +72,6 @@ function NewGenericOrgSystemObject
             ServiceType = ''
             SystemObjectVersion = .01
             Version = .01
-            IsDefault = $null
             Defaults = [PSCustomObject]@{
                 ProxyEnabled = $null
                 AuthenticationRequired = $true
@@ -143,7 +141,6 @@ function NewGenericSystemEndpointObject
             AddressType = $null
             Address = $null
             ServicePort = $null
-            IsDefault = $null
             UseTLS = $null
             ProxyEnabled = $null
             CommandPrefix = $null
@@ -178,7 +175,6 @@ function NewGenericAdminsUserProfileObject
             }
             ProfileFolder = ''
             MailFromSMTPAddress = ''
-            IsDefault = $false
             Systems = @()
             Credentials = @()
         }
@@ -278,7 +274,7 @@ function UpdateAdminUserProfileObjectVersion
                 }#end $_ -lt 1
                 {$_ -eq 1}
                 {
-                    $NewMembers = ('ProfileFolder','Name','MailFromSMTPAddress','IsDefault')
+                    $NewMembers = ('ProfileFolder','Name','MailFromSMTPAddress')
                     foreach ($nm in $NewMembers)
                     {
                         if (-not (Test-Member -InputObject $AdminUserProfile -Name $nm))
@@ -289,8 +285,6 @@ function UpdateAdminUserProfileObjectVersion
                         {
                             'MailFromSMTPAddress'
                             {$AdminUserProfile.$nm = $AdminUserProfile.General.MailFrom}
-                            'IsDefault'
-                            {$AdminUserProfile.$nm = $AdminUserProfile.general.default}
                             Default
                             {$AdminUserProfile.$nm = $AdminUserProfile.General.$nm}
                         }
@@ -348,9 +342,6 @@ Function Get-OrgProfile
             , 
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
-            ,
-            [parameter(ParameterSetName = 'GetDefault')]
-            [switch]$GetDefault
         )
         DynamicParam
         {
@@ -391,25 +382,6 @@ Function Get-OrgProfile
                                 $OrgProfiles = @($FoundOrgProfiles)
                                 Write-Output -inputobject $OrgProfiles
                             }#All
-                            'GetDefault'
-                            {
-                                $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.IsDefault -eq $true})
-                                switch ($OrgProfiles.Count)
-                                {
-                                    {$_ -eq 1}
-                                    {
-                                        Write-Output -inputobject $OrgProfiles[0]
-                                    }
-                                    {$_ -gt 1}
-                                    {
-                                        throw "FAILED: Multiple Org Profiles Are Set as Default: $($OrgProfiles.Identity -join ',')"
-                                    }
-                                    {$_ -lt 1}
-                                    {
-                                        throw 'FAILED: No Org Profiles Are Set as Default'
-                                    }
-                                }#Switch $DefaultOrgProfile.Count
-                            }
                         }#switch
                     }#if
                 }#Default
@@ -428,9 +400,6 @@ function New-OrgProfile
             [parameter(Mandatory)]
             [string]$Name
             ,
-            [parameter(Mandatory)]
-            [bool]$IsDefault
-            ,
             [paramter()]
             [string[]]$OrganizationSpecificModules
             ,
@@ -440,7 +409,6 @@ function New-OrgProfile
         )
         $GenericOrgProfileObject = NewGenericOrgProfileObject
         $GenericOrgProfileObject.Name = $Name
-        $GenericOrgProfileObject.IsDefault = $IsDefault
         $GenericOrgProfileObject.OrganizationSpecificModules = $OrganizationSpecificModules
         Export-OrgProfile -profile $GenericOrgProfileObject -path $path -erroraction Stop
     }
@@ -457,9 +425,6 @@ function Set-OrgProfile
             [parameter()]
             [ValidateNotNullOrEmpty()]
             [string]$Name
-            ,
-            [parameter()]
-            [bool]$IsDefault
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
@@ -502,7 +467,7 @@ function Set-OrgProfile
             Write-Verbose -Message "Selected Org Profile is $($orgProfile.Name)"
             foreach ($p in $PSBoundParameters.GetEnumerator())
             {
-                if ($p.key -in 'Name','IsDefault')
+                if ($p.key -in @('Name'))
                 {
                     $OrgProfile.$($p.key) = $p.value
                 }
@@ -629,10 +594,7 @@ function New-OrgProfileSystem
             [parameter(Mandatory)]
             [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
             [string]$ServiceType
-            ,
-            [parameter()]
-            [validateset('$true','$false')]
-            [bool]$isDefault
+            
             ,
             [parameter()]
             [validateset('$true','$false')]
@@ -714,7 +676,7 @@ function New-OrgProfileSystem
             #Set the common System Attributes
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'Name','Description','IsDefault')
+                if ($vp.name -in 'Name','Description')
                 {$GenericSystemObject.$($vp.name) = $($vp.value)}
             }
             #set the default System Attributes
@@ -749,10 +711,6 @@ function Set-OrgProfileSystem
             ,
             [parameter()]
             [string]$Description
-            ,
-            [parameter()]
-            [validateset('$true','$false')]
-            [bool]$isDefault
             ,
             [parameter()]
             [validateset('$true','$false')]
@@ -832,7 +790,7 @@ function Set-OrgProfileSystem
             #Set the common System Attributes
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'Name','Description','IsDefault','ServiceType')
+                if ($vp.name -in 'Name','Description','ServiceType')
                 {$System.$($vp.name) = $($vp.value)}
             }
             #set the default System Attributes
@@ -863,9 +821,6 @@ Function Get-OrgProfileSystem
             [parameter()]
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
-            ,
-            [parameter()]
-            [switch]$IsDefault
             ,
             [parameter(ParameterSetName = 'ProfileIdentity')]
             [parameter(ParameterSetName = 'All')]
@@ -914,10 +869,6 @@ Function Get-OrgProfileSystem
             if ($null -ne $ServiceType)
             {
                 $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType})
-            }
-            if ($IsDefault -eq $true)
-            {
-                $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.IsDefault -eq $true})
             }
             if ($null -ne $Identity)
             {
@@ -1011,11 +962,6 @@ function New-OrgProfileSystemEndpoint
             [AllowNull()]
             [ValidatePattern("^\d{1,5}$")]
             $ServicePort
-            ,
-            [parameter()]
-            [AllowNull()]
-            [ValidateSet($true,$false,$null)]
-            $IsDefault
             ,
             [parameter()]
             [AllowNull()]
@@ -1121,7 +1067,7 @@ function New-OrgProfileSystemEndpoint
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType','Precedence')
+                if ($vp.name -in 'AddressType','Address','ServicePort','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType','Precedence')
                 {$GenericEndpointObject.$($vp.name) = $($vp.value)}
             }
             #Add any servicetype specific attributes that were specified
@@ -1247,11 +1193,6 @@ function Set-OrgProfileSystemEndpoint
             [parameter()]
             [AllowNull()]
             [ValidateSet($true,$false,$null)]
-            $IsDefault
-            ,
-            [parameter()]
-            [AllowNull()]
-            [ValidateSet($true,$false,$null)]
             $UseTLS
             ,
             [parameter()]
@@ -1346,7 +1287,7 @@ function Set-OrgProfileSystemEndpoint
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'AddressType','Address','ServicePort','IsDefault','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType','Precedence')
+                if ($vp.name -in 'AddressType','Address','ServicePort','UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod','EndPointGroup','EndPointType','ServiceType','Precedence')
                 {$endpoint.$($vp.name) = $($vp.value)}
             }
             #Add any servicetype specific attributes that were specified
@@ -1544,8 +1485,6 @@ function New-AdminUserProfile
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
-            ,
-            [bool]$IsDefault #sets this profile as the default for the specified Organization
         )
         DynamicParam
         {
@@ -1583,7 +1522,7 @@ function New-AdminUserProfile
             $AdminUserProfile.Systems = $Systems
             foreach ($p in $PSBoundParameters.GetEnumerator())
             {
-                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','IsDefault','Credentials','Systems')
+                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','Credentials','Systems')
                 {$AdminUserProfile.$($p.key) = $p.value}
             }#end foreach
             Export-AdminUserProfile -profile $AdminUserProfile -path $path -errorAction 'Stop'
@@ -1768,9 +1707,6 @@ function Set-AdminUserProfile
             $MailFromSMTPAddress
             ,
             [parameter()]
-            [bool]$isDefault
-            ,
-            [parameter()]
             [switch]$UpdateSystemsFromOrgProfile
             ,
             [parameter(ParameterSetName = 'Identity')]
@@ -1848,7 +1784,7 @@ function Set-AdminUserProfile
             }
             foreach ($p in $PSBoundParameters.GetEnumerator())
             {
-                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','IsDefault','Credentials','Systems')
+                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','Credentials','Systems')
                 {$AdminUserProfile.$($p.key) = $p.value}
             }#end foreach
             Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
