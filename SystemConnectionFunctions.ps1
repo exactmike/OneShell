@@ -11,27 +11,72 @@ function Find-EndPointToUse
             $EndPointIdentity
             ,
             $ServiceObject
+            ,
+            $EndPointGroup
         )
-        if ($null -eq $EndPointIdentity)
-        {
-            if ($null -eq $ServiceObject.PreferredEndpoint)
+        $FilteredEndpoints = @(
+            switch ($null -eq $EndPointIdentity)
             {
-                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.isDefault -eq $true} | Select-Object -First 1
-            }
-            else
-            {
-                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.Identity -eq $ServiceObject.PreferredEndpoint}
-            }
-        }
-        else
-        {
-            if ($EndPointIdentity -notin $ServiceObject.EndPoints.Identity)
-            {throw("Invalid EndPoint Identity $EndPointIdentity was specified. System $($ServiceObject.Identity) has no such endpoint.")}
-            else
-            {
-                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.Identity -eq $EndPointIdentity}
-            }
-        }
+                $false
+                {
+                    Write-verbose -Message "Endpoint Identity was specified.  Return only that endpoint."
+                    if ($EndPointIdentity -notin $ServiceObject.EndPoints.Identity)
+                    {throw("Invalid EndPoint Identity $EndPointIdentity was specified. System $($ServiceObject.Identity) has no such endpoint.")}
+                    else
+                    {
+                        $ServiceObject.EndPoints | Where-Object -FilterScript {$_.Identity -eq $EndPointIdentity}
+                    }
+                }
+                $true
+                {
+                    Write-verbose -message "Endpoint Identity was not specified.  Return all applicable endpoints, with preferred first if specified."
+                    switch ($null -eq $ServiceObject.PreferredEndpoint)
+                    {
+                        $false
+                        {
+                            Write-Verbose -Message "Preferred Endpoint is specified."
+                            $PreEndpoints = @(
+                                switch ($null -eq $EndPointGroup)
+                                {
+                                    $true
+                                    {
+                                        Write-Verbose -message 'EndPointGroup was not specified'
+                                        $ServiceObject.EndPoints | Sort-Object -Property Precedence
+                                    }#end false
+                                    $false
+                                    {
+                                        Write-Verbose -message 'EndPointGroup was specified'
+                                        $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
+                                    }#end true
+                                }#end switch
+                            )
+                            $PreEndpoints | Where-Object {$_.Identity -eq $ServiceObject.PreferredEndpoint} | ForEach-Object {$_.Precedence = -1}
+                            Write-Output -InputObject $PreEndpoints
+                        }#end false
+                        $true
+                        {
+                            Write-Verbose -Message "Preferred Endpoint is not specified."
+                            switch ($null -eq $EndPointGroup)
+                            {
+                                $true
+                                {
+                                    Write-Verbose -message 'EndPointGroup was not specified'
+                                    $ServiceObject.EndPoints | Sort-Object -Property Precedence
+                                }#end false
+                                #EndPointGroup was specified
+                                $false
+                                {
+                                    Write-Verbose -message 'EndPointGroup was specified'
+                                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
+                                }#end true
+                            }#end switch
+                        }#end true
+                    }#end switch
+                }#end $true
+            }#end switch
+        )
+        $GroupedEndpoints = @($FilteredEndpoints | Group-Object -Property Precedence)
+        Write-Output -InputObject $GroupedEndpoints
     }
 #end function Find-EndPointToUse
 function Find-ExchangeOnlineEndpointToUse
@@ -41,23 +86,26 @@ function Find-ExchangeOnlineEndpointToUse
         (
             $ServiceObject
         )
-        [PSCustomObject]@{
-            Identity = (New-Guid).guid
-            AddressType = 'URL'
-            Address = 'https://outlook.office365.com/powershell-liveid/'
-            ServicePort = $null
-            IsDefault = $true
-            UseTLS = $false
-            ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
-            CommandPrefix = $ServiceObject.Defaults.CommandPrefix
-            AuthenticationRequired = $true
-            AuthMethod = 'Basic'
-            EndPointGroup = $null
-            EndPointType = 'Admin'
-            ServiceTypeAttributes = $null
-            ServiceType = 'ExchangeOrganization'
-            AllowRedirection = $true
-        }
+        Group-Object -InputObject @(
+            [PSCustomObject]@{
+                Identity = (New-Guid).guid
+                AddressType = 'URL'
+                Address = 'https://outlook.office365.com/powershell-liveid/'
+                ServicePort = $null
+                UseTLS = $false
+                ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
+                CommandPrefix = $ServiceObject.Defaults.CommandPrefix
+                AuthenticationRequired = $true
+                AuthMethod = 'Basic'
+                EndPointGroup = $null
+                EndPointType = 'Admin'
+                ServiceTypeAttributes = $null
+                ServiceType = 'ExchangeOrganization'
+                AllowRedirection = $true
+                Precedence = -1
+                PSRemoting = $true
+            }
+        )
     }
 #end function Find-ExchangeOnlineEndpointToUse
 function Find-ComplianceCenterEndpointToUse
@@ -67,6 +115,7 @@ function Find-ComplianceCenterEndpointToUse
         (
             $ServiceObject
         )
+        Group-Object
         [PSCustomObject]@{
             Identity = (New-Guid).guid
             AddressType = 'URL'
@@ -83,6 +132,7 @@ function Find-ComplianceCenterEndpointToUse
             ServiceTypeAttributes = $null
             ServiceType = 'ExchangeOrganization'
             AllowRedirection = $true
+            PSRemoting = $true
         }
     }
 #end function Find-ComplianceCenterEndpointToUse
@@ -110,51 +160,18 @@ function Get-OneShellAvailableSystem
         }
     }
 #end function Get-OneShellAvailableSystem
-function New-ExchangeOrganizationDynamicParameter
-    {
-        [cmdletbinding()]
-        param
-        (
-            [switch]$Mandatory
-            ,
-            [int]$Position
-            ,
-            [string]$ParameterSetName
-            ,
-            [switch]$Multivalued
-        )
-        $NewDynamicParameterParams=@{
-            Name = 'ExchangeOrganization'
-            ValidateSet = @(Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | Select-Object -ExpandProperty Name)
-            Alias = @('Org','ExchangeOrg')
-        }
-        if ($PSBoundParameters.ContainsKey('Mandatory'))
-        {
-            $NewDynamicParameterParams.Mandatory = $true
-        }
-        if ($PSBoundParameters.ContainsKey('Multivalued'))
-        {
-            $NewDynamicParameterParams.Type = [string[]]
-        }
-        if ($PSBoundParameters.ContainsKey('Position'))
-        {
-            $NewDynamicParameterParams.Position = $Position
-        }
-        if ($PSBoundParameters.ContainsKey('ParameterSetName'))
-        {
-            $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
-        }
-        New-DynamicParameter @NewDynamicParameterParams
-    }
-#end function New-ExchangeOrganizationDynamicParameter
 Function Connect-OneShellSystem
 {
-    [cmdletbinding()]
+    [cmdletbinding(DefaultParameterSetName = 'Default')]
     Param
     (
-        [parameter()]
+        [parameter(ParameterSetName = 'EndPointIdentity')]
         [ValidateNotNullOrEmpty()]
-        $EndPointIdentity #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
+        [string]$EndPointIdentity #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
+        ,
+        [parameter(ParameterSetName = 'EndPointGroup')]
+        [ValidateNotNullOrEmpty()]
+        [string]$EndPointGroup #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
         ,
         [parameter()]
         [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
@@ -175,7 +192,7 @@ Function Connect-OneShellSystem
             $AvailableOneShellSystems = @(Get-OneShellAvailableSystem)
         }
         $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name;$AvailableOneShellSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities
+        $Dictionary = New-DynamicParameter -Name Identity -Type $([String]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1
         Write-Output -InputObject $dictionary
     }#DynamicParam
     end
@@ -183,7 +200,7 @@ Function Connect-OneShellSystem
         Set-DynamicParameterVariable -dictionary $Dictionary
         $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $Identity -or $_.Identity -eq $Identity}
         Write-Verbose -Message "Selecting an Endpoint"
-        $EndPoint = $(
+        $EndPointGroups = @(
             switch ($ServiceObject.ServiceType)
             {
                 'ExchangeOnline'
@@ -196,11 +213,24 @@ Function Connect-OneShellSystem
                 }
                 Default
                 {
-                    Find-EndPointToUse -EndPointIdentity $EndPointIdentity -ServiceObject $ServiceObject -ErrorAction Stop
+                    $FindEndPointToUseParams = @{
+                        ErrorAction = 'Stop'
+                        ServiceObject = $ServiceObject
+                    }
+                    switch ($PSCmdlet.ParameterSetName)
+                    {
+                        'Default'
+                        {}
+                        'EndPointIdentity'
+                        {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
+                        'EndPointGroup'
+                        {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
+                    }
+                    Find-EndPointToUse @FindEndPointToUseParams
                 }
             }
         )
-        if ($null -eq $EndPoint)
+        if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
         {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
         #Test for an existing connection
             #if the connection is opened, test for functionality
@@ -208,7 +238,6 @@ Function Connect-OneShellSystem
             #if functional leave as is
             #if not remove
         #
-        
     }#end End
 }#function Connect-Exchange
 Function Import-RequiredModule
@@ -2174,3 +2203,40 @@ Function Initialize-AdminEnvironment
         }#Switch
     }#Process
 }
+function New-ExchangeOrganizationDynamicParameter
+{
+    [cmdletbinding()]
+    param
+    (
+        [switch]$Mandatory
+        ,
+        [int]$Position
+        ,
+        [string]$ParameterSetName
+        ,
+        [switch]$Multivalued
+    )
+    $NewDynamicParameterParams=@{
+        Name = 'ExchangeOrganization'
+        ValidateSet = @(Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | Select-Object -ExpandProperty Name)
+        Alias = @('Org','ExchangeOrg')
+    }
+    if ($PSBoundParameters.ContainsKey('Mandatory'))
+    {
+        $NewDynamicParameterParams.Mandatory = $true
+    }
+    if ($PSBoundParameters.ContainsKey('Multivalued'))
+    {
+        $NewDynamicParameterParams.Type = [string[]]
+    }
+    if ($PSBoundParameters.ContainsKey('Position'))
+    {
+        $NewDynamicParameterParams.Position = $Position
+    }
+    if ($PSBoundParameters.ContainsKey('ParameterSetName'))
+    {
+        $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
+    }
+    New-DynamicParameter @NewDynamicParameterParams
+}
+#end function New-ExchangeOrganizationDynamicParameter
