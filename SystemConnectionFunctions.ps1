@@ -160,6 +160,124 @@ function Get-OneShellAvailableSystem
         }
     }
 #end function Get-OneShellAvailableSystem
+function Get-OneShellSystemPSSession
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $serviceObject
+    )
+    begin
+    {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
+    end
+    {
+        [string]$SessionNameWildcard = $($serviceObject.Identity) + '*'
+        $message = "Run Get-PSSession for name like $SessionNameWildcard"
+        try
+        {
+            Write-Log -Message $message -EntryType Attempting
+            $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
+            Write-Log -Message $message -EntryType Succeeded
+        }
+        catch
+        {
+            $myerror = $_
+            Write-Log -Message $message -EntryType Failed
+            Write-Log -Message $myerror.tostring() -ErrorLog
+        }
+        Write-Output -InputObject $ServiceSession
+    }
+}#end function Get-OneShellSystemPSSession
+function Test-OneShellSystemConnection
+{
+    [cmdletbinding()]
+    param
+    (
+        $serviceObject
+    )
+    begin
+    {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
+    end
+    {
+        try
+        {
+            $ServiceSession = @(Get-OneShellSystemPSSession -serviceObject $serviceObject -ErrorAction Stop)
+        }
+        catch
+        {
+            Write-Log -Message $_.tostring() -ErrorLog
+        }
+        switch ($ServiceSession.Count)
+        {
+            1
+            {
+                $ServiceSession = $ServiceSession[0]
+                $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
+                Write-Log -Message $message -EntryType Notification
+                #Test the Session functionality
+                if ($ServiceSession.state -ne 'Opened')
+                {
+                    Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
+                    Write-Output -InputObject $false
+                    break
+                }
+                else
+                {
+                    Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                }
+                Write-Log -Message "Getting Service Type Session Test Commands from file ServiceTypeSessionTestCommands.json" -EntryType Notification
+                $testCommands = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypeSessionTestCommands.json) -ErrorAction Stop
+                $testCommandDetails = $testCommands.ServiceTypes | Where-Object -FilterScript {$_.Name -eq $serviceObject.ServiceType}
+                if ($null -ne $testCommandDetails)
+                {
+                    $testCommand = $testCommandDetails.SessionTestCmdlet
+                    $testCommandParams = Convert-ObjectToHashTable -InputObject $testCommandDetails.parameters
+                    Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+                    $ScriptBlock = [scriptblock]::Create("$TestCommand @TestCommandParams")
+                    $message = "Run $([string]$scriptblock) in $($serviceSession.name) PSSession"
+                    try
+                    {
+                        Write-Log -Message $message -EntryType Attempting
+                        invoke-command -Session $ServiceSession -ScriptBlock {$TestCommandParams = $using:TestCommandParams} -ErrorAction Stop
+                        invoke-command -Session $ServiceSession -ScriptBlock $ScriptBlock -ErrorAction Stop
+                        Write-Log -Message $message -EntryType Succeeded
+                        Write-Output -InputObject $true
+                    }
+                    catch
+                    {
+                        $myerror = $_
+                        Write-Log -Message $message -EntryType Failed -ErrorLog
+                        Write-Log -message $myerror.tostring() -ErrorLog
+                        Write-Output -InputObject $false
+                        break
+                    }    
+                }#end if
+                else
+                {
+                    Write-Log "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
+                    Write-Output -InputObject $true
+                }
+            }
+            0
+            {
+                $message = "Found No PSSession for service $($serviceObject.Name)."
+                Write-Log -Message $message -EntryType Notification
+                Write-Output -InputObject $false
+            }
+            Default
+            {
+                $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
+                Write-Log -Message $message -EntryType Failed -ErrorLog
+                Write-Output -InputObject $false
+            }
+        }
+    }
+}
 Function Connect-OneShellSystem
 {
     [cmdletbinding(DefaultParameterSetName = 'Default')]
@@ -233,6 +351,16 @@ Function Connect-OneShellSystem
         if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
         {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
         #Test for an existing connection
+        switch ($ServiceObject.defaults.UsePSRemoting)
+        {
+            $true
+            {
+                
+            }
+            $false
+            {Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"}
+        }
+
             #if the connection is opened, test for functionality
             #if not remove
             #if functional leave as is

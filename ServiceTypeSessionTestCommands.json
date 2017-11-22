@@ -1,0 +1,25 @@
+{
+    "ServiceTypes":
+    [
+        {
+            "Name": "ExchangeOnPremises",
+            "SessionTestCmdlet": "Set-ADServerSettings",
+            "Parameters":
+            {
+                "ViewEntireForest": true,
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
+            }
+        },
+        {
+            "Name": "ExchangeOnline",
+            "SessionTestCmdlet": "Get-User",
+            "Parameters":
+            {
+                "Identity" : "$ServiceObject.Credential.Username",
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
+            }
+        }
+    ]
+}

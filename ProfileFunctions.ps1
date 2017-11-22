@@ -78,6 +78,7 @@ function NewGenericOrgSystemObject
                 UseTLS = $null
                 AuthMethod = $null
                 CommandPrefix = $null
+                UsePSRemoting = $true
             }
             Endpoints = @()
             ServiceTypeAttributes = [PSCustomObject]@{}
