@@ -287,6 +287,94 @@ function Test-OneShellSystemConnection
         {Write-Output -InputObject $ServiceSession}
     }
 }
+function Resolve-EndpointPSSessionParameter
+{
+    [cmdletbinding()]
+    param
+    (
+        $ServiceObject
+        ,
+        $Endpoint
+    )
+    begin
+    {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }#end begin
+    end
+    {
+        $ConnectPSSessionParams = @{
+            ErrorAction = 'Stop'
+            Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
+            Credential = $ServiceObject.Credential
+        }
+        #Apply Service Type Defaults
+        switch -Wildcard ($ServiceObject.ServiceType)
+        {
+            'Exchange*'
+            {
+                $ConnectPSSessionParams.ConfigurationName = 'Microsoft.Exchange'
+                $ConnectPSSessionParams.AllowRedirection = $true
+            }
+            'ExchangeOnline'
+            {
+                $ConnectPSSessionParams.Authentication = 'Basic'
+            }
+            'ExchangeComplianceCenter'
+            {
+                $ConnectPSSessionParams.Authentication = 'Basic'
+            }
+            'ExchangeOnPremises'
+            {
+                $ConnectPSSessionParams.Authentication = 'Kerberos'
+            }
+        }
+        #Apply ServiceObject Defaults or their endpoint overrides
+        if ($ServiceObject.defaults.ProxyEnabled -eq $true -or $Endpoint.ProxyEnabled -eq $true)
+        {
+            $ConnectPSSessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig #-ProxyAuthentication basic
+        }
+        if ($ServiceObject.defaults.UseTLS -eq $true -or $Endpoint.UseTLS -eq $true)
+        {
+            $ConnectPSSessionParams.UseSSL = $true
+        }
+        if (Test-IsNotNullOrWhiteSpace -string $ServiceObject.defaults.AuthMethod)
+        {
+            $ConnectPSSessionParams.Authentication = $ServiceObject.defaults.AuthMethod
+        }
+        if (Test-IsNotNullOrWhiteSpace -String $endpoint.AuthMethod)
+        {
+            $ConnectPSSessionParams.Authentication = $Endpoint.AuthMethod
+        }
+        #Apply Endpoint only settings
+        switch ($endpoint.AddressType)
+        {
+            'URL'
+            {
+                $ConnectPSSessionParams.ConnectionUri = $endpoint.Address
+            }
+            'IPAddress'
+            {
+                $ConnectPSSessionParams.ComputerName = $endpoint.Address
+            }
+            'FQDN'
+            {
+                $ConnectPSSessionParams.ComputerName = $endpoint.Address
+            }
+        }
+        switch ($endpoint.AllowRedirection)
+        {
+            $true
+            {
+                $ConnectPSSessionParams.AllowRedirection = $endpoint.AllowRedirection
+            }
+        }
+        if (Test-IsNotNullOrWhiteSpace -String $endpoint.ServicePort)
+        {
+            $ConnectPSSessionParams.Port = $Endpoint.ServicePort
+        }
+        Write-Output -InputObject $ConnectPSSessionParams
+    }#end end
+}
 Function Connect-OneShellSystem
 {
     [cmdletbinding(DefaultParameterSetName = 'Default')]
@@ -322,6 +410,10 @@ Function Connect-OneShellSystem
         $Dictionary = New-DynamicParameter -Name Identity -Type $([String]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1
         Write-Output -InputObject $dictionary
     }#DynamicParam
+    begin
+    {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
     end
     {
         Set-DynamicParameterVariable -dictionary $Dictionary
@@ -402,56 +494,11 @@ Function Connect-OneShellSystem
                                 $RandomSelection = Get-Random -Maximum $endpoints.Count -Minimum 0
                                 $endpoint = $endpoints[$RandomSelection]
                                 $endpoints = @($endpoints | Where-Object -FilterScript {$_.Identity -ne $endpoint.Identity})
-                                $ConnectPSSessionParams = @{
-                                    ErrorAction = 'Stop'
-                                    Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
-                                    Credential = $ServiceObject.Credential
-                                }
-                                switch ($endpoint.AddressType)
-                                {
-                                    'URL'
-                                    {
-                                        $ConnectPSSessionParams.ConnectionUri = $endpoint.Address
-                                    }
-                                    'IPAddress'
-                                    {
-                                        $ConnectPSSessionParams.ComputerName = $endpoint.Address
-                                    }
-                                    'FQDN'
-                                    {
-                                        $ConnectPSSessionParams.ComputerName = $endpoint.Address
-                                    }
-                                }
-                                switch -Wildcard ($endpoint.ServiceType)
-                                {
-                                    'Exchange*'
-                                    {
-                                        $ConnectPSSessionParams.ConfigurationName = 'Microsoft.Exchange'
-                                    }
-                                    'ExchangeOnline'
-                                    {
-                                        $ConnectPSSessionParams.Authentication = 'Basic'
-                                    }
-                                    'ExchangeComplianceCenter'
-                                    {
-                                        $ConnectPSSessionParams.Authentication = 'Basic'
-                                    }
-                                    'ExchangeOnPremises'
-                                    {
-                                        $ConnectPSSessionParams.Authentication = 'Kerberos'
-                                    }
-                                }
-                                switch ($endpoint.AllowRedirection)
-                                {
-                                    $true
-                                    {
-                                        $ConnectPSSessionParams.AllowRedirection = $endpoint.AllowRedirection
-                                    }
-                                }
-                            }
+                            }#end do
                             until ($endpoints.Count -eq 0)
                             $AllEndpointsFailed = $true
                         }
+
                     }
                     until
                     (
@@ -464,6 +511,5 @@ Function Connect-OneShellSystem
                 Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"
             }#end $false
         }#end Switch
-        Return $ConnectPSSessionParams
     }#end End
 }#function Connect-OneShellSystem
