@@ -13,6 +13,10 @@ function Find-EndPointToUse
             $ServiceObject
             ,
             $EndPointGroup
+            ,
+            [parameter()]
+            [ValidateSet('Admin','MRS')]
+            $EndPointType = 'Admin'
         )
         $FilteredEndpoints = @(
             switch ($null -eq $EndPointIdentity)
@@ -41,12 +45,12 @@ function Find-EndPointToUse
                                     $true
                                     {
                                         Write-Verbose -message 'EndPointGroup was not specified'
-                                        $ServiceObject.EndPoints | Sort-Object -Property Precedence
+                                        $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType} | Sort-Object -Property Precedence
                                     }#end false
                                     $false
                                     {
                                         Write-Verbose -message 'EndPointGroup was specified'
-                                        $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
+                                        $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType -and $_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
                                     }#end true
                                 }#end switch
                             )
@@ -61,13 +65,13 @@ function Find-EndPointToUse
                                 $true
                                 {
                                     Write-Verbose -message 'EndPointGroup was not specified'
-                                    $ServiceObject.EndPoints | Sort-Object -Property Precedence
+                                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType} | Sort-Object -Property Precedence
                                 }#end false
                                 #EndPointGroup was specified
                                 $false
                                 {
                                     Write-Verbose -message 'EndPointGroup was specified'
-                                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
+                                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType -and $_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
                                 }#end true
                             }#end switch
                         }#end true
@@ -86,7 +90,7 @@ function Find-ExchangeOnlineEndpointToUse
         (
             $ServiceObject
         )
-        Group-Object -InputObject @(
+        @(
             [PSCustomObject]@{
                 Identity = (New-Guid).guid
                 AddressType = 'URL'
@@ -105,7 +109,7 @@ function Find-ExchangeOnlineEndpointToUse
                 Precedence = -1
                 PSRemoting = $true
             }
-        )
+        ) | Group-Object
     }
 #end function Find-ExchangeOnlineEndpointToUse
 function Find-ComplianceCenterEndpointToUse
@@ -115,25 +119,26 @@ function Find-ComplianceCenterEndpointToUse
         (
             $ServiceObject
         )
-        Group-Object
-        [PSCustomObject]@{
-            Identity = (New-Guid).guid
-            AddressType = 'URL'
-            Address = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
-            ServicePort = $null
-            IsDefault = $true
-            UseTLS = $false
-            ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
-            CommandPrefix = $ServiceObject.Defaults.CommandPrefix
-            AuthenticationRequired = $true
-            AuthMethod = 'Basic'
-            EndPointGroup = $null
-            EndPointType = 'Admin'
-            ServiceTypeAttributes = $null
-            ServiceType = 'ExchangeOrganization'
-            AllowRedirection = $true
-            PSRemoting = $true
-        }
+        @(
+            [PSCustomObject]@{
+                Identity = (New-Guid).guid
+                AddressType = 'URL'
+                Address = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
+                ServicePort = $null
+                IsDefault = $true
+                UseTLS = $false
+                ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
+                CommandPrefix = $ServiceObject.Defaults.CommandPrefix
+                AuthenticationRequired = $true
+                AuthMethod = 'Basic'
+                EndPointGroup = $null
+                EndPointType = 'Admin'
+                ServiceTypeAttributes = $null
+                ServiceType = 'ExchangeOrganization'
+                AllowRedirection = $true
+                PSRemoting = $true
+            }
+        ) | Group-Object
     }
 #end function Find-ComplianceCenterEndpointToUse
 function Get-OneShellAvailableSystem
@@ -197,6 +202,8 @@ function Test-OneShellSystemConnection
     param
     (
         $serviceObject
+        ,
+        [switch]$ReturnSession
     )
     begin
     {
@@ -255,7 +262,7 @@ function Test-OneShellSystemConnection
                         Write-Log -message $myerror.tostring() -ErrorLog
                         Write-Output -InputObject $false
                         break
-                    }    
+                    }
                 }#end if
                 else
                 {
@@ -276,6 +283,8 @@ function Test-OneShellSystemConnection
                 Write-Output -InputObject $false
             }
         }
+        if ($ReturnSession)
+        {Write-Output -InputObject $ServiceSession}
     }
 }
 Function Connect-OneShellSystem
@@ -351,20 +360,110 @@ Function Connect-OneShellSystem
         if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
         {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
         #Test for an existing connection
-        switch ($ServiceObject.defaults.UsePSRemoting)
+        switch ($ServiceObject.defaults.UsePSRemoting -or $true)
         {
             $true
             {
-                
-            }
-            $false
-            {Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"}
-        }
-
-            #if the connection is opened, test for functionality
-            #if not remove
-            #if functional leave as is
-            #if not remove
-        #
+                $ExistingConnectionIsValid,$ExistingSession = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop -ReturnSession
+                #check results of the test for an existing session
+                if ($ExistingConnectionIsValid)
+                {
+                    Write-Log -Message "Existing Session $($session.name) for Service $($serviceObject.Name) is valid."
+                    #nothing further to do since existing connection is valid
+                    #add logic for preferred endpoint/specified endpoint checking?
+                }
+                else
+                {
+                    if ($null -ne $ExistingSession)
+                    {
+                        try
+                        {
+                            $message = "Remove Existing Invalid Session $($Session.name) for Service $($serviceObject.name)."
+                            Write-Log -Message $message -EntryType Attempting
+                            Remove-PSSession -Session $ExistingSession -ErrorAction Stop
+                            Write-Log -Message $message -EntryType Succeeded
+                        }
+                        catch
+                        {
+                            $myerror = $_
+                            Write-Log -Message $message -EntryType Failed -ErrorLog
+                            Write-Log -Message $myerror.tostring() -EntryType -ErrorLog
+                            throw ($myerror)
+                        }
+                    }
+                    #create and test the new session
+                    do
+                    {
+                        foreach ($g in $EndPointGroups)
+                        {
+                            $endpoints = @($g.group)
+                            do
+                            {
+                                $RandomSelection = Get-Random -Maximum $endpoints.Count -Minimum 0
+                                $endpoint = $endpoints[$RandomSelection]
+                                $endpoints = @($endpoints | Where-Object -FilterScript {$_.Identity -ne $endpoint.Identity})
+                                $ConnectPSSessionParams = @{
+                                    ErrorAction = 'Stop'
+                                    Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
+                                    Credential = $ServiceObject.Credential
+                                }
+                                switch ($endpoint.AddressType)
+                                {
+                                    'URL'
+                                    {
+                                        $ConnectPSSessionParams.ConnectionUri = $endpoint.Address
+                                    }
+                                    'IPAddress'
+                                    {
+                                        $ConnectPSSessionParams.ComputerName = $endpoint.Address
+                                    }
+                                    'FQDN'
+                                    {
+                                        $ConnectPSSessionParams.ComputerName = $endpoint.Address
+                                    }
+                                }
+                                switch -Wildcard ($endpoint.ServiceType)
+                                {
+                                    'Exchange*'
+                                    {
+                                        $ConnectPSSessionParams.ConfigurationName = 'Microsoft.Exchange'
+                                    }
+                                    'ExchangeOnline'
+                                    {
+                                        $ConnectPSSessionParams.Authentication = 'Basic'
+                                    }
+                                    'ExchangeComplianceCenter'
+                                    {
+                                        $ConnectPSSessionParams.Authentication = 'Basic'
+                                    }
+                                    'ExchangeOnPremises'
+                                    {
+                                        $ConnectPSSessionParams.Authentication = 'Kerberos'
+                                    }
+                                }
+                                switch ($endpoint.AllowRedirection)
+                                {
+                                    $true
+                                    {
+                                        $ConnectPSSessionParams.AllowRedirection = $endpoint.AllowRedirection
+                                    }
+                                }
+                            }
+                            until ($endpoints.Count -eq 0)
+                            $AllEndpointsFailed = $true
+                        }
+                    }
+                    until
+                    (
+                        $Connected -eq $true -or $AllEndpointsFailed -eq $true
+                    )
+                }
+            }#end $true
+            default
+            {
+                Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"
+            }#end $false
+        }#end Switch
+        Return $ConnectPSSessionParams
     }#end End
-}#function Connect-Exchange
+}#function Connect-OneShellSystem
