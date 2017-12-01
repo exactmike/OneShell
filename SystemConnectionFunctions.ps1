@@ -166,215 +166,226 @@ function Get-OneShellAvailableSystem
     }
 #end function Get-OneShellAvailableSystem
 function Get-OneShellSystemPSSession
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        $serviceObject
-    )
-    begin
     {
-        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    }
-    end
-    {
-        [string]$SessionNameWildcard = $($serviceObject.Identity) + '*'
-        $message = "Run Get-PSSession for name like $SessionNameWildcard"
-        try
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory)]
+            $serviceObject
+        )
+        begin
         {
-            Write-Log -Message $message -EntryType Attempting
-            $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
-            Write-Log -Message $message -EntryType Succeeded
+            Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         }
-        catch
+        end
         {
-            $myerror = $_
-            Write-Log -Message $message -EntryType Failed
-            Write-Log -Message $myerror.tostring() -ErrorLog
-        }
-        Write-Output -InputObject $ServiceSession
-    }
-}#end function Get-OneShellSystemPSSession
-function Test-OneShellSystemConnection
-{
-    [cmdletbinding()]
-    param
-    (
-        $serviceObject
-        ,
-        [switch]$ReturnSession
-    )
-    begin
-    {
-        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    }
-    end
-    {
-        try
-        {
-            $ServiceSession = @(Get-OneShellSystemPSSession -serviceObject $serviceObject -ErrorAction Stop)
-        }
-        catch
-        {
-            Write-Log -Message $_.tostring() -ErrorLog
-        }
-        switch ($ServiceSession.Count)
-        {
-            1
+            [string]$SessionNameWildcard = $($serviceObject.Identity) + '*'
+            $message = "Run Get-PSSession for name like $SessionNameWildcard"
+            try
             {
-                $ServiceSession = $ServiceSession[0]
-                $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
-                Write-Log -Message $message -EntryType Notification
-                #Test the Session functionality
-                if ($ServiceSession.state -ne 'Opened')
+                Write-Log -Message $message -EntryType Attempting
+                $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
+                Write-Log -Message $message -EntryType Succeeded
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+            }
+            Write-Output -InputObject $ServiceSession
+        }
+
+    }
+#end function Get-OneShellSystemPSSession
+function Test-OneShellSystemConnection
+    {
+        [cmdletbinding()]
+        param
+        (
+            $serviceObject
+            ,
+            [switch]$ReturnSession
+        )
+        begin
+        {
+            Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        }
+        end
+        {
+            try
+            {
+                $ServiceSession = @(Get-OneShellSystemPSSession -serviceObject $serviceObject -ErrorAction Stop)
+            }
+            catch
+            {
+                Write-Log -Message $_.tostring() -ErrorLog
+            }
+            switch ($ServiceSession.Count)
+            {
+                1
                 {
-                    Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
-                    Write-Output -InputObject $false
-                    break
-                }
-                else
-                {
-                    Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
-                }
-                Write-Log -Message "Getting Service Type Session Test Commands from file ServiceTypeSessionTestCommands.json" -EntryType Notification
-                $testCommands = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypeSessionTestCommands.json) -ErrorAction Stop
-                $testCommandDetails = $testCommands.ServiceTypes | Where-Object -FilterScript {$_.Name -eq $serviceObject.ServiceType}
-                if ($null -ne $testCommandDetails)
-                {
-                    $testCommand = $testCommandDetails.SessionTestCmdlet
-                    $testCommandParams = Convert-ObjectToHashTable -InputObject $testCommandDetails.parameters
-                    Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
-                    $ScriptBlock = [scriptblock]::Create("$TestCommand @TestCommandParams")
-                    $message = "Run $([string]$scriptblock) in $($serviceSession.name) PSSession"
-                    try
+                    $ServiceSession = $ServiceSession[0]
+                    $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
+                    Write-Log -Message $message -EntryType Notification
+                    #Test the Session functionality
+                    if ($ServiceSession.state -ne 'Opened')
                     {
-                        Write-Log -Message $message -EntryType Attempting
-                        invoke-command -Session $ServiceSession -ScriptBlock {$TestCommandParams = $using:TestCommandParams} -ErrorAction Stop
-                        invoke-command -Session $ServiceSession -ScriptBlock $ScriptBlock -ErrorAction Stop
-                        Write-Log -Message $message -EntryType Succeeded
-                        Write-Output -InputObject $true
-                    }
-                    catch
-                    {
-                        $myerror = $_
-                        Write-Log -Message $message -EntryType Failed -ErrorLog
-                        Write-Log -message $myerror.tostring() -ErrorLog
+                        Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
                         Write-Output -InputObject $false
                         break
                     }
-                }#end if
-                else
+                    else
+                    {
+                        Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                    }
+                    Write-Log -Message "Getting Service Type Session Test Commands from file ServiceTypeSessionTestCommands.json" -EntryType Notification
+                    $testCommands = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypeSessionTestCommands.json) -ErrorAction Stop
+                    $testCommandDetails = $testCommands.ServiceTypes | Where-Object -FilterScript {$_.Name -eq $serviceObject.ServiceType}
+                    if ($null -ne $testCommandDetails)
+                    {
+                        $testCommand = $testCommandDetails.SessionTestCmdlet
+                        $testCommandParams = Convert-ObjectToHashTable -InputObject $testCommandDetails.parameters
+                        Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+                        $ScriptBlock = [scriptblock]::Create("$TestCommand @TestCommandParams")
+                        $message = "Run $([string]$scriptblock) in $($serviceSession.name) PSSession"
+                        try
+                        {
+                            Write-Log -Message $message -EntryType Attempting
+                            invoke-command -Session $ServiceSession -ScriptBlock {$TestCommandParams = $using:TestCommandParams} -ErrorAction Stop
+                            invoke-command -Session $ServiceSession -ScriptBlock $ScriptBlock -ErrorAction Stop
+                            Write-Log -Message $message -EntryType Succeeded
+                            Write-Output -InputObject $true
+                        }
+                        catch
+                        {
+                            $myerror = $_
+                            Write-Log -Message $message -EntryType Failed -ErrorLog
+                            Write-Log -message $myerror.tostring() -ErrorLog
+                            Write-Output -InputObject $false
+                            break
+                        }
+                    }#end if
+                    else
+                    {
+                        Write-Log "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
+                        Write-Output -InputObject $true
+                    }
+                }
+                0
                 {
-                    Write-Log "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
-                    Write-Output -InputObject $true
+                    $message = "Found No PSSession for service $($serviceObject.Name)."
+                    Write-Log -Message $message -EntryType Notification
+                    Write-Output -InputObject $false
+                }
+                Default
+                {
+                    $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
+                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                    Write-Output -InputObject $false
                 }
             }
-            0
-            {
-                $message = "Found No PSSession for service $($serviceObject.Name)."
-                Write-Log -Message $message -EntryType Notification
-                Write-Output -InputObject $false
-            }
-            Default
-            {
-                $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
-                Write-Log -Message $message -EntryType Failed -ErrorLog
-                Write-Output -InputObject $false
-            }
+            if ($ReturnSession)
+            {Write-Output -InputObject $ServiceSession}
         }
-        if ($ReturnSession)
-        {Write-Output -InputObject $ServiceSession}
     }
-}
-function Resolve-EndpointPSSessionParameter
-{
-    [cmdletbinding()]
-    param
-    (
-        $ServiceObject
-        ,
-        $Endpoint
-    )
-    begin
+#end function Test-OneShellSystemConnection
+function Get-OneShellSystemEndpointPSSessionParameter
     {
-        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    }#end begin
-    end
-    {
-        $ConnectPSSessionParams = @{
-            ErrorAction = 'Stop'
-            Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
-            Credential = $ServiceObject.Credential
-        }
-        #Apply Service Type Defaults
-        switch -Wildcard ($ServiceObject.ServiceType)
+        [cmdletbinding()]
+        param
+        (
+            $ServiceObject
+            ,
+            $Endpoint
+        )
+        begin
         {
-            'Exchange*'
-            {
-                $ConnectPSSessionParams.ConfigurationName = 'Microsoft.Exchange'
-                $ConnectPSSessionParams.AllowRedirection = $true
-            }
-            'ExchangeOnline'
-            {
-                $ConnectPSSessionParams.Authentication = 'Basic'
-            }
-            'ExchangeComplianceCenter'
-            {
-                $ConnectPSSessionParams.Authentication = 'Basic'
-            }
-            'ExchangeOnPremises'
-            {
-                $ConnectPSSessionParams.Authentication = 'Kerberos'
-            }
-        }
-        #Apply ServiceObject Defaults or their endpoint overrides
-        if ($ServiceObject.defaults.ProxyEnabled -eq $true -or $Endpoint.ProxyEnabled -eq $true)
+            Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        }#end begin
+        end
         {
-            $ConnectPSSessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig #-ProxyAuthentication basic
-        }
-        if ($ServiceObject.defaults.UseTLS -eq $true -or $Endpoint.UseTLS -eq $true)
-        {
-            $ConnectPSSessionParams.UseSSL = $true
-        }
-        if (Test-IsNotNullOrWhiteSpace -string $ServiceObject.defaults.AuthMethod)
-        {
-            $ConnectPSSessionParams.Authentication = $ServiceObject.defaults.AuthMethod
-        }
-        if (Test-IsNotNullOrWhiteSpace -String $endpoint.AuthMethod)
-        {
-            $ConnectPSSessionParams.Authentication = $Endpoint.AuthMethod
-        }
-        #Apply Endpoint only settings
-        switch ($endpoint.AddressType)
-        {
-            'URL'
-            {
-                $ConnectPSSessionParams.ConnectionUri = $endpoint.Address
+            $ConnectPSSessionParams = @{
+                ErrorAction = 'Stop'
+                Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
+                Credential = $ServiceObject.Credential
             }
-            'IPAddress'
+            #Apply Service Type Defaults
+            switch -Wildcard ($ServiceObject.ServiceType)
             {
-                $ConnectPSSessionParams.ComputerName = $endpoint.Address
+                'Exchange*'
+                {
+                    $ConnectPSSessionParams.ConfigurationName = 'Microsoft.Exchange'
+                    $ConnectPSSessionParams.AllowRedirection = $true
+                }
+                'ExchangeOnline'
+                {
+                    $ConnectPSSessionParams.Authentication = 'Basic'
+                }
+                'ExchangeComplianceCenter'
+                {
+                    $ConnectPSSessionParams.Authentication = 'Basic'
+                }
+                'ExchangeOnPremises'
+                {
+                    $ConnectPSSessionParams.Authentication = 'Kerberos'
+                }
             }
-            'FQDN'
+            #Apply ServiceObject Defaults or their endpoint overrides
+            if ($ServiceObject.defaults.ProxyEnabled -eq $true -or $Endpoint.ProxyEnabled -eq $true)
             {
-                $ConnectPSSessionParams.ComputerName = $endpoint.Address
+                $ConnectPSSessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig #-ProxyAuthentication basic
             }
-        }
-        switch ($endpoint.AllowRedirection)
-        {
-            $true
+            if ($ServiceObject.defaults.UseTLS -eq $true -or $Endpoint.UseTLS -eq $true)
             {
-                $ConnectPSSessionParams.AllowRedirection = $endpoint.AllowRedirection
+                $ConnectPSSessionParams.UseSSL = $true
             }
-        }
-        if (Test-IsNotNullOrWhiteSpace -String $endpoint.ServicePort)
-        {
-            $ConnectPSSessionParams.Port = $Endpoint.ServicePort
-        }
-        Write-Output -InputObject $ConnectPSSessionParams
-    }#end end
-}
+            if (Test-IsNotNullOrWhiteSpace -string $ServiceObject.defaults.AuthMethod)
+            {
+                $ConnectPSSessionParams.Authentication = $ServiceObject.defaults.AuthMethod
+            }
+            if (Test-IsNotNullOrWhiteSpace -String $endpoint.AuthMethod)
+            {
+                $ConnectPSSessionParams.Authentication = $Endpoint.AuthMethod
+            }
+            #Apply Endpoint only settings
+            switch ($endpoint.AddressType)
+            {
+                'URL'
+                {
+                    $ConnectPSSessionParams.ConnectionUri = $endpoint.Address
+                }
+                'IPAddress'
+                {
+                    $ConnectPSSessionParams.ComputerName = $endpoint.Address
+                }
+                'FQDN'
+                {
+                    if ($ServiceObject.ServiceType -eq 'ExchangeOnPremises')
+                    {
+                        $ConnectPSSessionParams.ConnectionUri = "http://$($endpoint.address)/PowerShell/"
+                    }
+                    else
+                    {
+                        $ConnectPSSessionParams.ComputerName = $endpoint.Address
+                    }
+                }
+            }
+            switch ($endpoint.AllowRedirection)
+            {
+                $true
+                {
+                    $ConnectPSSessionParams.AllowRedirection = $endpoint.AllowRedirection
+                }
+            }
+            if (Test-IsNotNullOrWhiteSpace -String $endpoint.ServicePort)
+            {
+                $ConnectPSSessionParams.Port = $Endpoint.ServicePort
+            }
+            Write-Output -InputObject $ConnectPSSessionParams
+        }#end end
+    }
+#end function Get-EndPointPSSessionParameter
 Function Connect-OneShellSystem
 {
     [cmdletbinding(DefaultParameterSetName = 'Default')]
@@ -460,17 +471,17 @@ Function Connect-OneShellSystem
                 #check results of the test for an existing session
                 if ($ExistingConnectionIsValid)
                 {
-                    Write-Log -Message "Existing Session $($session.name) for Service $($serviceObject.Name) is valid."
+                    Write-Log -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
                     #nothing further to do since existing connection is valid
                     #add logic for preferred endpoint/specified endpoint checking?
-                }
+                }#end if
                 else
                 {
                     if ($null -ne $ExistingSession)
                     {
                         try
                         {
-                            $message = "Remove Existing Invalid Session $($Session.name) for Service $($serviceObject.name)."
+                            $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
                             Write-Log -Message $message -EntryType Attempting
                             Remove-PSSession -Session $ExistingSession -ErrorAction Stop
                             Write-Log -Message $message -EntryType Succeeded
@@ -482,28 +493,92 @@ Function Connect-OneShellSystem
                             Write-Log -Message $myerror.tostring() -EntryType -ErrorLog
                             throw ($myerror)
                         }
-                    }
+                    }#end if 
+                    Write-Log -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
                     #create and test the new session
-                    do
+                    $Connected = $false #when true we break out of the for loops below
+                    $Initialized = $false
+                    #Work through the endpoint groups to try connecting in order of precedence
+                    for (i = 0; $i -lt $EndPointGroups.count -and ($Connected -eq $false -or $Initialized -eq $false); $i++)
                     {
-                        foreach ($g in $EndPointGroups)
+                        #get the first endpoint group and randomly order them, then work through them one at a time until successfully connected
+                        $g  = $endPointGroups[$i]
+                        $endpoints = @($g.group | Sort-Object -Property {Get-Random})
+                        for ($ii = 0; $ii -lt $endpoints.Count -and ($Connected -eq $false -or $Initialized -eq $false); $ii++)
                         {
-                            $endpoints = @($g.group)
-                            do
+                            $e = $endpoints[$ii]
+                            $ConnectPSSessionParams = Get-OneShellSystemEndpointPSSessionParameter -ServiceObject $ServiceObject -Endpoint $e -ErrorAction Stop
+                            try
                             {
-                                $RandomSelection = Get-Random -Maximum $endpoints.Count -Minimum 0
-                                $endpoint = $endpoints[$RandomSelection]
-                                $endpoints = @($endpoints | Where-Object -FilterScript {$_.Identity -ne $endpoint.Identity})
-                            }#end do
-                            until ($endpoints.Count -eq 0)
-                            $AllEndpointsFailed = $true
+                                $message = "Create New-PsSession with Name $($connectPSSessionParams.Name) for Service $($serviceObject.Name)"
+                                Write-Log -Message $message -EntryType Attempting
+                                $ServiceSession = New-PSSession @ConnectPSSessionParams
+                                Write-Log -Message $message -EntryType Succeeded
+                                $Connected = $true
+                            }#end Try
+                            catch
+                            {
+                                $myerror = $_
+                                Write-Log -Message $message -EntryType Failed -ErrorLog
+                                Write-Log -Message $myerror.tostring() -ErrorLog
+                            }#end Catch
+                            #determine if the session needs to be initialized with imported modules, variables, etc. based on ServiceType
+                            switch -Wildcard ($ServiceObject.ServiceType)
+                            {
+                                'Exchange*'
+                                {}
+                                'PowerShell'
+                                {}
+                                Default
+                                {
+                                    try
+                                    {
+                                        Initialize-OneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
+                                    }
+                                    catch
+                                    {
+                                        
+                                    }
+                                }
+                            }
+                        }#end for
+                    }#end for
+                    switch ($Connected -and $Initialized)
+                    {
+                        $false #we couldn't connect after trying all applicable endpoints
+                        {
+                            Write-Log -Message "Failed to Connect to $($ServiceObject.Name). Review the errors and resolve them to connect." -ErrorLog -Verbose
                         }
+                        $true
+                        {
 
+                            if ($ServiceObject.AutoImport)
+                            {
+                                switch ($ServiceObject.ServiceType)
+                                {
+                                    'AADSyncServer'
+                                    {}
+                                    'ActiveDirectoryDomain'
+                                    {}
+                                    'ActiveDirectoryGlobalCatalog'
+                                    {}
+                                    'ActiveDirectoryLDS'
+                                    {}
+                                    'AzureADTenant'
+                                    {}
+                                    'Office365Tenant'
+                                    {}
+                                    'SkypeOrganization'
+                                    {}
+                                    'SQLDatabase'
+                                    {}
+                                    Default #Exchange types and PowerShell types
+                                    {
+                                    }
+                                }
+                            }
+                        }
                     }
-                    until
-                    (
-                        $Connected -eq $true -or $AllEndpointsFailed -eq $true
-                    )
                 }
             }#end $true
             default
@@ -513,3 +588,153 @@ Function Connect-OneShellSystem
         }#end Switch
     }#end End
 }#function Connect-OneShellSystem
+function Initialize-OneShellSystemPSSession
+{
+    [CmdletBinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        $ServiceObject
+        ,
+        [parameter(Mandatory)]
+        $ServiceSession
+    )
+    #add the module test and import functions
+    switch -Wildcard ($ServiceObject.ServiceType)
+    {
+        'Exchange*'
+        {}
+        'PowerShell'
+        {}
+        Default 
+        {
+            Add-FunctionToPSSession -FunctionNames 'Test-ForInstalledModule','Test-ForImportedModule' -PSSession $ServiceSession
+        }
+    }
+    #import the necessary module(s)
+    switch -Wildcard ($ServiceObject.ServiceType)
+    {
+        'AADSyncServer'
+        {
+            $ModuleName  = 'AdSync'
+        }
+        'ActiveDirectory*'
+        {
+            $ModuleName = 'ActiveDirectory'
+            #Suppress Creation of the Default AD Drive with current credentials
+            Invoke-Command -session $ServiceSession -ScriptBlock {$Env:ADPS_LoadDefaultDrive = 0} -ErrorAction Stop
+        }
+        'AzureADTenant'
+        {
+            $ModuleName = 'AzureADPreview'
+        }
+        'Office365Tenant'
+        {
+            $ModuleName = 'MSOnline'
+        }
+        'SkypeOrganization'
+        {
+            $ModuleName = 'SkypeOnlineConnector'
+        }
+        'SQLDatabase'
+        {}
+        Default #Exchange types and PowerShell types
+        {
+        }
+    }
+    if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForInstalledModule -Name $using:ModuleName} -HideComputerName)
+    {
+        if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForImportedModule -Name $using:ModuleName} -HideComputerName)
+        {
+            #module already loaded in the session
+        }
+        else
+        {
+            try
+            {
+                Invoke-Command -session $ServiceSession -ScriptBlock {Import-Module -Name $using:ModuleName -ErrorAction Stop} -ErrorAction Stop
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message "Failed to import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name)." -ErrorLog -Verbose -EntryType Failed
+                Write-Log -Message $myerror.tostring() -ErrorLog
+            }
+        }
+    }
+}
+
+function Add-FunctionToPSSession
+    {
+        [cmdletbinding()]
+        param(
+            [parameter(Mandatory)]
+            [string[]]$FunctionNames
+            ,
+            [parameter(ParameterSetName = 'SessionID',Mandatory,ValuefromPipelineByPropertyName)]
+            [int]$ID
+            ,
+            [parameter(ParameterSetName = 'SessionName',Mandatory,ValueFromPipelineByPropertyName)]
+            [string]$Name
+            ,
+            [parameter(ParameterSetName = 'SessionObject',Mandatory,ValueFromPipeline)]
+            [Management.Automation.Runspaces.PSSession]$PSSession
+            ,
+            [switch]$Refresh
+        )
+        #Find the session
+        $GetPSSessionParams=@{
+            ErrorAction = 'Stop'
+        }
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'SessionID'
+            {
+                $GetPSSessionParams.ID = $ID
+                $PSSession = Get-PSSession @GetPSSessionParams
+            }
+            'SessionName'
+            {
+                $GetPSSessionParams.Name = $Name
+                $PSSession = Get-PSSession @GetPSSessionParams
+            }
+            'SessionObject'
+            {
+                #nothing required here
+            }
+        }
+        #Verify the session availability
+        if (-not $PSSession.Availability -eq 'Available')
+        {
+            throw "Availability Status for PSSession $($PSSession.Name) is $($PSSession.Availability).  It must be Available."
+        }
+        #Verify if the functions already exist in the PSSession unless Refresh
+        foreach ($FN in $FunctionNames)
+        {
+            $script = "Get-Command -Name '$FN' -ErrorAction SilentlyContinue"
+            $scriptblock = [scriptblock]::Create($script)
+            $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock $scriptblock -ErrorAction SilentlyContinue
+            if ($remoteFunction.CommandType -ne $null -and -not $Refresh)
+            {
+                $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
+            }
+        }
+        Write-Verbose -Message "Functions remaining: $($FunctionNames -join ',')"
+        #Verify the local function availiability
+        $Functions = @(
+            foreach ($FN in $FunctionNames)
+            {
+                Get-Command -ErrorAction Stop -Name $FN -CommandType Function
+            }
+        )
+        #build functions text to initialize in PsSession 
+        $FunctionsText = ''
+        foreach ($Function in $Functions) {
+            $FunctionText = 'function ' + $Function.Name + "`r`n {`r`n" + $Function.Definition + "`r`n}`r`n"
+            $FunctionsText = $FunctionsText + $FunctionText
+        }
+        #convert functions text to scriptblock
+        $ScriptBlock = [scriptblock]::Create($FunctionsText)
+    Invoke-Command -Session $PSSession -ScriptBlock $ScriptBlock -ErrorAction Stop
+    }
+#end function Add-FunctionToPSSession

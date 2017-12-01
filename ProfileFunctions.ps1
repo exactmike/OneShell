@@ -190,6 +190,7 @@ function GetOrgProfileSystemForAdminProfile
             [PSCustomObject]@{
                 Identity = $s.Identity
                 AutoConnect = $null
+                AutoImport = $null
                 Credential = $null
                 PreferredEndpoint = $null
                 PreferredPrefix = $null
@@ -1880,6 +1881,9 @@ Function Set-AdminUserProfileSystem
             [bool]$AutoConnect
             ,
             [parameter()]
+            [bool]$AutoImport
+            ,
+            [parameter()]
             [String]$Credential
             ,
             [parameter()]
@@ -1943,6 +1947,8 @@ Function Set-AdminUserProfileSystem
             {
                 {$_.key -eq 'AutoConnect'}
                 {$System.AutoConnect = $AutoConnect}
+                {$_.key -eq 'AutoImport'}
+                {$System.AutoConnect = $AutoImport}
                 {$_.key -eq 'PreferredPrefix'}
                 {$System.PreferredPrefix = $PreferredPrefix}
                 {$_.key -eq 'PreferredEndpoint'}
@@ -1970,7 +1976,7 @@ Function Set-AdminUserProfileSystem
                 }
             }
             #remove any extraneous properties
-            $System = $System | Select-Object -Property "Identity","AutoConnect","Credential","PreferredEndpoint","PreferredPrefix"
+            $System = $System | Select-Object -Property "Identity","AutoConnect","AutoImport","Credential","PreferredEndpoint","PreferredPrefix"
             #Save the system changes to the Admin Profile
             $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
             Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
