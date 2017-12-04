@@ -2454,7 +2454,7 @@ function Set-AdminUserProfileCredential
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
         }
         End
