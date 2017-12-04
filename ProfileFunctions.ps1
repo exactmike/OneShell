@@ -600,15 +600,15 @@ function New-OrgProfileSystem
             
             ,
             [parameter()]
-            [validateset('$true','$false')]
+            [validateset($true,$false)]
             [bool]$ProxyEnabled
             ,
             [parameter()]
-            [validateset('$true','$false')]
+            [validateset($true,$false)]
             [bool]$AuthenticationRequired
             ,
             [parameter()]
-            [validateset('$true','$false')]
+            [validateset($true,$false)]
             [bool]$UseTLS
             ,
             [parameter()]
@@ -716,15 +716,15 @@ function Set-OrgProfileSystem
             [string]$Description
             ,
             [parameter()]
-            [validateset('$true','$false')]
+            [validateset($true,$false)]
             [bool]$ProxyEnabled
             ,
             [parameter()]
-            [validateset('$true','$false')]
+            [validateset($true,$false)]
             [bool]$AuthenticationRequired
             ,
             [parameter()]
-            [validateset('$true','$false')]
+            [validateset($true,$false)]
             [bool]$UseTLS
             ,
             [parameter()]
