@@ -325,6 +325,10 @@ function AddAdminUserProfileFolders
             }
         }
     }
+function GetAdminUserProfileSystemPropertySet
+{
+    "Identity","AutoConnect","AutoImport","Credential","PreferredEndpoint","PreferredPrefix"
+}
 #################################################
 # Public Functions
 #################################################
@@ -1980,7 +1984,7 @@ Function Set-AdminUserProfileSystem
                 }
             }
             #remove any extraneous properties
-            $System = $System | Select-Object -Property "Identity","AutoConnect","AutoImport","Credential","PreferredEndpoint","PreferredPrefix"
+            $System = $System | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
             #Save the system changes to the Admin Profile
             $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
             Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
@@ -2064,6 +2068,7 @@ Function Set-AdminUserProfileSystemPreferredEndpoint
                 }
             )
             if ($null -eq $SelectedEndpointIdentity) {throw("No valid Endpoint Identity was provided.")}
+            $System = $System | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
             $system.PreferredEndpoint = $SelectedEndpointIdentity
             #Save the system changes to the Admin Profile
             $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
@@ -2151,6 +2156,7 @@ Function Set-AdminUserProfileSystemCredential
             )
             if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
             $system.Credential = $SelectedCredentialIdentity
+            $system = $system | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
             #Save the system changes to the Admin Profile
             $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
             Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
@@ -2536,6 +2542,7 @@ function Set-AdminUserProfileCredential
             Export-AdminUserProfile @exportAdminUserProfileParams
         }
     }
+#end function Set-AdminUserProfileCredential
 function Get-AdminUserProfileCredential
     {
         [cmdletbinding()]

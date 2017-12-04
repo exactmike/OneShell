@@ -2520,7 +2520,6 @@ Function New-DynamicParameter
             $ParamOptions = New-Object System.Management.Automation.ValidateSetAttribute -ArgumentList $ValidateSet
             $AttributeCollection.Add($ParamOptions)
         }
-
     #Aliases if specified
         if($Alias.count -gt 0) {
             $ParamAlias = New-Object System.Management.Automation.AliasAttribute -ArgumentList $Alias
@@ -2532,33 +2531,36 @@ Function New-DynamicParameter
         $Parameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList @($Name, $Type, $AttributeCollection)
     
     #Add the dynamic parameter to an existing dynamic parameter dictionary, or create the dictionary and add it
-        if(-not $null -eq $DPDictionary)
-        {
-            Write-Verbose -Message "Using Existing DPDictionary"
-            $DPDictionary.Add($Name, $Parameter)
-            Write-Output -InputObject $DPDictionary
-        }
-        else
-        {
-            Write-Verbose -Message "Creating New DPDictionary"
-            $Dictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-            $Dictionary.Add($Name, $Parameter)
-            Write-Output -inputobject $Dictionary
-        }
+    if(-not $null -eq $DPDictionary)
+    {
+        Write-Verbose -Message "Using Existing DPDictionary"
+        $DPDictionary.Add($Name, $Parameter)
+        Write-Output -InputObject $DPDictionary
+    }
+    else
+    {
+        Write-Verbose -Message "Creating New DPDictionary"
+        $Dictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+        $Dictionary.Add($Name, $Parameter)
+        Write-Output -inputobject $Dictionary
+    }
 }
+#end function New-DynamicParameter
 function Set-DynamicParameterVariable
-{
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-[System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
-)
-foreach ($p in $Dictionary.Keys)
-{
-    Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
-    #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
-}
-}
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory)]
+            [System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
+        )
+        foreach ($p in $Dictionary.Keys)
+        {
+            Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
+            #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
+        }
+    }
+#end function Set-DynamicParameterVariable
 Function Get-CommonParameter
     {
         [cmdletbinding(SupportsShouldProcess)]
