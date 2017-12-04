@@ -403,7 +403,7 @@ function New-OrgProfile
             [parameter(Mandatory)]
             [string]$Name
             ,
-            [paramter()]
+            [parameter()]
             [string[]]$OrganizationSpecificModules
             ,
             [parameter()]
