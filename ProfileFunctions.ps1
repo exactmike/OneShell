@@ -1875,7 +1875,7 @@ Function Set-AdminUserProfileSystem
         param
         (
             [parameter(Position = 1)]
-            [string[]]$Identity
+            [string]$Identity
             ,
             [parameter()]
             [bool]$AutoConnect
@@ -1913,25 +1913,27 @@ Function Set-AdminUserProfileSystem
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Profile
-            if ($null -eq $ProfileIdentity)
-            {
-                Select-Profile -Profiles $paProfiles -Operation Edit
-            }
-            else
-            {
-                $GetAdminUserProfileParams = @{
-                    ErrorAction = 'Stop'
-                    Path = $Path
-                    Identity = $ProfileIdentity
+            $AdminProfile = $(
+                if ($null -eq $ProfileIdentity)
+                {
+                    Select-Profile -Profiles $paProfiles -Operation Edit
                 }
-                $AdminProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-            }
+                else
+                {
+                    $GetAdminUserProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Path = $Path
+                        Identity = $ProfileIdentity
+                    }
+                    Get-AdminUserProfile @GetAdminUserProfileParams
+                }
+            )
             #Get/Select the System
             $System = $(
                 if ($PSBoundParameters.ContainsKey('Identity'))
                 {
-                    if ($Identity -in $AdminProfile.systems.Identity)
-                    {$AdminProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity}}
+                    if ($Identity -in $AdminProfile.systems.Identity -or $Identity -in $AdminProfile.systems.Name)
+                    {$AdminProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.name -eq $Identity}}
                     else
                     {throw("Invalid SystemIdentity $Identity was provided. No such system exists in AdminProfile $ProfileIdentity.")}
                 }
@@ -2295,19 +2297,21 @@ function New-AdminUserProfileCredential
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Profile
-            if ($null -eq $ProfileIdentity)
-            {
-                Select-Profile -Profiles $paProfiles -Operation Edit
-            }
-            else
-            {
-                $GetAdminUserProfileParams = @{
-                    ErrorAction = 'Stop'
-                    Path = $Path
-                    Identity = $ProfileIdentity
+            $AdminProfile = $(
+                if ($null -eq $ProfileIdentity)
+                {
+                    Select-Profile -Profiles $paProfiles -Operation Edit
                 }
-                $AdminProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-            }
+                else
+                {
+                    $GetAdminUserProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Path = $Path
+                        Identity = $ProfileIdentity
+                    }
+                    Get-AdminUserProfile @GetAdminUserProfileParams
+                }
+            )
             $NewCredential = $(
                 switch ($PSBoundParameters.ContainsKey('Username'))
                 {
