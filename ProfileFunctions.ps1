@@ -1928,18 +1928,20 @@ Function Set-AdminUserProfileSystem
                     Get-AdminUserProfile @GetAdminUserProfileParams
                 }
             )
+            Write-Verbose -Message "Loaded Admin User Profile $($adminProfile.name) with Identity $($adminProfile.Identity)"
             #Get/Select the System
             $System = $(
+                $Systems = Get-AdminUserProfileSystem -ProfileIdentity $AdminProfile.Identity -Path $Path -ErrorAction 'Stop'
                 if ($PSBoundParameters.ContainsKey('Identity'))
                 {
-                    if ($Identity -in $AdminProfile.systems.Identity -or $Identity -in $AdminProfile.systems.Name)
-                    {$AdminProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.name -eq $Identity}}
+                    Write-Verbose -Message "Searching for System with System Identity $Identity"
+                    if ($Identity -in $systems.Identity -or $Identity -in $systems.Name)
+                    {$systems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.name -eq $Identity}}
                     else
                     {throw("Invalid SystemIdentity $Identity was provided. No such system exists in AdminProfile $ProfileIdentity.")}
                 }
                 else
                 {
-                    $Systems = Get-AdminUserProfileSystem -ProfileIdentity $ProfileIdentity -Path $Path -ErrorAction 'Stop'
                     Select-ProfileSystem -Systems $Systems -Operation Edit
                 }
             )
@@ -2099,37 +2101,39 @@ Function Set-AdminUserProfileSystemCredential
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Profile
-            if ($null -eq $ProfileIdentity)
-            {
-                Select-Profile -Profiles $paProfiles -Operation Edit
-            }
-            else
-            {
-                $GetAdminUserProfileParams = @{
-                    ErrorAction = 'Stop'
-                    Path = $Path
-                    Identity = $ProfileIdentity
+            $AdminProfile = $(
+                if ($null -eq $ProfileIdentity)
+                {
+                    Select-Profile -Profiles $paProfiles -Operation Edit
                 }
-                $AdminProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-            }
+                else
+                {
+                    $GetAdminUserProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Path = $Path
+                        Identity = $ProfileIdentity
+                    }
+                    Get-AdminUserProfile @GetAdminUserProfileParams
+                }
+            )
             #Get/Select the System
+            $Systems = Get-AdminUserProfileSystem -ProfileIdentity $AdminProfile.Identity -Path $Path -ErrorAction 'Stop'
             $System = $(
                 if ($PSBoundParameters.ContainsKey('SystemIdentity'))
                 {
-                    if ($SystemIdentity -in $AdminProfile.systems.Identity)
-                    {$AdminProfile.systems | Where-Object -FilterScript {$_.Identity -eq $SystemIdentity}}
+                    if ($SystemIdentity -in $systems.Identity -or $SystemIdentity -in $systems.name)
+                    {$systems | Where-Object -FilterScript {$_.Identity -eq $SystemIdentity -or $_.name -eq $SystemIdentity}}
                     else
                     {throw("Invalid System Identity $SystemIdentity was provided. No such system exists in AdminProfile $ProfileIdentity.")}
                 }
                 else
                 {
-                    $Systems = Get-AdminUserProfileSystem -ProfileIdentity $ProfileIdentity -Path $Path -ErrorAction 'Stop'
                     Select-ProfileSystem -Systems $Systems -Operation Edit | Select-Object -Property "Identity","AutoConnect","Credential","PreferredEndpoint","PreferredPrefix"
                 }
             )
             if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
             #Get/Select the Credential
-            $Credentials = @(Get-AdminUserProfileCredential -ProfileIdentity $ProfileIdentity -ErrorAction 'Stop' -Path $path)
+            $Credentials = @(Get-AdminUserProfileCredential -ProfileIdentity $AdminProfile.Identity -ErrorAction 'Stop' -Path $path)
             $SelectedCredentialIdentity = $(
                 if ($PsBoundParameters.ContainsKey('CredentialIdentity'))
                 {
@@ -2457,19 +2461,21 @@ function Set-AdminUserProfileCredential
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Profile
-            if ($null -eq $ProfileIdentity)
-            {
-                Select-Profile -Profiles $paProfiles -Operation Edit
-            }
-            else
-            {
-                $GetAdminUserProfileParams = @{
-                    ErrorAction = 'Stop'
-                    Path = $Path
-                    Identity = $ProfileIdentity
+            $AdminProfile = $(
+                if ($null -eq $ProfileIdentity)
+                {
+                    Select-Profile -Profiles $paProfiles -Operation Edit
                 }
-                $AdminProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-            }
+                else
+                {
+                    $GetAdminUserProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Path = $Path
+                        Identity = $ProfileIdentity
+                    }
+                    Get-AdminUserProfile @GetAdminUserProfileParams
+                }
+            )
             if ($AdminProfile.Credentials.Count -eq 0) {throw('There are no credentials to set')}
             $SelectedCredential = @(
                 switch ($PSCmdlet.ParameterSetName)
@@ -2605,12 +2611,12 @@ function Select-ProfileSystem
         $message = "Select system to $Operation"
         $CredChoices = @(foreach ($s in $Systems){"$($s.servicetype):$($s.name):$($s.Identity)"})
         $whichone = 
-            switch ($host.Name -notlike 'Console*')
+            switch ($host.Name -like 'Console*')
             {
-                $true
-                {Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
                 $false
-                {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
+                {Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
+                $true
+                {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Numbered} #-Title $message
             }
         Write-Output -InputObject $systems[$whichone]
     }
@@ -2630,12 +2636,12 @@ function Select-OrgProfileSystemEndpoint
         $message = "Select endpoint to $Operation"
         $Choices = @(foreach ($i in $EndPoints){"$($i.ServiceType):$($i.address):$($i.Identity)"})
         $whichone = $(
-            switch ($host.Name -notlike 'Console*')
+            switch ($host.Name -like 'Console*')
             {
-                $true
-                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
                 $false
-                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+                $true
+                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
             }
         )
         Write-Output -InputObject $EndPoints[$whichone]
@@ -2656,12 +2662,12 @@ function Select-AdminUserProfileCredential
         $message = "Select credential to $Operation"
         $Choices = @(foreach ($i in $Credentials){"$($i.username):$($i.Identity)"})
         $whichone = $(
-            switch ($host.Name -notlike 'Console*')
+            switch ($host.Name -like 'Console*')
             {
-                $true
-                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
                 $false
-                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+                $true
+                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
             }
         )
         Write-Output -InputObject $Credentials[$whichone]
@@ -2682,12 +2688,12 @@ function Select-Profile
     $message = "Select profile to $Operation"
     $Choices = @(foreach ($i in $Profiles){"$($i.name):$($i.Identity)"})
     $whichone = $(
-        switch ($host.Name -notlike 'Console*')
+        switch ($host.Name -like 'Console*')
         {
-            $true
-            {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
             $false
-            {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+            {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+            $true
+            {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
         }
     )
     Write-Output -InputObject $Profiles[$whichone]
