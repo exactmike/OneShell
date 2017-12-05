@@ -112,7 +112,35 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
         {
             Set-DynamicParameterVariable -dictionary $dictionary
         }
-        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+        #$ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+        #if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+        #{
+        #    foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+        #    {
+       ##############################
+       #.SYNOPSIS
+       #Short description
+       #
+       #.DESCRIPTION
+       #Long description
+       #
+       #.PARAMETER OrgSystemObject
+       #Parameter description
+       #
+       #.PARAMETER ServiceType
+       #Parameter description
+       #
+       #.PARAMETER dictionary
+       #Parameter description
+       #
+       #.EXAMPLE
+       #An example
+       #
+       #.NOTES
+       #General notes
+       ##############################        $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name $a -Value $(Get-Variable -name $a -Scope Local)
+        #    }
+        #}
         switch -Wildcard ($ServiceType)
         {
             #one entry for each ServiceType with ServiceTypeAttributes
