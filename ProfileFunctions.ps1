@@ -42,10 +42,19 @@ function GetPotentialAdminUserProfiles
 #End function GetPotentialAdminUserProfiles
 function GetOrgProfileSystemServiceTypes
     {
-        #change this list in other functions as well when you modify here.
-        'PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization'
+        $script:ServiceTypes.Name
     }
 #end function GetOrgProfileSystemServiceTypes
+function GetServiceTypeDefinition
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [string]$ServiceType
+    )
+    $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
+}
 function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
@@ -103,6 +112,7 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
         {
             Set-DynamicParameterVariable -dictionary $dictionary
         }
+        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
         switch -Wildcard ($ServiceType)
         {
             #one entry for each ServiceType with ServiceTypeAttributes

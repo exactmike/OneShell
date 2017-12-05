@@ -66,8 +66,8 @@ PowerShellVersion = '3.0'
 #NestedModules = @('PSMenu.psm1')
 
 # Functions to export from this module
-#FunctionsToExport = '*'
-FunctionsToExport = '*-*'
+FunctionsToExport = '*'
+#FunctionsToExport = '*-*'
 
 # Cmdlets to export from this module
 #CmdletsToExport = '*'

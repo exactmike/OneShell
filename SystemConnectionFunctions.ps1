@@ -267,13 +267,12 @@ function Test-OneShellSystemConnection
                     {
                         Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                     }
-                    Write-Log -Message "Getting Service Type Session Test Commands from file ServiceTypeSessionTestCommands.json" -EntryType Notification
-                    $testCommands = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypeSessionTestCommands.json) -ErrorAction Stop
-                    $testCommandDetails = $testCommands.ServiceTypes | Where-Object -FilterScript {$_.Name -eq $serviceObject.ServiceType}
-                    if ($null -ne $testCommandDetails)
+                    Write-Log -Message "Getting Service Type Session Test Commands from `$script:ServiceTypes" -EntryType Notification
+                    $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+                    if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                     {
-                        $testCommand = $testCommandDetails.SessionTestCmdlet
-                        $testCommandParams = Convert-ObjectToHashTable -InputObject $testCommandDetails.parameters
+                        $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
+                        $testCommandParams = Convert-ObjectToHashTable -InputObject $ServiceTypeDefinition.SessionTestCmdletParameters
                         Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
                         $ScriptBlock = [scriptblock]::Create("$TestCommand @TestCommandParams")
                         $message = "Run $([string]$scriptblock) in $($serviceSession.name) PSSession"
@@ -581,7 +580,7 @@ Function Connect-OneShellSystem
                                         $message = "Initialize PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                         Write-Log -Message $message -EntryType Attempting
                                         Initialize-OneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
-                                        Write-Log -Message $MyScriptsPath -EntryType Succeeded
+                                        Write-Log -Message $message -EntryType Succeeded
                                     }
                                     catch
                                     {
@@ -606,7 +605,11 @@ Function Connect-OneShellSystem
                             else 
                             {
                                 Write-Log -Message $message -EntryType Failed -ErrorLog
-                                Remove-PSSession -Session $ServiceSession
+                                if ($null -ne $ServiceSession)
+                                {
+                                    Remove-PSSession -Session $ServiceSession -ErrorAction Stop
+                                }
+                                
                             }
                         }#end for
                     }#end for
@@ -618,7 +621,6 @@ Function Connect-OneShellSystem
                         }
                         $true
                         {
-
                             if ($ServiceObject.AutoImport)
                             {
                                 switch ($ServiceObject.ServiceType)

@@ -3060,6 +3060,10 @@ function Set-OneShellVariables
 . $(Join-Path $PSScriptRoot 'TestFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'ActiveDirectoryFunctions.ps1')
 ##########################################################################################################
+#Import settings from json files
+##########################################################################################################
+$Script:ServiceTypes = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypes.json) -ErrorAction Stop | Select-Object -ExpandProperty ServiceTypes -ErrorAction Stop
+##########################################################################################################
 #Initialization
 ##########################################################################################################
 Set-OneShellVariables

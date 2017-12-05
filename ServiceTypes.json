@@ -1,0 +1,119 @@
+{
+    "ServiceTypes":[
+        {
+            "Name": "ExchangeOnPremises",
+            "SessionTestCmdlet": "Set-ADServerSettings",
+            "SessionTestCmdletParameters":
+            {
+                "ViewEntireForest": true,
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
+            },
+            "OrgSystemServiceTypeAttributes": []
+        },
+        {
+            "Name": "ExchangeOnline",
+            "SessionTestCmdlet": "Get-User",
+            "SessionTestCmdletParameters":
+            {
+                "Identity" : "$ServiceObject.Credential.Username",
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
+            },
+            "OrgSystemServiceTypeAttributes": []
+        },
+        {
+            "Name": "ExchangeComplianceCenter"
+        },
+        {
+            "Name": "PowerShell",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "SessionManagementGroups": []
+                }
+            ]
+        },
+        {
+            "Name": "SQLDatabase",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "DatabaseName": ""
+                }
+            ]
+    
+        },
+        {
+            "Name": "AADSyncServer"
+        },
+        {
+            "Name": "AzureADTenant",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "TenantSubDomain": ""
+                }
+            ]
+        },
+        {
+            "Name": "Office365Tenant",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "TenantSubDomain": ""
+                }
+            ]
+        },
+        {
+            "Name": "ActiveDirectoryDomain",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "ADUserAttributes": []
+                },
+                {
+                    "ADGroupAttributes": []
+                },
+                {
+                    "ADContactAttributes": []
+                }
+            ]
+        },
+        {
+            "Name": "ActiveDirectoryGlobalCatalog",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "ADUserAttributes": []
+                },
+                {
+                    "ADGroupAttributes": []
+                },
+                {
+                    "ADContactAttributes": []
+                }
+            ]
+        },
+        {
+            "Name": "ActiveDirectoryLDS",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "ADUserAttributes": []
+                },
+                {
+                    "ADGroupAttributes": []
+                },
+                {
+                    "ADContactAttributes": []
+                }
+            ]
+        },
+        {
+            "Name": "MailRelayEndpoint",
+            "OrgSystemServiceTypeAttributes": []
+        },
+        {
+            "Name": "SkypeForBusinessOnline",
+            "OrgSystemServiceTypeAttributes": []
+        },
+        {
+            "Name": "SkypeForBusinessOnPremises",
+            "OrgSystemServiceTypeAttributes": []
+        }
+    ]
+}
