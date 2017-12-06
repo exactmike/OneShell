@@ -944,3 +944,12 @@ function Add-FunctionToPSSession
     Invoke-Command -Session $PSSession -ScriptBlock $ScriptBlock -ErrorAction Stop
     }
 #end function Add-FunctionToPSSession
+#################################################
+# Need to update
+#################################################
+
+#################################################
+# Need to add
+#################################################
+#Disconnect-OneShellSystem
+#Multiple OneShellSystem Connections
