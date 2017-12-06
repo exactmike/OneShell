@@ -46,15 +46,16 @@ function GetOrgProfileSystemServiceTypes
     }
 #end function GetOrgProfileSystemServiceTypes
 function GetServiceTypeDefinition
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        [string]$ServiceType
-    )
-    $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
-}
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory)]
+            [string]$ServiceType
+        )
+        $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
+    }
+#end function GetServiceTypeDefinition
 function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
@@ -108,66 +109,22 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
             [parameter()]
             $dictionary
         )#end param
+        #Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         if ($null -ne $dictionary)
         {
             Set-DynamicParameterVariable -dictionary $dictionary
         }
-        #$ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
-        #if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
-        #{
-        #    foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
-        #    {
-       ##############################
-       #.SYNOPSIS
-       #Short description
-       #
-       #.DESCRIPTION
-       #Long description
-       #
-       #.PARAMETER OrgSystemObject
-       #Parameter description
-       #
-       #.PARAMETER ServiceType
-       #Parameter description
-       #
-       #.PARAMETER dictionary
-       #Parameter description
-       #
-       #.EXAMPLE
-       #An example
-       #
-       #.NOTES
-       #General notes
-       ##############################        $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name $a -Value $(Get-Variable -name $a -Scope Local)
-        #    }
-        #}
-        switch -Wildcard ($ServiceType)
+        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+        Write-Verbose -Message "Using ServiceTypeDefinition $($ServiceTypeDefinition.name)"
+        if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
         {
-            #one entry for each ServiceType with ServiceTypeAttributes
-            '*Tenant'
-            {$OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'TenantSubDomain' -Value $TenantSubDomain}
-            'Exchange*'
+            foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.name)
             {
+                $Value = Get-Variable -Name $a -ValueOnly -Scope Local
+                Write-Verbose -Message "Value for $a is $value"
+                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name $a -Value $Value
             }
-            'ActiveDirectory*'
-            {
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADUserAttributes' -Value $ADUserAttributes
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADGroupAttributes' -Value $ADGroupAttributes
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'ADContactAttributes' -Value $ADContactAttributes
-            }
-            'PowerShell'
-            {
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SessionManagementGroups' -Value $SessionManagementGroups
-            }
-            'SQLDatabase'
-            {
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'SQLInstanceType' -Value @()
-                $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name 'Database' -Value @()
-            }
-            'AADSyncServer'
-            {
-            }
-        }#end switch 
+        }
         Write-Output -InputObject $OrgSystemObject
     }
 #end function AddServiceTypeAttributesToGenericOrgSystemObject
@@ -672,26 +629,12 @@ function New-OrgProfileSystem
             $OrgProfileIdentities = @($PotentialOrgProfiles.Name;$PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
             #build any service type specific parameters that may be needed
-            switch -Wildcard ($ServiceType)
+            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
-                '*Tenant'
+                foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
                 {
-                    $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$true -DPDictionary $dictionary
-                }
-                'ActiveDirectory*'
-                {
-                    $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
-                    $Dictionary = New-DynamicParameter -Name 'ADGroupAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
-                    $Dictionary = New-DynamicParameter -Name 'ADContactAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
-                }
-                'PowerShell'
-                {
-                    $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
-                }
-                'SQLDatabase'
-                {
-                    $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$true -ValidateSet 'OnPremises','AzureSQL' -DPDictionary $dictionary
-                    $Dictionary = New-DynamicParameter -Name 'Database' -Type $([string]) -Mandatory:$true -DPDictionary $Dictionary
+                    $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.mandatory -DPDictionary $dictionary -Verbose
                 }
             }
             Write-Output -InputObject $dictionary
@@ -751,6 +694,10 @@ function Set-OrgProfileSystem
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
             ,
+            [parameter(Mandatory)]
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
+            [string]$ServiceType
+            ,
             [parameter()]
             [string]$Name
             ,
@@ -787,15 +734,15 @@ function Set-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string]) -ValidateSet $(GetOrgProfileSystemServiceTypes) -DPDictionary $dictionary
             #build  service type specific parameters that may be needed
-            $Dictionary = New-DynamicParameter -Name 'TenantSubdomain' -Type $([string]) -Mandatory:$false -DPDictionary $dictionary
-            $Dictionary = New-DynamicParameter -Name 'ADUserAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
-            $Dictionary = New-DynamicParameter -Name 'ADGroupAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
-            $Dictionary = New-DynamicParameter -Name 'ADContactAttributes' -Type $([string[]]) -Mandatory:$false -DPDictionary $Dictionary
-            $Dictionary = New-DynamicParameter -Name 'SessionManagementGroups' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
-            $Dictionary = New-DynamicParameter -Name 'SQLInstanceType' -Type $([string]) -Mandatory:$false -ValidateSet 'OnPremises','AzureSQL' -DPDictionary $dictionary
-            $Dictionary = New-DynamicParameter -Name 'Database' -Type $([string]) -Mandatory:$false -DPDictionary $Dictionary
+            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+            {
+                foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+                {
+                    $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.mandatory -DPDictionary $dictionary
+                }
+            }
             Write-Output -InputObject $dictionary
         }#End DynamicParam
         End
@@ -965,8 +912,8 @@ Function Remove-OrgProfileSystem
             $System = $(
                 if ($PSBoundParameters.ContainsKey('Identity'))
                 {
-                    if ($Identity -in $OrgProfile.systems.Identity)
-                    {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity}}
+                    if ($Identity -in $OrgProfile.systems.Identity -or $Identity -in $OrgProfile.systems.name)
+                    {$OrgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.name -eq $Identity}}
                     else
                     {throw("Invalid SystemIdentity $Identity was provided.  No such system exists in OrgProfile $ProfileIdentity.")}
                 }

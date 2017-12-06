@@ -29,7 +29,10 @@
             "Name": "PowerShell",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "SessionManagementGroups": []
+                    "name": "SessionManagementGroups",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 }
             ]
         },
@@ -37,7 +40,10 @@
             "Name": "SQLDatabase",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "DatabaseName": ""
+                    "Name": "DatabaseName",
+                    "type": "string",
+                    "mandatory": true,
+                    "value": ""
                 }
             ]
     
@@ -49,7 +55,10 @@
             "Name": "AzureADTenant",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "TenantSubDomain": ""
+                    "Name": "TenantSubDomain",
+                    "type": "string",
+                    "mandatory": true,
+                    "value": ""
                 }
             ]
         },
@@ -57,7 +66,10 @@
             "Name": "Office365Tenant",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "TenantSubDomain": ""
+                    "Name": "TenantSubDomain",
+                    "type": "string",
+                    "mandatory": true,
+                    "value": ""
                 }
             ]
         },
@@ -65,13 +77,22 @@
             "Name": "ActiveDirectoryDomain",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "ADUserAttributes": []
+                    "Name": "ADUserAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 },
                 {
-                    "ADGroupAttributes": []
+                    "name": "ADGroupAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 },
                 {
-                    "ADContactAttributes": []
+                    "Name":"ADContactAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value":[]
                 }
             ]
         },
@@ -79,13 +100,22 @@
             "Name": "ActiveDirectoryGlobalCatalog",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "ADUserAttributes": []
+                    "Name": "ADUserAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 },
                 {
-                    "ADGroupAttributes": []
+                    "name": "ADGroupAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 },
                 {
-                    "ADContactAttributes": []
+                    "Name":"ADContactAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value":[]
                 }
             ]
         },
@@ -93,13 +123,22 @@
             "Name": "ActiveDirectoryLDS",
             "OrgSystemServiceTypeAttributes": [
                 {
-                    "ADUserAttributes": []
+                    "Name": "ADUserAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 },
                 {
-                    "ADGroupAttributes": []
+                    "name": "ADGroupAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
                 },
                 {
-                    "ADContactAttributes": []
+                    "Name":"ADContactAttributes",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value":[]
                 }
             ]
         },
