@@ -9,7 +9,15 @@
                 "ErrorAction": "Stop",
                 "WarningAction": "SilentlyContinue"
             },
-            "OrgSystemServiceTypeAttributes": []
+            "OrgSystemServiceTypeAttributes": [],
+            "EndPointServiceTypeAttributes": [
+                {
+                    "Name":"PreferredDomainControllers",
+                    "type":"string[]",
+                    "Mandatory":false,
+                    "Value":[]
+                }
+            ]
         },
         {
             "Name": "ExchangeOnline",
@@ -20,7 +28,8 @@
                 "ErrorAction": "Stop",
                 "WarningAction": "SilentlyContinue"
             },
-            "OrgSystemServiceTypeAttributes": []
+            "OrgSystemServiceTypeAttributes": [],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "ExchangeComplianceCenter"
@@ -34,7 +43,8 @@
                     "mandatory": false,
                     "value": []
                 }
-            ]
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "SQLDatabase",
@@ -45,8 +55,8 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ]
-    
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "AADSyncServer"
@@ -60,7 +70,8 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ]
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "Office365Tenant",
@@ -71,7 +82,8 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ]
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "ActiveDirectoryDomain",
@@ -94,7 +106,8 @@
                     "mandatory": false,
                     "value":[]
                 }
-            ]
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "ActiveDirectoryGlobalCatalog",
@@ -117,7 +130,8 @@
                     "mandatory": false,
                     "value":[]
                 }
-            ]
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "ActiveDirectoryLDS",
@@ -140,19 +154,23 @@
                     "mandatory": false,
                     "value":[]
                 }
-            ]
+            ],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "MailRelayEndpoint",
-            "OrgSystemServiceTypeAttributes": []
+            "OrgSystemServiceTypeAttributes": [],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "SkypeForBusinessOnline",
-            "OrgSystemServiceTypeAttributes": []
+            "OrgSystemServiceTypeAttributes": [],
+            "EndPointServiceTypeAttributes": []
         },
         {
             "Name": "SkypeForBusinessOnPremises",
-            "OrgSystemServiceTypeAttributes": []
+            "OrgSystemServiceTypeAttributes": [],
+            "EndPointServiceTypeAttributes": []
         }
     ]
 }
