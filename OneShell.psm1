@@ -2489,6 +2489,8 @@ Function New-DynamicParameter
         [string]
         $HelpMessage
         ,
+        $DefaultValue
+        ,
         $DPDictionary
     )
     #Create attribute object, add attributes, add to collection   
@@ -2526,10 +2528,19 @@ Function New-DynamicParameter
             $AttributeCollection.Add($ParamAlias)
         }
 
- 
     #Create the dynamic parameter
         $Parameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList @($Name, $Type, $AttributeCollection)
     
+    #Set the default value #added by MC
+        if (
+            #$PSBoundParameters.ContainsKey($DefaultValue)
+            $null -ne $DefaultValue
+        )
+        {
+            Write-Verbose -Message "adding Default Value to Parameter $($Parameter.Name)"
+            $Parameter.Value = $DefaultValue
+        }
+
     #Add the dynamic parameter to an existing dynamic parameter dictionary, or create the dictionary and add it
     if(-not $null -eq $DPDictionary)
     {
