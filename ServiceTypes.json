@@ -17,6 +17,23 @@
                     "Mandatory":false,
                     "Value":[]
                 }
+            ],
+            "PSSessionParameters":[
+                {
+                    "name":"ConnectionURI",
+                    "ValueType":"ScriptBlock",
+                    "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Exchange"
+                },
+                {
+                    "name":"Authentication",
+                    "ValueType":"Static",
+                    "Value":"Kerberos"
+                }
             ]
         },
         {
@@ -29,10 +46,63 @@
                 "WarningAction": "SilentlyContinue"
             },
             "OrgSystemServiceTypeAttributes": [],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ConnectionURI",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Exchange"
+                },
+                {
+                    "name":"Authentication",
+                    "ValueType":"Static",
+                    "Value":"Basic"
+                },
+                {
+                    "name":"AllowRedirection",
+                    "ValueType":"Static",
+                    "Value":true
+                }
+            ]
         },
         {
-            "Name": "ExchangeComplianceCenter"
+            "Name": "ExchangeComplianceCenter",
+            "SessionTestCmdlet": "Get-User",
+            "SessionTestCmdletParameters":
+            {
+                "Identity" : "$ServiceObject.Credential.Username",
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
+            },
+            "OrgSystemServiceTypeAttributes": [],
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ConnectionURI",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Exchange"
+                },
+                {
+                    "name":"Authentication",
+                    "ValueType":"Static",
+                    "Value":"Basic"
+                },
+                {
+                    "name":"AllowRedirection",
+                    "ValueType":"Static",
+                    "Value":true
+                }
+            ]
         },
         {
             "Name": "PowerShell",
@@ -44,7 +114,43 @@
                     "value": []
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
+        },
+        {
+            "Name": "PowerShell32",
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "name": "SessionManagementGroups",
+                    "type": "string[]",
+                    "mandatory": false,
+                    "value": []
+                }
+            ],
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell32"
+                }
+            ]
         },
         {
             "Name": "SQLDatabase",
@@ -56,10 +162,34 @@
                     "value": ""
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
-            "Name": "AADSyncServer"
+            "Name": "AADSyncServer",
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
             "Name": "AzureADTenant",
@@ -71,7 +201,19 @@
                     "value": ""
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
             "Name": "Office365Tenant",
@@ -83,7 +225,19 @@
                     "value": ""
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
             "Name": "ActiveDirectoryDomain",
@@ -105,9 +259,27 @@
                     "type": "string[]",
                     "mandatory": false,
                     "value":[]
+                },
+                {
+                    "Name":"ADDomainFQDN",
+                    "type": "string",
+                    "mandatory": true,
+                    "value":""
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
             "Name": "ActiveDirectoryGlobalCatalog",
@@ -129,9 +301,27 @@
                     "type": "string[]",
                     "mandatory": false,
                     "value":[]
+                },
+                {
+                    "Name":"ADForestFQDN",
+                    "type": "string",
+                    "mandatory": true,
+                    "value":""
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
             "Name": "ActiveDirectoryLDS",
@@ -155,7 +345,19 @@
                     "value":[]
                 }
             ],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         },
         {
             "Name": "SMTPMailRelay",
@@ -165,12 +367,27 @@
         {
             "Name": "SkypeForBusinessOnline",
             "OrgSystemServiceTypeAttributes": [],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionCmdlet":"New-SkypeOnlinePSSession",
+            "PSSessionParameters":[
+            ]
         },
         {
             "Name": "SkypeForBusinessOnPremises",
             "OrgSystemServiceTypeAttributes": [],
-            "EndPointServiceTypeAttributes": []
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ]
         }
     ]
 }

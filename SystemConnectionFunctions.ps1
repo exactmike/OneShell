@@ -15,7 +15,7 @@ function Find-EndPointToUse
             $EndPointGroup
             ,
             [parameter()]
-            [ValidateSet('Admin','MRS','Service')]
+            [ValidateSet('Admin','MRS')]
             $EndPointType = 'Admin'
         )
         $FilteredEndpoints = @(
@@ -92,7 +92,7 @@ function Find-ExchangeOnlineEndpointToUse
         )
         @(
             [PSCustomObject]@{
-                Identity = (New-Guid).guid
+                Identity = '586f8417-2859-4534-97c9-ddf6219778c9'
                 AddressType = 'URL'
                 Address = 'https://outlook.office365.com/powershell-liveid/'
                 ServicePort = $null
@@ -104,8 +104,7 @@ function Find-ExchangeOnlineEndpointToUse
                 EndPointGroup = $null
                 EndPointType = 'Admin'
                 ServiceTypeAttributes = $null
-                ServiceType = 'ExchangeOrganization'
-                AllowRedirection = $true
+                ServiceType = 'ExchangeOnline'
                 Precedence = -1
                 PSRemoting = $true
             }
@@ -121,7 +120,7 @@ function Find-ComplianceCenterEndpointToUse
         )
         @(
             [PSCustomObject]@{
-                Identity = (New-Guid).guid
+                Identity = 'dd269b14-d596-4156-b905-61d4a6b0e097'
                 AddressType = 'URL'
                 Address = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
                 ServicePort = $null
@@ -134,8 +133,8 @@ function Find-ComplianceCenterEndpointToUse
                 EndPointGroup = $null
                 EndPointType = 'Admin'
                 ServiceTypeAttributes = $null
-                ServiceType = 'ExchangeOrganization'
-                AllowRedirection = $true
+                ServiceType = 'ExchangeComplianceCenter'
+                Precedence = -1
                 PSRemoting = $true
             }
         ) | Group-Object
@@ -332,84 +331,51 @@ function Get-OneShellSystemEndpointPSSessionParameter
         }#end begin
         end
         {
-            $ConnectPSSessionParams = @{
+            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+            $NewPSSessionParams = @{
                 ErrorAction = 'Stop'
                 Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
                 Credential = $ServiceObject.Credential
             }
             #Apply Service Type Defaults
-            switch -Wildcard ($ServiceObject.ServiceType)
+            foreach ($p in $ServiceTypeDefinition.PSSessionParameters)
             {
-                'Exchange*'
-                {
-                    $ConnectPSSessionParams.ConfigurationName = 'Microsoft.Exchange'
-                    $ConnectPSSessionParams.AllowRedirection = $true
-                }
-                'ExchangeOnline'
-                {
-                    $ConnectPSSessionParams.Authentication = 'Basic'
-                }
-                'ExchangeComplianceCenter'
-                {
-                    $ConnectPSSessionParams.Authentication = 'Basic'
-                }
-                'ExchangeOnPremises'
-                {
-                    $ConnectPSSessionParams.Authentication = 'Kerberos'
-                }
+                $value = $(
+                    switch ($p.ValueType)
+                    {
+                        'Static'
+                        {$p.Value}
+                        'ScriptBlock'
+                        {
+                            & $([scriptblock]::Create($p.Value))
+                        }
+                    }
+                )
+                $NewPSSessionParams.$($p.name) = $value
             }
             #Apply ServiceObject Defaults or their endpoint overrides
             if ($ServiceObject.defaults.ProxyEnabled -eq $true -or $Endpoint.ProxyEnabled -eq $true)
             {
-                $ConnectPSSessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig #-ProxyAuthentication basic
+                $NewPSSessionParams.SessionOption = New-PsSessionOption -ProxyAccessType IEConfig #-ProxyAuthentication basic
             }
             if ($ServiceObject.defaults.UseTLS -eq $true -or $Endpoint.UseTLS -eq $true)
             {
-                $ConnectPSSessionParams.UseSSL = $true
+                $NewPSSessionParams.UseSSL = $true
             }
             if (Test-IsNotNullOrWhiteSpace -string $ServiceObject.defaults.AuthMethod)
             {
-                $ConnectPSSessionParams.Authentication = $ServiceObject.defaults.AuthMethod
+                $NewPSSessionParams.Authentication = $ServiceObject.defaults.AuthMethod
             }
             if (Test-IsNotNullOrWhiteSpace -String $endpoint.AuthMethod)
             {
-                $ConnectPSSessionParams.Authentication = $Endpoint.AuthMethod
+                $NewPSSessionParams.Authentication = $Endpoint.AuthMethod
             }
             #Apply Endpoint only settings
-            switch ($endpoint.AddressType)
-            {
-                'URL'
-                {
-                    $ConnectPSSessionParams.ConnectionUri = $endpoint.Address
-                }
-                'IPAddress'
-                {
-                    $ConnectPSSessionParams.ComputerName = $endpoint.Address
-                }
-                'FQDN'
-                {
-                    if ($ServiceObject.ServiceType -eq 'ExchangeOnPremises')
-                    {
-                        $ConnectPSSessionParams.ConnectionUri = "http://$($endpoint.address)/PowerShell/"
-                    }
-                    else
-                    {
-                        $ConnectPSSessionParams.ComputerName = $endpoint.Address
-                    }
-                }
-            }
-            switch ($endpoint.AllowRedirection)
-            {
-                $true
-                {
-                    $ConnectPSSessionParams.AllowRedirection = $endpoint.AllowRedirection
-                }
-            }
             if (Test-IsNotNullOrWhiteSpace -String $endpoint.ServicePort)
             {
-                $ConnectPSSessionParams.Port = $Endpoint.ServicePort
+                $NewPSSessionParams.Port = $Endpoint.ServicePort
             }
-            Write-Output -InputObject $ConnectPSSessionParams
+            Write-Output -InputObject $NewPSSessionParams
         }#end end
     }
 #end function Get-EndPointPSSessionParameter
@@ -533,12 +499,12 @@ Function Connect-OneShellSystem
                         for ($ii = 0; $ii -lt $endpoints.Count -and $ConnectionReady -eq $false; $ii++)
                         {
                             $e = $endpoints[$ii]
-                            $ConnectPSSessionParams = Get-OneShellSystemEndpointPSSessionParameter -ServiceObject $ServiceObject -Endpoint $e -ErrorAction Stop
+                            $NewPSSessionParams = Get-OneShellSystemEndpointPSSessionParameter -ServiceObject $ServiceObject -Endpoint $e -ErrorAction Stop
                             try
                             {
-                                $message = "Create New-PsSession with Name $($connectPSSessionParams.Name) for Service $($serviceObject.Name)"
+                                $message = "Create New-PsSession with Name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
                                 Write-Log -Message $message -EntryType Attempting
-                                $ServiceSession = New-PSSession @ConnectPSSessionParams
+                                $ServiceSession = New-PSSession @NewPSSessionParams
                                 Write-Log -Message $message -EntryType Succeeded
                                 $Connected = $true
                             }#end Try
@@ -953,3 +919,4 @@ function Add-FunctionToPSSession
 #################################################
 #Disconnect-OneShellSystem
 #Multiple OneShellSystem Connections
+#MFA support https://techcommunity.microsoft.com/t5/Windows-PowerShell/Can-I-Connect-to-O365-Security-amp-Compliance-center-via/td-p/68898

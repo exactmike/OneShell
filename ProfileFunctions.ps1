@@ -148,7 +148,6 @@ function NewGenericSystemEndpointObject
             ServiceTypeAttributes = [PSCustomObject]@{}
             ServiceType = $null
             PSRemoting = $null
-            AllowRedirection = $null
         }
     }
 #end function NewGenericSystemEndpointObject
