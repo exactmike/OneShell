@@ -338,7 +338,7 @@ function GetSelectProfile
             $Path
             ,
             [parameter(Mandatory)]
-            $PotentialProfiles
+            [psobject[]]$PotentialProfiles
             ,
             [parameter()]
             [AllowNull()]
@@ -348,7 +348,7 @@ function GetSelectProfile
             [ValidateSet('Remove','Edit','Associate','Get','Use')]
             $Operation
         )
-        if ($null -eq $Identity)
+        if ($null -eq $Identity -or (Test-IsNullOrWhiteSpace -String $identity))
         {
             Select-Profile -Profiles $PotentialProfiles -Operation $Operation
         }
@@ -377,7 +377,7 @@ function GetSelectProfile
                     }
                 }
             )
-            if ($null -eq $Profile -or $Profile.count -ne 1)
+            if ($null -eq $Profile -or $Profile.count -ge 2 -or $profile.count -eq 0)
             {
                 throw("No valid $ProfileType Profile Identity was provided.")
             }
@@ -386,7 +386,6 @@ function GetSelectProfile
                 Write-output -inputobject $Profile
             }
         }
-
     }
 #end function GetSelectProfile
 function GetSelectProfileSystem
@@ -395,7 +394,7 @@ function GetSelectProfileSystem
         param
         (
             [parameter(Mandatory)]
-            $PotentialSystems
+            [psobject[]]$PotentialSystems
             ,
             [parameter()]
             [AllowNull()]
@@ -406,7 +405,7 @@ function GetSelectProfileSystem
             $Operation
         )
         $System = $(
-            if ($null -eq $Identity)
+            if ($null -eq $Identity -or (Test-IsNullOrWhiteSpace -String $identity))
             {
                 Select-ProfileSystem -Systems $PotentialSystems -Operation $Operation
             }
@@ -416,7 +415,7 @@ function GetSelectProfileSystem
                 {$PotentialSystems | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Name -eq $Identity}}
             }
         )
-        if ($null -eq $system -or $system.count -ne 1)
+        if ($null -eq $system -or $system.count -ge 2 -or $system.count -eq 0)
         {throw("Invalid SystemIdentity $Identity was provided.  No such system exists or ambiguous system exists.")}
         else
         {Write-Output -inputObject $system}
@@ -692,9 +691,8 @@ function New-OrgProfileSystem
             [string]$Description
             ,
             [parameter(Mandatory)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
             [string]$ServiceType
-            
             ,
             [parameter()]
             [validateset($true,$false)]
@@ -783,7 +781,7 @@ function Set-OrgProfileSystem
             [string[]]$Identity #System Identity or Name
             ,
             [parameter(Mandatory)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
             [string]$ServiceType
             ,
             [parameter()]
@@ -965,7 +963,6 @@ Function Remove-OrgProfileSystem
             $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
             #Get/Select the System
             $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $Identity -Operation Remove
-            if ($null -eq $System) {throw("No valid SystemIdentity was provided.")}
             #Remove the system from the Org Profile
             $OrgProfile = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
             Export-OrgProfile -profile $OrgProfile -Path $path -ErrorAction Stop
@@ -982,7 +979,7 @@ function New-OrgProfileSystemEndpoint
             [string]$SystemIdentity
             ,
             [parameter()]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')]
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay')]#,'SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter'
             [string]$ServiceType
             ,
             [Parameter(Mandatory)]
@@ -1065,7 +1062,6 @@ function New-OrgProfileSystemEndpoint
         End
         {
             Set-DynamicParameterVariable -dictionary $Dictionary
-            Write-Verbose -Message $PreferredDomainControllers
             #Get/Select the Org Profile
             $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
             #Get/Select the System
@@ -1321,7 +1317,7 @@ function Get-OrgProfileSystemEndpoint
         {
             Set-DynamicParameterVariable -dictionary $Dictionary
             #Get/Select the Org Profile
-            $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
+            $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Get
             #Get/Select the System
             $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $SystemIdentity -Operation Get
             $EndPoints = @(
