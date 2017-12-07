@@ -158,7 +158,7 @@
             "EndPointServiceTypeAttributes": []
         },
         {
-            "Name": "MailRelayEndpoint",
+            "Name": "SMTPMailRelay",
             "OrgSystemServiceTypeAttributes": [],
             "EndPointServiceTypeAttributes": []
         },
