@@ -431,7 +431,7 @@ Function Connect-OneShellSystem
         [string]$CommandPrefix #Overrides the otherwise specified command prefix.
         ,
         [parameter()]
-        [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','MailRelayEndpoint','SkypeOrganization')]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeOrganization')]
         [string[]]$ServiceType #used only to filter list of available system identities and names
     )
     DynamicParam
