@@ -3070,6 +3070,7 @@ function Set-OneShellVariables
 . $(Join-Path $PSScriptRoot 'ProfileFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'TestFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'ActiveDirectoryFunctions.ps1')
+. $(Join-Path $PSScriptRoot 'SkypeOnline.ps1')
 ##########################################################################################################
 #Import settings from json files
 ##########################################################################################################
