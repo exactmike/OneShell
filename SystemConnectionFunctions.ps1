@@ -83,63 +83,35 @@ function Find-EndPointToUse
         Write-Output -InputObject $GroupedEndpoints
     }
 #end function Find-EndPointToUse
-function Find-ExchangeOnlineEndpointToUse
+function Get-WellKnownEndPoint
     {
         [cmdletbinding()]
         param
         (
             $ServiceObject
         )
+        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
         @(
             [PSCustomObject]@{
-                Identity = '586f8417-2859-4534-97c9-ddf6219778c9'
+                Identity = $ServiceObject.ServiceType + '-WellKnownEndPoint'
                 AddressType = 'URL'
-                Address = 'https://outlook.office365.com/powershell-liveid/'
+                Address = $ServiceTypeDefinition.WellKnownEndPointURI
                 ServicePort = $null
                 UseTLS = $false
                 ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
                 CommandPrefix = $ServiceObject.Defaults.CommandPrefix
                 AuthenticationRequired = $true
-                AuthMethod = 'Basic'
+                AuthMethod = $ServiceTypeDefinition.WellKnownEndPointAuthMethod
                 EndPointGroup = $null
                 EndPointType = 'Admin'
                 ServiceTypeAttributes = $null
-                ServiceType = 'ExchangeOnline'
+                ServiceType = $ServiceObject.ServiceType
                 Precedence = -1
                 PSRemoting = $true
             }
         ) | Group-Object
     }
 #end function Find-ExchangeOnlineEndpointToUse
-function Find-ComplianceCenterEndpointToUse
-    {
-        [cmdletbinding()]
-        param
-        (
-            $ServiceObject
-        )
-        @(
-            [PSCustomObject]@{
-                Identity = 'dd269b14-d596-4156-b905-61d4a6b0e097'
-                AddressType = 'URL'
-                Address = 'https://ps.compliance.protection.outlook.com/powershell-liveid/'
-                ServicePort = $null
-                IsDefault = $true
-                UseTLS = $false
-                ProxyEnabled = $ServiceObject.Defaults.ProxyEnabled
-                CommandPrefix = $ServiceObject.Defaults.CommandPrefix
-                AuthenticationRequired = $true
-                AuthMethod = 'Basic'
-                EndPointGroup = $null
-                EndPointType = 'Admin'
-                ServiceTypeAttributes = $null
-                ServiceType = 'ExchangeComplianceCenter'
-                Precedence = -1
-                PSRemoting = $true
-            }
-        ) | Group-Object
-    }
-#end function Find-ComplianceCenterEndpointToUse
 function Find-CommandPrefixToUse
     {
         [CmdletBinding()]
@@ -266,8 +238,8 @@ function Test-OneShellSystemConnection
                     {
                         Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                     }
-                    Write-Log -Message "Getting Service Type Session Test Commands from `$script:ServiceTypes" -EntryType Notification
-                    $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+                    Write-Log -Message "Getting Service Type Session Test Commands" -EntryType Notification
+                    $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
                     if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                     {
                         $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
@@ -422,17 +394,14 @@ Function Connect-OneShellSystem
     {
         Set-DynamicParameterVariable -dictionary $Dictionary
         $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $Identity -or $_.Identity -eq $Identity}
+        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
         Write-Verbose -Message "Selecting an Endpoint"
         $EndPointGroups = @(
-            switch ($ServiceObject.ServiceType)
+            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and $null -eq $EndPointIdentity)
             {
-                'ExchangeOnline'
+                $true
                 {
-                    Find-ExchangeOnlineEndpointToUse -ServiceObject $ServiceObject -ErrorAction Stop
-                }
-                'ExchangeComplianceCenter'
-                {
-                    Find-ComplianceCenterEndpointToUse -ServiceObject $ServiceObject -ErrorAction Stop
+                    Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
                 }
                 Default
                 {
@@ -500,11 +469,16 @@ Function Connect-OneShellSystem
                         {
                             $e = $endpoints[$ii]
                             $NewPSSessionParams = Get-OneShellSystemEndpointPSSessionParameter -ServiceObject $ServiceObject -Endpoint $e -ErrorAction Stop
+                            $NewPSSessionCmdlet = 'New-PSSession'
                             try
                             {
-                                $message = "Create New-PsSession with Name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
+                                if ($null -ne $ServiceTypeDefinition.PSSessionCmdlet)
+                                {
+                                    $NewPSSessionCmdlet = $ServiceTypeDefinition.PSSessionCmdlet
+                                }
+                                $message = "Create PsSession using command $NewPSsessionCmdlet with name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
                                 Write-Log -Message $message -EntryType Attempting
-                                $ServiceSession = New-PSSession @NewPSSessionParams
+                                $ServiceSession = Invoke-Command -ScriptBlock {& $NewPSSessionCmdlet @NewPSSessionParams}
                                 Write-Log -Message $message -EntryType Succeeded
                                 $Connected = $true
                             }#end Try
@@ -634,56 +608,34 @@ function Import-RequiredModuleIntoOneShellSystemPSSession
             [parameter(Mandatory)]
             $ServiceSession
         )
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
         #add the module test and import functions
-        switch -Wildcard ($ServiceObject.ServiceType)
+        switch -Wildcard ($ServiceTypeDefinition.PSSessionConstrained)
         {
-            'Exchange*'
-            {}
+            $true
+            {
+                #cannot load functions into these sessions
+            }
             Default
             {
                 Add-FunctionToPSSession -FunctionNames 'Test-ForInstalledModule','Test-ForImportedModule' -PSSession $ServiceSession
             }
         }
         #specify the required module(s) and any pre-module import settings
-        switch -Wildcard ($ServiceObject.ServiceType)
+        if ($null -ne $ServiceTypeDefinition.PreModuleImportInitializationCommands -and $ServiceTypeDefinition.PreModuleImportInitializationCommands.count -ge 1)
         {
-            'AADSyncServer'
+            foreach ($c in $ServiceTypeDefinition.PreModuleImportInitializationCommands)
             {
-                $ModuleName  = 'AdSync'
-            }
-            'ActiveDirectory*'
-            {
-                $ModuleName = 'ActiveDirectory'
-                #Suppress Creation of the Default AD Drive with current credentials
-                Invoke-Command -session $ServiceSession -ScriptBlock {$Env:ADPS_LoadDefaultDrive = 0} -ErrorAction Stop
-            }
-            'AzureADTenant'
-            {
-                $ModuleName = 'AzureADPreview'
-            }
-            'Office365Tenant'
-            {
-                $ModuleName = 'MSOnline'
-            }
-            'SkypeOrganization'
-            {
-                $ModuleName = 'SkypeOnlineConnector'
-            }
-            'SQLDatabase'
-            {
-                $ModuleName = 'POSH_ADO_SQLServer'
-            }
-            Default
-            {
-                $ModuleName = $null
+                $scriptblock = [scriptblock]::Create($c.command)
+                Invoke-Command -Session $ServiceSession -ScriptBlock $scriptblock -ErrorAction Stop
             }
         }
-        switch ($null -eq $ModuleName)
+        if ($null -ne $ServiceTypeDefinition.RequiredModuleInPSSession -and $ServiceTypeDefinition.RequiredModuleInPSSession.count -ge 1) 
         {
-            $true
-            {$ModuleImported = $null}
-            $false
+            foreach ($m in $ServiceTypeDefinition.RequiredModuleInPSSession)
             {
+                $ModuleName = $m.Name
                 if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForInstalledModule -Name $using:ModuleName} -HideComputerName)
                 {
                     if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForImportedModule -Name $using:ModuleName} -HideComputerName)
@@ -717,6 +669,8 @@ function Import-RequiredModuleIntoOneShellSystemPSSession
                 }
             }
         }
+        else
+        {$ModuleImported = $null}
         Write-Output -InputObject $ModuleImported
     }
 #end function Import-RequiredModuleIntoOneShellSystemPSSession
@@ -835,7 +789,6 @@ function Initialize-OneShellSystemPSSession
         Write-Output -inputObject $false
     }
 }
-
 function Add-FunctionToPSSession
     {
         [cmdletbinding()]

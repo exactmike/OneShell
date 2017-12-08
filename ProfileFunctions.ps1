@@ -2532,3 +2532,5 @@ function Select-Profile
 # Need to add
 #################################################
 #? Remove functions for OrgProfile, AdminProfile
+#code to warn user of adding endpoints to Systems that use Well Known Endpoints
+

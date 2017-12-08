@@ -15,7 +15,7 @@ function New-SkypeOnlinePSSession
     $newCSOnlineSessionParams = @{
         Credential = $Credential
     }
-    if ($PSBoundParameters.ContainsKey($SessionOption)
+    if ($PSBoundParameters.ContainsKey($SessionOption))
     {
         $newCSOnlineSessionParams.SessionOption = $SessionOption
     }
