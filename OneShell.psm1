@@ -2905,44 +2905,76 @@ function Get-OneShellVariable
         [cmdletbinding()]
         param
         (
-            [string]$Name
         )
-        Try
+        DynamicParam
         {
-            Get-Variable -Scope Script -Name $name -ErrorAction Stop
+            $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $false -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
+            Write-Output -InputObject $dictionary
         }
-        Catch
+        End
         {
-            Write-Verbose -Message "Variable $name Not Found" -Verbose
+            Set-DynamicParameterVariable -dictionary $dictionary
+            if ($null -eq $name)
+            {
+                $name = '*'
+            }
+            Try
+            {
+                Get-Variable -Scope Script -Name $name -ErrorAction Stop
+            }
+            Catch
+            {
+                Write-Verbose -Message "Variable $name Not Found" -Verbose
+            }
         }
-    }#end function Get-OneShellVariable
+    }
+#end function Get-OneShellVariable
 function Get-OneShellVariableValue
+{
+    [cmdletbinding()]
+    param
+    (
+    )
+    DynamicParam
     {
-        [cmdletbinding()]
-        param
-        (
-        [string]$Name
-        )
+        $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $true -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
+        Write-Output -InputObject $dictionary
+    }
+    End
+    {
+        Set-DynamicParameterVariable -dictionary $dictionary
         Try
         {
-            Get-Variable -Scope Script -Name $name -ValueOnly -ErrorAction Stop
+            Get-Variable -Scope Script -Name $name -ErrorAction Stop -ValueOnly
         }
         Catch
         {
             Write-Verbose -Message "Variable $name Not Found" -Verbose
         }
-    }#end function Get-OneShellVariableValue
+    }
+}
+#end function Get-OneShellVariableValue
 function Set-OneShellVariable
     {
         [cmdletbinding()]
         param
         (
-            [string]$Name
-            ,
+            [parameter(Mandatory)]
+            [AllowNull()]
             $Value
         )
-        Set-Variable -Scope Script -Name $Name -Value $value  
+        DynamicParam
+        {
+            $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $true -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
+            Write-Output -InputObject $dictionary
+        }
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            Set-Variable -Scope Script -Name $Name -Value $value
+        }
     }
+#end function Set-OneShellVariable
 function New-OneShellVariable
     {
         [cmdletbinding()]
@@ -2954,15 +2986,23 @@ function New-OneShellVariable
         )
         New-Variable -Scope Script -Name $name -Value $Value
     }
+#end function New-OneShellVariable
 function Remove-OneShellVariable
     {
         [cmdletbinding()]
-        param
-        (
-            [string]$Name
-        )
-        Remove-Variable -Scope Script -Name $name
+        param()
+        DynamicParam
+        {
+            $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $true -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
+            Write-Output -InputObject $dictionary
+        }
+        End
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+            Remove-Variable -Scope Script -Name $name
+        }
     }
+#end function Remove-OneShellVariable
 function Set-OneShellVariables
     {
         [cmdletbinding()]
