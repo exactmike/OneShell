@@ -394,13 +394,16 @@ Function Connect-OneShellSystem
     {
         Set-DynamicParameterVariable -dictionary $Dictionary
         $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $Identity -or $_.Identity -eq $Identity}
-        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-        Write-Verbose -Message "Selecting an Endpoint"
+        Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
+        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
+        Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
         $EndPointGroups = @(
-            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and $null -eq $EndPointIdentity)
+            Write-Verbose -Message "Selecting an Endpoint"
+            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
             {
                 $true
                 {
+                    Write-Verbose -Message "Get Well Known Endpoint(s)."
                     Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
                 }
                 Default
