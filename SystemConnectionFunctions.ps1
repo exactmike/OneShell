@@ -552,7 +552,6 @@ Function Connect-OneShellSystem
                                 {
                                     Remove-PSSession -Session $ServiceSession -ErrorAction Stop
                                 }
-                                
                             }
                         }#end for
                     }#end for
