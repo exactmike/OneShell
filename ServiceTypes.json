@@ -2,12 +2,13 @@
     "ServiceTypes":[
         {
             "Name": "ExchangeOnPremises",
-            "SessionTestCmdlet": "Set-ADServerSettings",
-            "SessionTestCmdletParameters":
-            {
-                "ViewEntireForest": true,
-                "ErrorAction": "Stop",
-                "WarningAction": "SilentlyContinue"
+            "ConnectionTestCommand": {
+                "command": "Set-ADServerSettings",
+                "parameters":{
+                    "ViewEntireForest": true,
+                    "ErrorAction": "Stop",
+                    "WarningAction": "SilentlyContinue"
+                }
             },
             "OrgSystemServiceTypeAttributes": [],
             "EndPointServiceTypeAttributes": [
@@ -19,7 +20,27 @@
                 }
             ],
             "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "PreModuleImportCommands":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "ModulesToImport":[
+                        {
+                            "module":""
+                        }
+                    ],
+                    "PostModuleImportCommands":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            },
             "PSSessionConstrained":true,
             "PSSessionParameters":[
                 {
