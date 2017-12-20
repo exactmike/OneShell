@@ -628,26 +628,45 @@ function Convert-SecureStringToString
     }
 function Get-GuidFromByteArray
     {
-        param(
+        [cmdletbinding()]
+        param
+        (
             [byte[]]$GuidByteArray
         )
-        New-Object -TypeName guid -ArgumentList (,$GuidByteArray)   
+        New-Object -TypeName guid -ArgumentList (,$GuidByteArray)
     }
+#end function Get-GUIDFromByteArray
 function Get-ImmutableIDFromGUID
     {
-        param(
+        [cmdletbinding()]
+        param
+        (
             [guid]$Guid
         )
         [Convert]::ToBase64String($Guid.ToByteArray())
     }
+#end function Get-ImmutableIDFromGUID
 function Get-GUIDFromImmutableID
     {
-    [cmdletbinding()]
-        param(
+        [cmdletbinding()]
+        param
+        (
             $ImmutableID
         )
         [GUID][convert]::frombase64string($ImmutableID) 
     }
+#end function Get-GUIDFromImmutableID
+function Get-ByteArrayFromGUID
+    {
+        [cmdletbinding()]
+        param
+        (
+            [guid]$GUID
+        )
+        $GUID.ToByteArray()
+    }
+#end function Get-ByteArrayFromGUID
+
 function Get-Checksum
     {
         Param (
