@@ -12,6 +12,7 @@
 - [ ] Admin Profile Editing/Creation GUI improvements: List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
 - [x] per-admin per service prefix configuration
 - [ ] Follow <http://semver.org/> for Versioning
+- [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
 
 ## AAD Connect Improvements
 
