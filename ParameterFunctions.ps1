@@ -291,17 +291,17 @@ function Get-AllParameters
         [cmdletbinding()]
         param
         (
-            $BoundParameters
+            $BoundParameters #$PSBoundParameters
             ,
-            $AllParameters
+            $AllParameters #$MyInvocation.MyCommand.Parameters
             ,
             [switch]$IncludeCommon
         )
         $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
-        $allKeys = $AllKeys | Sort-Object -Unique
+        $AllKeys = $AllKeys | Sort-Object -Unique
         if ($IncludeCommon -ne $true)
         {
-            $allKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
+            $AllKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
         }
         Write-Output -InputObject $AllKeys
     }
@@ -311,9 +311,9 @@ function Get-AllParametersWithAValue
         [cmdletbinding()]
         param
         (
-            $BoundParameters
+            $BoundParameters #$PSBoundParameters
             ,
-            $AllParameters
+            $AllParameters #$MyInvocation.MyCommand.Parameters
             ,
             [switch]$IncludeCommon
             ,
