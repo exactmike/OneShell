@@ -278,3 +278,67 @@ function Set-DynamicParameterVariable
         }
     }
 #end function Set-DynamicParameterVariable
+
+Function Get-CommonParameter
+    {
+        [cmdletbinding(SupportsShouldProcess)]
+        param()
+        $MyInvocation.MyCommand.Parameters.Keys
+    }
+#end function Get-CommonParameter
+function Get-AllParameters
+    {
+        [cmdletbinding()]
+        param
+        (
+            $BoundParameters
+            ,
+            $AllParameters
+            ,
+            [switch]$IncludeCommon
+        )
+        $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
+        $allKeys = $AllKeys | Sort-Object -Unique
+        if ($IncludeCommon -ne $true)
+        {
+            $allKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
+        }
+        Write-Output -InputObject $AllKeys
+    }
+#end function Get-AllParameters
+function Get-AllParametersWithAValue
+    {
+        [cmdletbinding()]
+        param
+        (
+            $BoundParameters
+            ,
+            $AllParameters
+            ,
+            [switch]$IncludeCommon
+            ,
+            $Scope = 1
+        )
+        $getAllParametersParams = @{
+            BoundParameters = $BoundParameters
+            AllParameters = $AllParameters
+        }
+        if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
+        $allParameterKeys = Get-AllParameters @getAllParametersParams
+        $AllParametersWithAValue = @(
+            foreach ($k in $allParameterKeys)
+            {
+                try
+                {
+                    Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
+                }
+                catch
+                {
+                    #don't care if a particular variable is not found
+                    Write-Verbose -Message "$k was not found"
+                }
+            }
+        )
+        Write-Output -InputObject $AllParametersWithAValue
+    }
+#end function Get-AllParametersWithAValue

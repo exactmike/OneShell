@@ -245,13 +245,12 @@ function Test-OneShellSystemConnection
                         $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
                         $testCommandParams = Convert-ObjectToHashTable -InputObject $ServiceTypeDefinition.SessionTestCmdletParameters
                         Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
-                        $ScriptBlock = [scriptblock]::Create("$TestCommand @TestCommandParams")
-                        $message = "Run $([string]$scriptblock) in $($serviceSession.name) PSSession"
+                        $Script = "$TestCommand @TestCommandParams"
+                        $message = "Run $Script in $($serviceSession.name) PSSession"
                         try
                         {
                             Write-Log -Message $message -EntryType Attempting
-                            invoke-command -Session $ServiceSession -ScriptBlock {$TestCommandParams = $using:TestCommandParams} -ErrorAction Stop
-                            invoke-command -Session $ServiceSession -ScriptBlock $ScriptBlock -ErrorAction Stop
+                            invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
                             Write-Log -Message $message -EntryType Succeeded
                             Write-Output -InputObject $true
                         }

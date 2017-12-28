@@ -2229,69 +2229,6 @@ function Read-FolderBrowserDialog
     $FolderBrowserDialog.Dispose()
     Remove-Variable -Name FolderBrowserDialog
 }#Read-FolderBrowswerDialog
-
-Function Get-CommonParameter
-    {
-        [cmdletbinding(SupportsShouldProcess)]
-        param()
-        $MyInvocation.MyCommand.Parameters.Keys
-    }
-#end function Get-CommonParameter
-function Get-AllParameters
-    {
-        [cmdletbinding()]
-        param
-        (
-            $BoundParameters
-            ,
-            $AllParameters
-            ,
-            [switch]$IncludeCommon
-        )
-        $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
-        $allKeys = $AllKeys | Sort-Object -Unique
-        if ($IncludeCommon -ne $true)
-        {
-            $allKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
-        }
-        Write-Output -InputObject $AllKeys
-    }
-function Get-AllParametersWithAValue
-    {
-        [cmdletbinding()]
-        param
-        (
-            $BoundParameters
-            ,
-            $AllParameters
-            ,
-            [switch]$IncludeCommon
-            ,
-            $Scope = 1
-        )
-        $getAllParametersParams = @{
-            BoundParameters = $BoundParameters
-            AllParameters = $AllParameters
-        }
-        if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
-        $allParameterKeys = Get-AllParameters @getAllParametersParams
-        $AllParametersWithAValue = @(
-            foreach ($k in $allParameterKeys)
-            {
-                try
-                {
-                    Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
-                }
-                catch
-                {
-                    #don't care if a particular variable is not found
-                    Write-Verbose -Message "$k was not found"
-                }
-            }
-        )
-        Write-Output -InputObject $AllParametersWithAValue
-    }
-
 ##########################################################################################################
 #Exchange Recipient Related Functions
 ##########################################################################################################
@@ -2771,7 +2708,7 @@ function Set-OneShellVariables
 . $(Join-Path $PSScriptRoot 'TestFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'ActiveDirectoryFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'SkypeOnline.ps1')
-. $(Join-Path $PSScriptRoot 'DynamicParameterFunctions.ps1')
+. $(Join-Path $PSScriptRoot 'ParameterFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'LoggingFunctions.ps1')
 ##########################################################################################################
 #Import settings from json files
