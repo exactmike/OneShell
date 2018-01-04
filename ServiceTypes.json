@@ -662,10 +662,10 @@
                         {
                             "conditions":[],
                             "command":"$DriveName = ($Using:ServiceObject).ServiceTypeAttributes.PSDriveName",
-                            "parameters":{}
+                            "parameters":[]
                         },
                         {
-                            "conditions":[],                          ]
+                            "conditions":[],
                             "command":"New-PSDrive",
                             "parameters":[
                                 {
@@ -788,10 +788,10 @@
                         {
                             "conditions":[],
                             "command":"$DriveName = ($Using:ServiceObject).ServiceTypeAttributes.PSDriveName",
-                            "parameters":{}
+                            "parameters":[]
                         },
                         {
-                            "conditions":[],                          ]
+                            "conditions":[],
                             "command":"New-PSDrive",
                             "parameters":[
                                 {
