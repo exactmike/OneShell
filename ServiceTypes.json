@@ -2,15 +2,12 @@
     "ServiceTypes":[
         {
             "Name": "ExchangeOnPremises",
-            "ConnectionTestCommand": {
-                "command": "Set-ADServerSettings",
-                "parameters":{
-                    "ViewEntireForest": true,
-                    "ErrorAction": "Stop",
-                    "WarningAction": "SilentlyContinue"
-                }
-            },
+            "SessionTestCmdlet": "Get-OrganizationConfig",
+            "SessionTestCmdletParameters":[],
             "OrgSystemServiceTypeAttributes": [],
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [
                 {
                     "Name":"PreferredDomainControllers",
@@ -19,28 +16,8 @@
                     "Value":[]
                 }
             ],
-            "RequiredModuleToConnectPSSession":[],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "PreModuleImportCommands":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "ModulesToImport":[
-                        {
-                            "module":""
-                        }
-                    ],
-                    "PostModuleImportCommands":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
-                }
-            },
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":true,
             "PSSessionParameters":[
                 {
@@ -58,24 +35,54 @@
                     "ValueType":"Static",
                     "Value":"Kerberos"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[
+                        {
+                            "conditions":[
+                                {
+                                    "type":"local",
+                                    "test":"$endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1"
+                                }
+                            ],
+                            "command":"Set-ADServerSettings",
+                            "parameters":[
+                                {
+                                    "name":"SetPreferredDomainControllers",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$endpoint.ServiceTypeAttributesPreferredDomainControllers"
+                                }
+                            ]
+                        },
+                        {
+                            "conditions":[],
+                            "command":"Set-ADServerSettings",
+                            "parameters":[
+                                {
+                                    "name":"ViewEntireForest",
+                                    "ValueType":"Static",
+                                    "Value":true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "ExchangeOnline",
-            "SessionTestCmdlet": "Get-User",
-            "SessionTestCmdletParameters":
-            {
-                "Identity" : "$ServiceObject.Credential.Username",
-                "ErrorAction": "Stop",
-                "WarningAction": "SilentlyContinue"
-            },
+            "SessionTestCmdlet": "Get-OrganizationConfig",
+            "SessionTestCmdletParameters":[],
             "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint":true,
             "WellKnownEndPointURI":"https://outlook.office365.com/powershell-liveid/",
             "WellKnownEndPointAuthMethod": "Basic",
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":true,
             "PSSessionParameters":[
                 {
@@ -98,24 +105,43 @@
                     "ValueType":"Static",
                     "Value":true
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[]
+                }
+            }
         },
         {
             "Name": "ExchangeComplianceCenter",
             "SessionTestCmdlet": "Get-User",
             "SessionTestCmdletParameters":
-            {
-                "Identity" : "$ServiceObject.Credential.Username",
-                "ErrorAction": "Stop",
-                "WarningAction": "SilentlyContinue"
-            },
+            [
+                {
+                    "Name":"Identity",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$ServiceObject.Credential.Username"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint":true,
             "WellKnownEndPointURI":"https://ps.compliance.protection.outlook.com/powershell-liveid/",
             "WellKnownEndPointAuthMethod": "Basic",
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":true,
             "PSSessionParameters":[
                 {
@@ -138,10 +164,36 @@
                     "ValueType":"Static",
                     "Value":true
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[]
+                }
+            }
         },
         {
             "Name": "PowerShell",
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "name": "SessionManagementGroups",
@@ -149,10 +201,13 @@
                     "mandatory": false,
                     "value": []
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -165,10 +220,46 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "PowerShell32",
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "name": "SessionManagementGroups",
@@ -176,10 +267,13 @@
                     "mandatory": false,
                     "value": []
                 }
-            ],
+            ],        
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -192,10 +286,46 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell32"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "SQLDatabase",
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "DatabaseName",
@@ -203,14 +333,13 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[
-                {
-                    "name":"POSH_ADO_SQLServer"
-                }
-            ],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -223,18 +352,57 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"POSH_ADO_SQLServer"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "AADSyncServer",
-            "OrgSystemServiceTypeAttributes": [],
-            "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
                 {
-                    "name":"ADSync"
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
                 }
             ],
+            "OrgSystemServiceTypeAttributes": [],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -247,10 +415,50 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"ADSync"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "AzureADTenant",
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "TenantSubDomain",
@@ -258,14 +466,13 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[
-                {
-                    "name":"AzureADPreview"
-                }
-            ],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -278,10 +485,50 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"AzureADPreview"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "Office365Tenant",
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "TenantSubDomain",
@@ -289,14 +536,13 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[
-                {
-                    "name":"MSOnline"
-                }
-            ],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -309,10 +555,45 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"MSOnline"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "ActiveDirectoryDomain",
+            "SessionTestCmdlet": "Get-ADRootDSE",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -337,21 +618,20 @@
                     "type": "string",
                     "mandatory": true,
                     "value":""
+                },
+                {
+                    "Name":"PSDriveName",
+                    "type": "string",
+                    "mandatory": true,
+                    "value":""
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "PreModuleImportInitializationCommands":[
-                {
-                    "Command":"$Env:ADPS_LoadDefaultDrive = 0"
-                }
-            ],
-            "RequiredModuleInPSSession": [
-                {
-                    "name":"ActiveDirectory"
-                }
-            ],
-            "PostModuleImportInitializationCommands":[],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -364,10 +644,82 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
+                            "parameters":[]
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"ActiveDirectory"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "conditions":[],
+                            "command":"$DriveName = ($Using:ServiceObject).ServiceTypeAttributes.PSDriveName",
+                            "parameters":{}
+                        },
+                        {
+                            "conditions":[],                          ]
+                            "command":"New-PSDrive",
+                            "parameters":[
+                                {
+                                    "Name":"Name",
+                                    "ValueType":"scriptblock",
+                                    "Value": "$DriveName"
+                                },
+                                {
+                                    "Name":"Server",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$endpoint.Address"
+                                },
+                                {
+                                    "Name":"Root",
+                                    "ValueType":"Static",
+                                    "Value":"//RootDSE/"
+                                },
+                                {
+                                    "Name":"Scope",
+                                    "ValueType":"Static",
+                                    "Value":"Global"
+                                },
+                                {
+                                    "Name":"PSProvider",
+                                    "ValueType":"Static",
+                                    "Value":"ActiveDirectory"
+                                },
+                                {
+                                    "Name":"Credential",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$ServiceObject.Credential"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "ActiveDirectoryGlobalCatalog",
+            "SessionTestCmdlet": "Get-ADRootDSE",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -392,15 +744,20 @@
                     "type": "string",
                     "mandatory": true,
                     "value":""
-                }
-            ],
-            "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[
+                },
                 {
-                    "name":"ActiveDirectory"
+                    "Name":"PSDriveName",
+                    "type": "string",
+                    "mandatory": true,
+                    "value":""
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -413,10 +770,82 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
+                            "parameters":[]
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"ActiveDirectory"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "conditions":[],
+                            "command":"$DriveName = ($Using:ServiceObject).ServiceTypeAttributes.PSDriveName",
+                            "parameters":{}
+                        },
+                        {
+                            "conditions":[],                          ]
+                            "command":"New-PSDrive",
+                            "parameters":[
+                                {
+                                    "Name":"Name",
+                                    "ValueType":"scriptblock",
+                                    "Value": "$DriveName"
+                                },
+                                {
+                                    "Name":"Server",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$($endpoint.Address):3268"
+                                },
+                                {
+                                    "Name":"Root",
+                                    "ValueType":"Static",
+                                    "Value":"//RootDSE/"
+                                },
+                                {
+                                    "Name":"Scope",
+                                    "ValueType":"Static",
+                                    "Value":"Global"
+                                },
+                                {
+                                    "Name":"PSProvider",
+                                    "ValueType":"Static",
+                                    "Value":"ActiveDirectory"
+                                },
+                                {
+                                    "Name":"Credential",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$ServiceObject.Credential"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "ActiveDirectoryLDS",
+            "SessionTestCmdlet": "Get-ADRootDSE",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -435,15 +864,20 @@
                     "type": "string[]",
                     "mandatory": false,
                     "value":[]
-                }
-            ],
-            "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[],
-            "RequiredModuleInPSSession":[
+                },
                 {
-                    "name":"ActiveDirectory"
+                    "Name":"PSDriveName",
+                    "type": "string",
+                    "mandatory": true,
+                    "value":""
                 }
-            ],
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":false,
             "PSSessionParameters":[
                 {
@@ -456,32 +890,159 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[
+                        {
+                            "name":"ActiveDirectory"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "SMTPMailRelay",
-            "OrgSystemServiceTypeAttributes": [],
-            "EndPointServiceTypeAttributes": []
+            "SessionTestCmdlet": "Send-MailMessage",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
+            "OrgSystemServiceTypeAttributes": [],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
+            "PSSessionConstrained":false,
+            "PSSessionParameters":[
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "SkypeForBusinessOnline",
-            "OrgSystemServiceTypeAttributes": [],
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
+            "OrgSystemServiceTypeAttributes": [],            
+            "DefaultsToWellKnownEndPoint":true,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "RequiredModuleToConnectPSSession":[
+            "PSSessionConnectRequiredModule":[
                 {
                     "name":"SkypeOnlineConnector"
                 }
             ],
-            "RequiredModuleInPSSession":[],
             "PSSessionCmdlet":"New-SkypeOnlinePSSession",
             "PSSessionConstrained":true,
             "PSSessionParameters":[
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         },
         {
             "Name": "SkypeForBusinessOnPremises",
-            "OrgSystemServiceTypeAttributes": [],
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                },
+                {
+                    "Name":"ErrorAction",
+                    "ValueType":"Static",
+                    "Value": "Stop"
+                },
+                {
+                    "Name":"WarningAction",
+                    "ValueType":"Static",
+                    "Value": "SilentlyContinue"
+                }
+            ],
+            "OrgSystemServiceTypeAttributes": [],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
             "PSSessionConstrained":true,
             "PSSessionParameters":[
                 {
@@ -494,7 +1055,24 @@
                     "ValueType":"Static",
                     "Value":"Microsoft.Powershell"
                 }
-            ]
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1-PreModuleImport":[
+                        {
+                            "Command":"",
+                            "parameters":{}
+                        }
+                    ],
+                    "Phase2-ModuleImport":[],
+                    "Phase3":[
+                        {
+                            "command":"",
+                            "parameters":{}
+                        }
+                    ]
+                }
+            }
         }
     ]
 }
