@@ -13,6 +13,7 @@
 - [x] per-admin per service prefix configuration
 - [ ] Follow <http://semver.org/> for Versioning
 - [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
+- [ ] Improve CommandPrefix configurations with profiles - allow NULL or blank and check for duplicates in some situations (like between Exchange Orgs)
 
 ## AAD Connect Improvements
 
@@ -24,3 +25,7 @@
 - [x] make exchange org types different system types? - yes, did this for exchange and AD types
 - [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead
 - [x] Make Profile Identity parameters non-mandatory and prompt for them with a select-profile function like we do with systems? - yes, done
+
+## Bugs/Known Issues
+
+- [ ] If you use a non-valid dynamic parameter name with New-OrgProfileSystem (and perhaps other commands) you'll get a non-helpful error about postitional parameters "Cannot bind positional parameters because no names were given."
