@@ -729,7 +729,7 @@ function New-OrgProfileSystem
             {
                 foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
                 {
-                    $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.mandatory -DPDictionary $dictionary -Verbose
+                    $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.mandatory -DPDictionary $dictionary
                 }
             }
             Write-Output -InputObject $dictionary
