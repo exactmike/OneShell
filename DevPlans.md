@@ -13,6 +13,7 @@
 - [x] per-admin per service prefix configuration
 - [ ] Follow <http://semver.org/> for Versioning
 - [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
+- [ ] Improve CommandPrefix configurations with profiles - allow NULL or blank and check for duplicates in some situations (like between Exchange Orgs)
 
 ## AAD Connect Improvements
 
