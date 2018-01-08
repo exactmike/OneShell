@@ -243,16 +243,30 @@ function Test-OneShellSystemConnection
                     if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                     {
                         $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
+                        $TestCommandParams = @{
+                            ErrorAction = 'Stop'
+                        }
+                        #$testCommandParams.WarningAction = 'SilentlyContinue' #don't add because in constrained PSSessions this might not be allowed
                         if ($null -ne $ServiceTypeDefinition.SessionTestCmdletParameters -and $ServiceTypeDefinition.SessionTestCmdletParameters.count -ge 1)
                         {
-                            $testCommandParams = Convert-ObjectToHashTable -InputObject $ServiceTypeDefinition.SessionTestCmdletParameters
+                            foreach ($p in $ServiceTypeDefinition.SessionTestCmdletParameters)
+                            {
+                                $value = $(
+                                    switch ($p.ValueType)
+                                    {
+                                        'Static'
+                                        {$p.Value}
+                                        'ScriptBlock'
+                                        {
+                                            $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
+                                            &$ValueGeneratingScriptBlock
+                                        }
+                                    }
+                                )
+                                $TestCommandParams.$($p.name) = $value
+                            }
+    
                         }
-                        else
-                        {
-                            $testCommandParams = @{}
-                        }
-                        $testCommandParams.ErrorAction = 'Stop'
-                        #$testCommandParams.WarningAction = 'SilentlyContinue' #don't add because in constrained PSSessions this might not be allowed
                         Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
                         $message = "Run $testCommand in $($serviceSession.name) PSSession"
                         try
@@ -636,7 +650,7 @@ function Import-ModuleInOneShellSystemPSSession
         }
         if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1) 
         {
-            foreach ($m in $ServiceTypeDefinition.RequiredModuleInPSSession)
+            foreach ($m in $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport)
             {
                 $ModuleName = $m.Name
                 if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForInstalledModule -Name $using:ModuleName} -HideComputerName)
@@ -711,7 +725,8 @@ function Initialize-OneShellSystemPSSession
                             {
                                 'Local'
                                 {
-                                    &$c.test
+                                    $ScriptBlockToTest = [scriptblock]::Create($c.test)
+                                    &$ScriptBlockToTest
                                 }
                                 'InPSSession'
                                 {
@@ -735,7 +750,10 @@ function Initialize-OneShellSystemPSSession
                                         'Static'
                                         {$p.Value}
                                         'ScriptBlock'
-                                        {&$([scriptblock]::Create($p.Value))}
+                                        {
+                                            $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
+                                            &$ValueGeneratingScriptBlock
+                                        }
                                     }
                                 )
                                 $CmdParams.$($p.name) = $value
@@ -747,6 +765,9 @@ function Initialize-OneShellSystemPSSession
                             }#end Try
                             Catch
                             {
+                                $myerror = $_
+                                Write-Log -Message "Initialization Phase $Phase failed." -ErrorLog -Verbose -EntryType Failed
+                                Write-Log -Message $myerror.tostring() -ErrorLog
                                 Write-Output -inputObject $false
                             }
                         }
@@ -844,10 +865,3 @@ function Add-FunctionToPSSession
 #################################################
 # Need to update
 #################################################
-
-#################################################
-# Need to add
-#################################################
-#Disconnect-OneShellSystem
-#Multiple OneShellSystem Connections
-#MFA support https://techcommunity.microsoft.com/t5/Windows-PowerShell/Can-I-Connect-to-O365-Security-amp-Compliance-center-via/td-p/68898

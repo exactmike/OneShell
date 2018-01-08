@@ -26,7 +26,7 @@
 ## ideas from Joe
 
 - [x] make exchange org types different system types? - yes, did this for exchange and AD types
-- [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead
+- [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress)
 - [x] Make Profile Identity parameters non-mandatory and prompt for them with a select-profile function like we do with systems? - yes, done
 
 ## Bugs/Known Issues
@@ -34,9 +34,9 @@
 - [ ] If you use a non-valid dynamic parameter name with New-OrgProfileSystem (and perhaps other commands) you'll get a non-helpful error about postitional parameters "Cannot bind positional parameters because no names were given."
 - [ ] Set-OrgProfileSystemEndpoint does not work to update an endpoint address
 - [ ] Need to be able to use separate credential for connections to MSOnline,AzureAD,AzureADPReview,etc. (one credential for pssession another for service connection)
-- [ ] Need to implement SessionManagementGroups ...
+- [ ] Need to implement SessionManagementGroups logic to create and update/manage the group variables
 - [ ] Need to add explicit loading of required module to establish PSSession for special cases (like SkypeForBusinessOnline)
-- [ ] Fix Test existing Session command logic - might need to convert to scriptblock first
+- [x] Fix Test existing Session command logic - might need to convert to scriptblock first
 - [ ] Session Management Groups aren't being written to the org profile system object for powershell type systems
 
 ## Requested Features

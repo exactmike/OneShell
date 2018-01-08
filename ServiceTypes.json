@@ -45,7 +45,7 @@
                             "conditions":[
                                 {
                                     "type":"local",
-                                    "test":"$endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1"
+                                    "test":"($endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1)"
                                 }
                             ],
                             "command":"Set-ADServerSettings",
@@ -388,12 +388,7 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1_PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
+                    "Phase1_PreModuleImport":[],
                     "Phase2_ModuleImport":[
                         {
                             "name":"AzureADPreview"
@@ -452,12 +447,7 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1_PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
+                    "Phase1_PreModuleImport":[],
                     "Phase2_ModuleImport":[
                         {
                             "name":"AzureAD"
@@ -570,7 +560,7 @@
                     "mandatory": true,
                     "value":""
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -599,17 +589,17 @@
                                 {
                                     "Name":"Path",
                                     "ValueType":"Static",
-                                    "Value":"Env:\\"    
+                                    "Value":"Env:\\"
                                 },
                                 {
                                     "Name":"Name",
                                     "ValueType":"Static",
-                                    "Value":"ADPS_LoadDefaultDrive"    
+                                    "Value":"ADPS_LoadDefaultDrive"
                                 },
                                 {
                                     "Name":"Value",
                                     "ValueType":"Static",
-                                    "Value": 0    
+                                    "Value": 0
                                 }
                             ]
                         }
@@ -632,7 +622,7 @@
                                 {
                                     "Name":"Server",
                                     "ValueType":"ScriptBlock",
-                                    "Value":"$endpoint.Address"
+                                    "Value":"$ServiceObject.ServiceTypeAttributes.ADDomainFQDN"
                                 },
                                 {
                                     "Name":"Root",
@@ -653,6 +643,17 @@
                                     "Name":"Credential",
                                     "ValueType":"ScriptBlock",
                                     "Value":"$ServiceObject.Credential"
+                                }
+                            ]
+                        },
+                        {
+                            "conditions":[],
+                            "command":"Set-Location",
+                            "parameters":[
+                                {
+                                    "Name":"Path",
+                                    "ValueType":"scriptblock",
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName + ':\\'"
                                 }
                             ]
                         }
@@ -729,12 +730,12 @@
                                 {
                                     "Name":"Name",
                                     "ValueType":"Static",
-                                    "Value":"ADPS_LoadDefaultDrive"    
+                                    "Value":"ADPS_LoadDefaultDrive"
                                 },
                                 {
                                     "Name":"Value",
                                     "ValueType":"Static",
-                                    "Value": 0    
+                                    "Value": 0
                                 }
                             ]
                         }
@@ -757,7 +758,7 @@
                                 {
                                     "Name":"Server",
                                     "ValueType":"ScriptBlock",
-                                    "Value":"$($endpoint.Address):3268"
+                                    "Value":"$($ServiceObject.ServiceTypeAttributes.ADDomainFQDN + ':3268')"
                                 },
                                 {
                                     "Name":"Root",
@@ -778,6 +779,17 @@
                                     "Name":"Credential",
                                     "ValueType":"ScriptBlock",
                                     "Value":"$ServiceObject.Credential"
+                                }
+                            ]
+                        },
+                        {
+                            "conditions":[],
+                            "command":"Set-Location",
+                            "parameters":[
+                                {
+                                    "Name":"Path",
+                                    "ValueType":"scriptblock",
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName + ':\\'"
                                 }
                             ]
                         }
@@ -897,6 +909,17 @@
                                     "Name":"Credential",
                                     "ValueType":"ScriptBlock",
                                     "Value":"$ServiceObject.Credential"
+                                }
+                            ]
+                        },
+                        {
+                            "conditions":[],
+                            "command":"Set-Location",
+                            "parameters":[
+                                {
+                                    "Name":"Path",
+                                    "ValueType":"scriptblock",
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName + ':\\'"
                                 }
                             ]
                         }
