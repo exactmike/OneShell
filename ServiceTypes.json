@@ -38,8 +38,8 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[],
-                    "Phase2-ModuleImport":[],
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
                     "Phase3":[
                         {
                             "conditions":[
@@ -108,8 +108,8 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[],
-                    "Phase2-ModuleImport":[],
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
                     "Phase3":[]
                 }
             }
@@ -123,16 +123,6 @@
                     "Name":"Identity",
                     "ValueType":"ScriptBlock",
                     "Value": "$ServiceObject.Credential.Username"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],
@@ -167,8 +157,8 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[],
-                    "Phase2-ModuleImport":[],
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
                     "Phase3":[]
                 }
             }
@@ -182,16 +172,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [
@@ -223,19 +203,9 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "Phase2-ModuleImport":[],
-                    "Phase3":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
+                    "Phase3":[]
                 }
             }
         },
@@ -248,16 +218,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [
@@ -289,19 +249,9 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "Phase2-ModuleImport":[],
-                    "Phase3":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
+                    "Phase3":[]
                 }
             }
         },
@@ -314,16 +264,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [
@@ -355,23 +295,13 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "Phase2-ModuleImport":[
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[
                         {
                             "name":"POSH_ADO_SQLServer"
                         }
                     ],
-                    "Phase3":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
+                    "Phase3":[]
                 }
             }
         },
@@ -384,16 +314,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],            
@@ -418,28 +338,18 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "Phase2-ModuleImport":[
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[
                         {
                             "name":"ADSync"
                         }
                     ],
-                    "Phase3":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
+                    "Phase3":[]
                 }
             }
         },
         {
-            "Name": "AzureADTenant",
+            "Name": "AzureADPreview",
             "SessionTestCmdlet": "Get-Command",
             "SessionTestCmdletParameters":
             [
@@ -447,16 +357,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [
@@ -488,28 +388,32 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
+                    "Phase1_PreModuleImport":[
                         {
                             "Command":"",
                             "parameters":{}
                         }
                     ],
-                    "Phase2-ModuleImport":[
+                    "Phase2_ModuleImport":[
                         {
                             "name":"AzureADPreview"
                         }
                     ],
                     "Phase3":[
                         {
-                            "command":"",
-                            "parameters":{}
+                            "command":"Connect-AzureAD",
+                            "parameters":{
+                                "Name":"Credential",
+                                "ValueType":"ScriptBlock",
+                                "Value":"$ServiceObject.Credential"
+                            }
                         }
                     ]
                 }
             }
         },
         {
-            "Name": "Office365Tenant",
+            "Name": "AzureAD",
             "SessionTestCmdlet": "Get-Command",
             "SessionTestCmdletParameters":
             [
@@ -517,16 +421,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [
@@ -558,21 +452,84 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
+                    "Phase1_PreModuleImport":[
                         {
                             "Command":"",
                             "parameters":{}
                         }
                     ],
-                    "Phase2-ModuleImport":[
+                    "Phase2_ModuleImport":[
+                        {
+                            "name":"AzureAD"
+                        }
+                    ],
+                    "Phase3":[
+                        {
+                            "command":"Connect-AzureAD",
+                            "parameters":{
+                                "Name":"Credential",
+                                "ValueType":"ScriptBlock",
+                                "Value":"$ServiceObject.Credential"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "Name": "MSOnline",
+            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdletParameters":
+            [
+                {
+                    "Name":"Name",
+                    "ValueType":"Static",
+                    "Value": "Get-Command"
+                }
+            ],
+            "OrgSystemServiceTypeAttributes": [
+                {
+                    "Name": "TenantSubDomain",
+                    "type": "string",
+                    "mandatory": true,
+                    "value": ""
+                }
+            ],            
+            "DefaultsToWellKnownEndPoint":false,
+            "WellKnownEndPointURI":null,
+            "WellKnownEndPointAuthMethod": null,
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule":[],
+            "PSSessionCmdlet":null,
+            "PSSessionConstrained":false,
+            "PSSessionParameters":[
+                {
+                    "name":"ComputerName",
+                    "ValueType":"ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name":"ConfigurationName",
+                    "ValueType":"Static",
+                    "Value":"Microsoft.Powershell"
+                }
+            ],
+            "PSSessionSettings":{
+                "Initialization":{
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[
                         {
                             "name":"MSOnline"
                         }
                     ],
                     "Phase3":[
                         {
-                            "command":"",
-                            "parameters":{}
+                            "command":"Connect-MsolService",
+                            "parameters":{
+                                "Name":"Credential",
+                                "ValueType":"ScriptBlock",
+                                "Value":"$ServiceObject.Credential"
+                            }
                         }
                     ]
                 }
@@ -581,19 +538,7 @@
         {
             "Name": "ActiveDirectoryDomain",
             "SessionTestCmdlet": "Get-ADRootDSE",
-            "SessionTestCmdletParameters":
-            [
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
-                }
-            ],
+            "SessionTestCmdletParameters":[],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -647,13 +592,29 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
+                    "Phase1_PreModuleImport":[
                         {
-                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
-                            "parameters":[]
+                            "Command":"New-Item",
+                            "parameters":[
+                                {
+                                    "Name":"Path",
+                                    "ValueType":"Static",
+                                    "Value":"Env:\\"    
+                                },
+                                {
+                                    "Name":"Name",
+                                    "ValueType":"Static",
+                                    "Value":"ADPS_LoadDefaultDrive"    
+                                },
+                                {
+                                    "Name":"Value",
+                                    "ValueType":"Static",
+                                    "Value": 0    
+                                }
+                            ]
                         }
                     ],
-                    "Phase2-ModuleImport":[
+                    "Phase2_ModuleImport":[
                         {
                             "name":"ActiveDirectory"
                         }
@@ -661,17 +622,12 @@
                     "Phase3":[
                         {
                             "conditions":[],
-                            "command":"$DriveName = ($Using:ServiceObject).ServiceTypeAttributes.PSDriveName",
-                            "parameters":[]
-                        },
-                        {
-                            "conditions":[],
                             "command":"New-PSDrive",
                             "parameters":[
                                 {
                                     "Name":"Name",
                                     "ValueType":"scriptblock",
-                                    "Value": "$DriveName"
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName"
                                 },
                                 {
                                     "Name":"Server",
@@ -707,19 +663,7 @@
         {
             "Name": "ActiveDirectoryGlobalCatalog",
             "SessionTestCmdlet": "Get-ADRootDSE",
-            "SessionTestCmdletParameters":
-            [
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
-                }
-            ],
+            "SessionTestCmdletParameters":[],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -773,13 +717,29 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
+                    "Phase1_PreModuleImport":[
                         {
-                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
-                            "parameters":[]
+                            "Command":"New-Item",
+                            "parameters":[
+                                {
+                                    "Name":"Path",
+                                    "ValueType":"Static",
+                                    "Value":"Env:\\"    
+                                },
+                                {
+                                    "Name":"Name",
+                                    "ValueType":"Static",
+                                    "Value":"ADPS_LoadDefaultDrive"    
+                                },
+                                {
+                                    "Name":"Value",
+                                    "ValueType":"Static",
+                                    "Value": 0    
+                                }
+                            ]
                         }
                     ],
-                    "Phase2-ModuleImport":[
+                    "Phase2_ModuleImport":[
                         {
                             "name":"ActiveDirectory"
                         }
@@ -787,17 +747,12 @@
                     "Phase3":[
                         {
                             "conditions":[],
-                            "command":"$DriveName = ($Using:ServiceObject).ServiceTypeAttributes.PSDriveName",
-                            "parameters":[]
-                        },
-                        {
-                            "conditions":[],
                             "command":"New-PSDrive",
                             "parameters":[
                                 {
                                     "Name":"Name",
                                     "ValueType":"scriptblock",
-                                    "Value": "$DriveName"
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName"
                                 },
                                 {
                                     "Name":"Server",
@@ -833,19 +788,7 @@
         {
             "Name": "ActiveDirectoryLDS",
             "SessionTestCmdlet": "Get-ADRootDSE",
-            "SessionTestCmdletParameters":
-            [
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
-                }
-            ],
+            "SessionTestCmdletParameters":[],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -893,21 +836,69 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
+                    "Phase1_PreModuleImport":[
                         {
-                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
-                            "parameters":{}
+                            "Command":"New-Item",
+                            "parameters":[
+                                {
+                                    "Name":"Path",
+                                    "ValueType":"Static",
+                                    "Value":"Env:\\"    
+                                },
+                                {
+                                    "Name":"Name",
+                                    "ValueType":"Static",
+                                    "Value":"ADPS_LoadDefaultDrive"    
+                                },
+                                {
+                                    "Name":"Value",
+                                    "ValueType":"Static",
+                                    "Value": 0    
+                                }
+                            ]
                         }
                     ],
-                    "Phase2-ModuleImport":[
+                    "Phase2_ModuleImport":[
                         {
                             "name":"ActiveDirectory"
                         }
                     ],
                     "Phase3":[
                         {
-                            "command":"",
-                            "parameters":{}
+                            "conditions":[],
+                            "command":"New-PSDrive",
+                            "parameters":[
+                                {
+                                    "Name":"Name",
+                                    "ValueType":"scriptblock",
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName"
+                                },
+                                {
+                                    "Name":"Server",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$endpoint.Address"
+                                },
+                                {
+                                    "Name":"Root",
+                                    "ValueType":"Static",
+                                    "Value":"//RootDSE/"
+                                },
+                                {
+                                    "Name":"Scope",
+                                    "ValueType":"Static",
+                                    "Value":"Global"
+                                },
+                                {
+                                    "Name":"PSProvider",
+                                    "ValueType":"Static",
+                                    "Value":"ActiveDirectory"
+                                },
+                                {
+                                    "Name":"Credential",
+                                    "ValueType":"ScriptBlock",
+                                    "Value":"$ServiceObject.Credential"
+                                }
+                            ]
                         }
                     ]
                 }
@@ -922,16 +913,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],            
@@ -946,13 +927,13 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
+                    "Phase1_PreModuleImport":[
                         {
                             "Command":"",
                             "parameters":{}
                         }
                     ],
-                    "Phase2-ModuleImport":[],
+                    "Phase2_ModuleImport":[],
                     "Phase3":[
                         {
                             "command":"",
@@ -971,16 +952,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],            
@@ -999,19 +970,9 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "Phase2-ModuleImport":[],
-                    "Phase3":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
+                    "Phase3":[]
                 }
             }
         },
@@ -1024,16 +985,6 @@
                     "Name":"Name",
                     "ValueType":"Static",
                     "Value": "Get-Command"
-                },
-                {
-                    "Name":"ErrorAction",
-                    "ValueType":"Static",
-                    "Value": "Stop"
-                },
-                {
-                    "Name":"WarningAction",
-                    "ValueType":"Static",
-                    "Value": "SilentlyContinue"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],            
@@ -1058,19 +1009,9 @@
             ],
             "PSSessionSettings":{
                 "Initialization":{
-                    "Phase1-PreModuleImport":[
-                        {
-                            "Command":"",
-                            "parameters":{}
-                        }
-                    ],
-                    "Phase2-ModuleImport":[],
-                    "Phase3":[
-                        {
-                            "command":"",
-                            "parameters":{}
-                        }
-                    ]
+                    "Phase1_PreModuleImport":[],
+                    "Phase2_ModuleImport":[],
+                    "Phase3":[]
                 }
             }
         }

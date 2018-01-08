@@ -690,7 +690,7 @@ function New-OrgProfileSystem
             [string]$Description
             ,
             [parameter(Mandatory)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')] 
             [string]$ServiceType
             ,
             [parameter()]
@@ -780,7 +780,7 @@ function Set-OrgProfileSystem
             [string[]]$Identity #System Identity or Name
             ,
             [parameter(Mandatory)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter')] #convert to dynamic parameter sourced from single place to ease adding systems types later
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
             [parameter()]
@@ -978,7 +978,7 @@ function New-OrgProfileSystemEndpoint
             [string]$SystemIdentity
             ,
             [parameter()]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay')]#,'SkypeOrganization','ExchangeOnline','ExchangeComplianceCenter'
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
             [Parameter(Mandatory)]
@@ -2126,10 +2126,10 @@ function Update-AdminUserProfileSystem
             $OrgProfileSystems = @(GetOrgProfileSystemForAdminProfile -OrgProfile $TargetOrgProfile)
             $AdminUserProfileSystems = @($AdminUserProfile.Systems)
             #Remove those that are no longer in the Org Profile
-            $AdminUserProfileSystems = $AdminUserProfileSystems | Where-Object {$_.Identity -in $OrgProfileSystems.Identity}
+            $AdminUserProfileSystems = @($AdminUserProfileSystems | Where-Object {$_.Identity -in $OrgProfileSystems.Identity})
             #Add those that are new to the Org Profile
-            $NewOrgProfileSystems = $OrgProfileSystems | Where-Object {$_.Identity -notin $AdminUserProfileSystems.Identity}
-            $NewAdminUserProfileSystems = $AdminUserProfileSystems + $NewOrgProfileSystems
+            $NewOrgProfileSystems = @($OrgProfileSystems | Where-Object {$_.Identity -notin $AdminUserProfileSystems.Identity})
+            $NewAdminUserProfileSystems = @($AdminUserProfileSystems;$NewOrgProfileSystems)
             $AdminUserProfile.Systems = $NewAdminUserProfileSystems
             Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
         }#End End

@@ -243,14 +243,22 @@ function Test-OneShellSystemConnection
                     if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                     {
                         $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
-                        $testCommandParams = Convert-ObjectToHashTable -InputObject $ServiceTypeDefinition.SessionTestCmdletParameters
+                        if ($null -ne $ServiceTypeDefinition.SessionTestCmdletParameters -and $ServiceTypeDefinition.SessionTestCmdletParameters.count -ge 1)
+                        {
+                            $testCommandParams = Convert-ObjectToHashTable -InputObject $ServiceTypeDefinition.SessionTestCmdletParameters
+                        }
+                        else
+                        {
+                            $testCommandParams = @{}
+                        }
+                        $testCommandParams.ErrorAction = 'Stop'
+                        #$testCommandParams.WarningAction = 'SilentlyContinue' #don't add because in constrained PSSessions this might not be allowed
                         Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
-                        $Script = "$TestCommand @TestCommandParams"
-                        $message = "Run $Script in $($serviceSession.name) PSSession"
+                        $message = "Run $testCommand in $($serviceSession.name) PSSession"
                         try
                         {
                             Write-Log -Message $message -EntryType Attempting
-                            invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
+                            invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop | out-null
                             Write-Log -Message $message -EntryType Succeeded
                             Write-Output -InputObject $true
                         }
@@ -368,7 +376,7 @@ Function Connect-OneShellSystem
         [string]$CommandPrefix #Overrides the otherwise specified command prefix.
         ,
         [parameter()]
-        [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureADTenant','Office365Tenant','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeOrganization')]
+        [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
         [string[]]$ServiceType #used only to filter list of available system identities and names
     )
     DynamicParam
@@ -482,23 +490,47 @@ Function Connect-OneShellSystem
                                 Write-Log -Message $message -EntryType Attempting
                                 $ServiceSession = Invoke-Command -ScriptBlock {& $NewPSSessionCmdlet @NewPSSessionParams}
                                 Write-Log -Message $message -EntryType Succeeded
-                                $Connected = $true
+                                $PSSessionConnected = $true
                             }#end Try
                             catch
                             {
                                 $myerror = $_
+                                $PSSessionConnected = $false
                                 Write-Log -Message $message -EntryType Failed -ErrorLog
                                 Write-Log -Message $myerror.tostring() -ErrorLog
                             }#end Catch
                             #determine if the session needs to be initialized with imported modules, variables, etc. based on ServiceType
-                            $RequiredModuleImported = $(
-                                if ($Connected -eq $true)
+                            $Phase1InitializationCompleted = $(
+                                if ($PSSessionConnected -eq $true)
+                                {
+                                    $message = "Perform Phase 1 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
+                                    try
+                                    {
+                                        Write-Log -Message $message -EntryType Attempting
+                                        Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
+                                        Write-Log -Message $message -EntryType Succeeded
+                                    }
+                                    catch
+                                    {
+                                        $myerror = $_
+                                        Write-Log -Message $message -EntryType Failed
+                                        Write-Log -Message $myerror.tostring() -ErrorLog
+                                        $false
+                                    }
+                                }
+                                else
+                                {
+                                    $false    
+                                }
+                            )
+                            $Phase2InitializationCompleted = $(
+                                if ($Phase1InitializationCompleted -ne $false)
                                 {
                                     try
                                     {
                                         $message = "Import Required Module(s) into PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                         Write-Log -Message $message -EntryType Attempting
-                                        Import-RequiredModuleIntoOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
+                                        Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
                                         Write-Log -Message $message -EntryType Succeeded
                                     }
                                     catch
@@ -514,14 +546,14 @@ Function Connect-OneShellSystem
                                     $false
                                 }
                             )
-                            $Initialized = $(
-                                if ($RequiredModuleImported -ne $false)
+                            $Phase3InitializationCompleted = $(
+                                if ($Phase2InitializationCompleted -ne $false)
                                 {
                                     try
                                     {
-                                        $message = "Initialize PSSession $($serviceSession.Name) for $($serviceObject.Name)"
+                                        $message = "Perform Phase 3 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                         Write-Log -Message $message -EntryType Attempting
-                                        Initialize-OneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
+                                        Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
                                         Write-Log -Message $message -EntryType Succeeded
                                     }
                                     catch
@@ -539,7 +571,7 @@ Function Connect-OneShellSystem
                                 }
                             )
                             $message = "Connection and Initialization of PSSession $($serviceSession.name) for $($serviceobject.name)"
-                            if (@($Connected,$RequiredModuleImported,$Initialized) -notcontains $false)
+                            if (@($Phase1InitializationCompleted,$Phase2InitializationCompleted,$Phase3InitializationCompleted) -notcontains $false)
                             {
                                 Write-Log -Message $message -EntryType Succeeded
                                 $ConnectionReady = $true
@@ -562,34 +594,13 @@ Function Connect-OneShellSystem
                         }
                         $true
                         {
-                            if ($ServiceObject.AutoImport)
+                            if ($ServiceObject.AutoImport -eq $true)
                             {
-                                switch ($ServiceObject.ServiceType)
-                                {
-                                    'AADSyncServer'
-                                    {}
-                                    'ActiveDirectoryDomain'
-                                    {}
-                                    'ActiveDirectoryGlobalCatalog'
-                                    {}
-                                    'ActiveDirectoryLDS'
-                                    {}
-                                    'AzureADTenant'
-                                    {}
-                                    'Office365Tenant'
-                                    {}
-                                    'SkypeOrganization'
-                                    {}
-                                    'SQLDatabase'
-                                    {}
-                                    Default #Exchange types and PowerShell types
-                                    {
-                                    }
-                                }
+ 
                             }
                         }
                     }
-                }
+                } 
             }#end $true
             default
             {
@@ -598,7 +609,7 @@ Function Connect-OneShellSystem
         }#end Switch
     }#end End
 }#function Connect-OneShellSystem
-function Import-RequiredModuleIntoOneShellSystemPSSession
+function Import-ModuleInOneShellSystemPSSession
     {
         [CmdletBinding()]
         param
@@ -623,16 +634,7 @@ function Import-RequiredModuleIntoOneShellSystemPSSession
                 Add-FunctionToPSSession -FunctionNames 'Test-ForInstalledModule','Test-ForImportedModule' -PSSession $ServiceSession
             }
         }
-        #specify the required module(s) and any pre-module import settings
-        if ($null -ne $ServiceTypeDefinition.PreModuleImportInitializationCommands -and $ServiceTypeDefinition.PreModuleImportInitializationCommands.count -ge 1)
-        {
-            foreach ($c in $ServiceTypeDefinition.PreModuleImportInitializationCommands)
-            {
-                $scriptblock = [scriptblock]::Create($c.command)
-                Invoke-Command -Session $ServiceSession -ScriptBlock $scriptblock -ErrorAction Stop
-            }
-        }
-        if ($null -ne $ServiceTypeDefinition.RequiredModuleInPSSession -and $ServiceTypeDefinition.RequiredModuleInPSSession.count -ge 1) 
+        if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1) 
         {
             foreach ($m in $ServiceTypeDefinition.RequiredModuleInPSSession)
             {
@@ -688,108 +690,83 @@ function Initialize-OneShellSystemPSSession
         ,
         [parameter(Mandatory)]
         $endpoint
+        ,
+        [parameter(Mandatory)]
+        [ValidateSet('Phase1_PreModuleImport','Phase3')]
+        $Phase
     )
-    Try
+    Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    switch ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.$Phase -and ($ServiceTypeDefinition.PSSessionSettings.Initialization.$Phase).count -ge 1)
     {
-        switch ($ServiceObject.ServiceType)
+        $true
         {
-            'ExchangeOnPremises'
-            {
-                Invoke-Command -session $ServiceSession -ScriptBlock {Set-ADserverSettings -ViewEntireForest $true -errorAction Stop} -ErrorAction Stop
-                if ($endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1)
+            $InitializationCommandsResults = @(
+                foreach ($cmd in $ServiceTypeDefinition.PSSessionSettings.Initialization.$phase)
                 {
-                    $PreferredDomainControllers = $endpoint.ServiceTypeAttributes.PreferredDomainControllers
-                    Invoke-Command -session $ServiceSession -ScriptBlock {Set-ADserverSettings -SetPreferredDomainControllers $using:PreferredDomainControllers -ErrorAction Stop} -ErrorAction Stop
-                }
-                Write-Output -inputObject $true
-            }#end ExchangeOnPremises
-            'ActiveDirectory*'
-            {
-                #Determine the Drive Name 
-                $CommandPrefix = Find-CommandPrefixToUse -serviceObject $ServiceObject
-                if (Test-IsNullOrWhiteSpace -String $CommandPrefix)
-                {
-                    $DriveName = $ServiceObject.Name.replace(' ','') 
-                }
-                else
-                {
-                    $DriveName = $CommandPrefix
-                }
-                $existingdrive = Invoke-Comand -Session $serviceSession -ScriptBlock {Get-PSDrive -Name $using:DriveName -ErrorAction SilentlyContinue} -errorAction SilentlyContinue
-                if ($null -eq $existingdrive)
-                {
-                    $UseExistingDrive = $false
-                }#end if
-                else
-                {
-                    Write-Log -Message "Existing Drive for $DriveName exists." 
-                    $message = "Validate Operational Status of Drive $DriveName."
-                    Write-Log -Message $message -EntryType Attempting
-                    try {
-                        $path = $DriveName + ':\'
-                        $result = @(Invoke-Command -Session $serviceSession -Scriptblock {Get-ChildItem -Path $using:path -ErrorAction Stop})
-                        If ($result.Count -ge 1)
+                    $conditionResults = @(
+                        foreach ($c in $cmd.conditions)
                         {
-                            Write-Log -Message $message -EntryType Succeeded
-                            $UseExistingDrive = $True
+                            switch ($c.type)
+                            {
+                                'Local'
+                                {
+                                    &$c.test
+                                }
+                                'InPSSession'
+                                {
+                                    Invoke-Command -Session $serviceSession -ScriptBlock {& $($($using:c).test)}
+                                }
+                            }
                         }
-                        else
-                        {
-                            Write-Log -Message $message -EntryType Failed -ErrorLog
-                            Remove-PSDrive -Name $DriveName -ErrorAction Stop
-                            $UseExistingDrive = $false
-                        }
-                    }
-                    catch
+                    )
+                    switch ($conditionResults -notcontains $false)
                     {
-                        Write-Log -Message $message -ErrorLog -EntryType Failed
-                        Remove-PSDrive -Name $DriveName -ErrorAction Stop
-                        $UseExistingDrive = $False
+                        $true
+                        {
+                            $CmdParams = @{
+                                ErrorAction = 'Stop'
+                            }
+                            foreach ($p in $cmd.parameters)
+                            {
+                                $value = $(
+                                    switch ($p.ValueType)
+                                    {
+                                        'Static'
+                                        {$p.Value}
+                                        'ScriptBlock'
+                                        {&$([scriptblock]::Create($p.Value))}
+                                    }
+                                )
+                                $CmdParams.$($p.name) = $value
+                            }
+                            Try
+                            {
+                                Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:Cmd).command) @using:CmdParams} | Out-Null
+                                Write-Output -InputObject $true
+                            }#end Try
+                            Catch
+                            {
+                                Write-Output -inputObject $false
+                            }
+                        }
+                        $false
+                        {
+                            Write-Output -InputObject $null
+                        }
                     }
-                }#end else
-                if ($UseExistingDrive -eq $False)
-                {
-                    $NewPSDriveParams = @{
-                        Name = $DriveName
-                        Server = $endpoint.Address
-                        Root = '//RootDSE/'
-                        Scope = 'Global'
-                        PSProvider = 'ActiveDirectory'
-                        ErrorAction = 'Stop'
-                        Credential = $ServiceObject.Credential
-                    }#newpsdriveparams
-                    if ($ServiceObject.ServiceType -eq 'ActiveDirectoryGlobalCatalog') {$NewPSDriveParams.Server = $NewPSDriveParams.Server + ':3268'}
-                    if (Test-IsNotNullOrWhiteSpace -string $ServiceObject.Description) {$NewPSDriveParams.Description = $ServiceObject.Description}
-                    $message = "Connect PS Drive $DriveName`: to $($serviceObject.Name)"
-                    Write-Log -Message $message -EntryType Attempting
-                    New-PSDrive @NewPSDriveParams  > $null
-                    Write-Log -Message $message -EntryType Succeeded
-                    Write-Output -InputObject $true
-                } #if
-            }#end ActiveDirectory
-            '*Tenant'
-            {
-                #need to use the connect-* function to intialize the connection
-            }
-            'SQLDatabase'
-            {
-                #need to connect to the database
-            }
-            'LotusNotes'
-            {
-                #need to connect to the lotus database
-            }
-            Default
-            {$null}
+                }
+            )
+            #output True or false depending on results above
+            $InitializationCommandsResults -notcontains $false
         }
-    }#end Try
-    Catch
-    {
-        Write-Log -Message $message -EntryType Failed -errorLog
-        Write-Log -Message $_.tostring() -ErrorLog
-        Write-Output -inputObject $false
-    }
+        $false
+        {
+            Write-Output -InputObject $null
+        }
+    }#end Switch
 }
+#end function Initialize-OneShellSystemPSSession
 function Add-FunctionToPSSession
     {
         [cmdletbinding()]
