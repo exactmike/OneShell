@@ -391,7 +391,8 @@
                     "Phase1_PreModuleImport":[],
                     "Phase2_ModuleImport":[
                         {
-                            "name":"AzureADPreview"
+                            "name":"AzureADPreview",
+                            "type":"module"
                         }
                     ],
                     "Phase3":[
@@ -425,7 +426,7 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,

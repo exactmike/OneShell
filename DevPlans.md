@@ -42,5 +42,5 @@
 ## Requested Features
 
 - [ ] Disconnect-OneShellSystem
-- [ ] Multiple OneShellSystem Connections
+- [ ] Multiple OneShellSystem Connections for Jobs, parallel tasking, etc. 
 - [ ] MFA support <https://techcommunity.microsoft.com/t5/Windows-PowerShell/Can-I-Connect-to-O365-Security-amp-Compliance-center-via/td-p/68898>

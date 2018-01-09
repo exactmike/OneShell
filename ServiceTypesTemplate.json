@@ -68,7 +68,12 @@
                     ],
                     "Phase2-ModuleImport":[
                         {
-                            "name":"POSH_ADO_SQLServer"
+                            "name":"POSH_ADO_SQLServer",
+                            "type":"module"
+                        },
+                        {
+                            "name":"Microsoft.Exchange.Management.PowerShell.Admin",
+                            "type":"PSSnapIn"
                         }
                     ],
                     "Phase3":[

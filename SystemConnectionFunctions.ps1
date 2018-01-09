@@ -636,59 +636,55 @@ function Import-ModuleInOneShellSystemPSSession
         )
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-        #add the module test and import functions
-        switch -Wildcard ($ServiceTypeDefinition.PSSessionConstrained)
-        {
-            $true
+        $ModuleImportResults = @(
+            if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1) 
             {
-                #cannot load functions into these sessions
-            }
-            Default
-            {
-                Add-FunctionToPSSession -FunctionNames 'Test-ForInstalledModule','Test-ForImportedModule' -PSSession $ServiceSession
-            }
-        }
-        if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1) 
-        {
-            foreach ($m in $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport)
-            {
-                $ModuleName = $m.Name
-                if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForInstalledModule -Name $using:ModuleName} -HideComputerName)
+                foreach ($m in $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport)
                 {
-                    if (Invoke-Command -session $ServiceSession -ScriptBlock {Test-ForImportedModule -Name $using:ModuleName} -HideComputerName)
-                    {
-                        #module already loaded in the session
+                    $ModuleName = $m.name
+                    $ImportModuleParams = @{
+                        Name = $ModuleName
+                        ErrorAction = 'Stop'
                     }
-                    else
+                    switch ($m.type)
                     {
-                        try
+                        'PSSnapIn'
                         {
-                            $message = "import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name)."
-                            Write-Log -Message $message -EntryType Attempting
-                            Invoke-Command -session $ServiceSession -ScriptBlock {Import-Module -Name $using:ModuleName -ErrorAction Stop} -ErrorAction Stop
-                            Write-Log -Message $message -EntryType Succeeded
-                            $ModuleImported = $true
+                            $ImportCommand = 'Add-PSSnapin'
                         }
-                        catch
+                        default
                         {
-                            $myerror = $_
-                            Write-Log -Message $message -ErrorLog -Verbose -EntryType Failed
-                            Write-Log -Message $myerror.tostring() -ErrorLog
-                            $ModuleImported = $false
+                            $ImportCommand = 'Import-Module'
                         }
                     }
+                    try
+                    {
+                        $message = "import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name)."
+                        Write-Log -Message $message -EntryType Attempting
+                        Invoke-Command -session $ServiceSession -ScriptBlock {&$using:ImportCommand @using:ImportModuleParams} -ErrorAction Stop
+                        Write-Log -Message $message -EntryType Succeeded
+                        $ModuleImported =  $true
+                    }
+                    catch
+                    {
+                        $myerror = $_
+                        Write-Log -Message $message -ErrorLog -Verbose -EntryType Failed
+                        Write-Log -Message $myerror.tostring() -ErrorLog
+                        $ModuleImported = $false
+                    }
+                    Write-Output -InputObject $ModuleImported
                 }
-                else
-                {
-                    $message = "import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name) fails because the module is not installed at the endpoint."
-                    Write-Log -Message $message -EntryType Failed -ErrorLog
-                    $ModuleImported = $false
-                }
-            }
+            }#end if
+        )
+        switch ($ModuleImportResults) 
+        {
+            {$_.count -eq 0}
+            {Write-Output -InputObject $null}
+            {$_ -contains $false}
+            {Write-Output -InputObject $false}
+            {$_ -notcontains $false -and $_ -contains $true}
+            {Write-Output -InputObject $true}
         }
-        else
-        {$ModuleImported = $null}
-        Write-Output -InputObject $ModuleImported
     }
 #end function Import-RequiredModuleIntoOneShellSystemPSSession
 function Initialize-OneShellSystemPSSession
