@@ -939,7 +939,7 @@
                     "Value": "Get-Command"
                 }
             ],
-            "OrgSystemServiceTypeAttributes": [],            
+            "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
