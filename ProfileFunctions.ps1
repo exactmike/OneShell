@@ -120,8 +120,8 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
         {
             foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.name)
             {
-                $Value = Get-Variable -Name $a -ValueOnly -Scope Local
-                Write-Verbose -Message "Value for $a is $value"
+                $Value = $(Get-Variable -Name $a -Scope Local).Value
+                Write-Verbose -Message "Value for $a is $($value -join ',')"
                 $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name $a -Value $Value
             }
         }
@@ -601,7 +601,7 @@ Function Export-OrgProfile
         $JSONparams=@{
             InputObject = $profile
             ErrorAction = 'Stop'
-            Depth = 6
+            Depth = 10
         }
         $OutParams = @{
             ErrorAction = 'Stop'
@@ -766,6 +766,7 @@ function New-OrgProfileSystem
             {$addServiceTypeAttributesParams.Dictionary = $Dictionary}
             $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject @addServiceTypeAttributesParams
             $OrgProfile.Systems += $GenericSystemObject
+            $global:TestOrgProfile = $OrgProfile
             Export-OrgProfile -profile $OrgProfile -Path $Path
         }
     }
