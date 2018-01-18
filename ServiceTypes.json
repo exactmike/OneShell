@@ -181,7 +181,7 @@
                     "mandatory": false,
                     "value": []
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -227,7 +227,7 @@
                     "mandatory": false,
                     "value": []
                 }
-            ],        
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -273,7 +273,7 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -316,7 +316,7 @@
                     "Value": "Get-Command"
                 }
             ],
-            "OrgSystemServiceTypeAttributes": [],            
+            "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -366,7 +366,7 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -485,7 +485,7 @@
                     "mandatory": true,
                     "value": ""
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -697,7 +697,7 @@
                     "mandatory": true,
                     "value":""
                 }
-            ],            
+            ],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -726,7 +726,7 @@
                                 {
                                     "Name":"Path",
                                     "ValueType":"Static",
-                                    "Value":"Env:\\"    
+                                    "Value":"Env:\\"
                                 },
                                 {
                                     "Name":"Name",
@@ -856,17 +856,17 @@
                                 {
                                     "Name":"Path",
                                     "ValueType":"Static",
-                                    "Value":"Env:\\"    
+                                    "Value":"Env:\\"
                                 },
                                 {
                                     "Name":"Name",
                                     "ValueType":"Static",
-                                    "Value":"ADPS_LoadDefaultDrive"    
+                                    "Value":"ADPS_LoadDefaultDrive"
                                 },
                                 {
                                     "Name":"Value",
                                     "ValueType":"Static",
-                                    "Value": 0    
+                                    "Value": 0
                                 }
                             ]
                         }
@@ -978,7 +978,7 @@
                     "Value": "Get-Command"
                 }
             ],
-            "OrgSystemServiceTypeAttributes": [],            
+            "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint":true,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
@@ -1011,7 +1011,7 @@
                     "Value": "Get-Command"
                 }
             ],
-            "OrgSystemServiceTypeAttributes": [],            
+            "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint":false,
             "WellKnownEndPointURI":null,
             "WellKnownEndPointAuthMethod": null,
