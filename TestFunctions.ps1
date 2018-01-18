@@ -228,3 +228,14 @@ Function Test-EmailAddress
         $EmailAddress -imatch '^(?=[A-Z0-9][A-Z0-9@._%+-]{5,253}$)[A-Z0-9._%+-]{1,64}@(?:(?=[A-Z0-9-]{1,63}\.)[A-Z0-9]+(?:-[A-Z0-9]+)*\.){1,8}[A-Z]{2,63}$'
     }
 #end function Test-EmailAddress
+function Test-StringIsConvertibleToGUID
+    {
+        [CmdletBinding()]
+        param
+        (
+            [parameter(Mandatory,ValueFromPipeline)]
+            [String]$string
+        )
+        try {([guid]$string -is [guid])} catch {$false}
+    }
+#end function TestStringIsConvertibleToGUID
