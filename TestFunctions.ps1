@@ -87,8 +87,8 @@ function Test-IP
         param
         (
             [Parameter(Mandatory)]
-            [ValidateScript({$_ -match [IPAddress]$_ })]
-            [String]$ip    
+            [ValidateScript({$_ -match [IPAddress]$_})]
+            [String]$ip
         )
         $ip
     }

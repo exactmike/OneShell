@@ -2698,6 +2698,7 @@ function Set-OneShellVariables
         $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
         $Script:Stamp = Get-TimeStamp
     }
+#end function Set-OneShellVariables
 ##########################################################################################################
 #Import functions from included ps1 files
 ##########################################################################################################
