@@ -17,6 +17,7 @@
 - [ ] Improve CommandPrefix configurations with profiles - allow NULL or blank and check for duplicates in some situations (like between Exchange Orgs)
 - [ ] Update Azure AD system test command to Get-AzrueADCurrentSessionInfo
 - [ ] Finish SQL Connection logic in ServiceTypes - need to add the right initialization commands
+- [ ] Convert Write-Log to use System.IO.FileStream . . . 
 
 ## AAD Connect Improvements
 
