@@ -671,7 +671,7 @@ function Get-Checksum
     {
         Param (
             [parameter(Mandatory=$True)]
-            [ValidateScript({Test-FilePath -path $_})]
+            [ValidateScript({Test-Path -path $_ -PathType Leaf})]
             [string]$File
             ,
             [ValidateSet('sha1','md5')]
