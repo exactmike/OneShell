@@ -610,8 +610,9 @@ Function Connect-OneShellSystem
                         {
                             if ($ServiceObject.AutoImport -eq $true)
                             {
- 
+                                #NeededCode: Auto import activities
                             }
+                            #NeededCode: Set/Update SessionManagementGroups
                         }
                     }
                 } 
