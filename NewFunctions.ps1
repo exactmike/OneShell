@@ -17,4 +17,22 @@ function Get-DistributionGroupMemberExpanded
         until ($BaseGroupMembership.count -eq 0)
     )
     Write-Output -InputObject $AllResolvedMembers
-} 
+}
+ 
+function Get-ADObjectExpandedMembership
+{
+    param
+    (
+        [Parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [string]
+        $Identity
+    )
+ 
+    process
+    {
+        $ADObject = Get-ADObject -Identity $Identity
+        $DN = $ADObject.DistinguishedName
+        $strFilter = "(member:1.2.840.113556.1.4.1941:=$DN)"
+        Get-ADGroup -LDAPFilter $strFilter -ResultSetSize Unlimited
+    }
+}
