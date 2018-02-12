@@ -38,8 +38,8 @@
 - [ ] Need to implement SessionManagementGroups logic to create and update/manage the group variables
 - [ ] Need to add explicit loading of required module to establish PSSession for special cases (like SkypeForBusinessOnline)
 - [x] Fix Test existing Session command logic - might need to convert to scriptblock first
-- [ ] Session Management Groups aren't being written to the org profile system object for powershell type systems
-- [ ] Connection to MSOnline system types can fail when a different credential than the logged on user is used.  This may be isolated to SSO/Federation scenarios but the scope is currently unclear. This does not affect connections to other AzureAD system types or Exchange Online.  
+- [x] Session Management Groups aren't being written to the org profile system object for powershell type systems
+- [ ] Connection to MSOnline system types can fail when a different credential than the logged on user is used.  This may be isolated to SSO/Federation scenarios but the scope is currently unclear. This does not affect connections to other AzureAD system types or Exchange Online.
 
 ## Requested Features
 
