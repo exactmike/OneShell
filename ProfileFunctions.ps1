@@ -185,7 +185,10 @@ function GetOrgProfileSystemForAdminProfile
                 Identity = $s.Identity
                 AutoConnect = $null
                 AutoImport = $null
-                Credential = $null
+                Credentials = [PSCustomObject]@{
+                    PSSession = $null
+                    Service = $null
+                }
                 PreferredEndpoint = $null
                 PreferredPrefix = $null
             }
@@ -199,7 +202,7 @@ function UpdateAdminUserProfileObjectVersion
             [parameter(Mandatory)]
             $AdminUserProfile
             ,
-            $DesiredProfileTypeVersion = 1.1
+            $DesiredProfileTypeVersion = 1.2
         )
         do
         {
@@ -239,16 +242,16 @@ function UpdateAdminUserProfileObjectVersion
                     #SystemEntries
                     foreach ($se in $AdminUserProfile.Systems)
                     {
-                        if (-not (Test-Member -InputObject $se -Name Credential))
+                        if (-not (Test-Member -InputObject $se -Name Credentials))
                         {
-                            $se | Add-Member -MemberType NoteProperty -Name Credential -Value $null
+                            $se | Add-Member -MemberType NoteProperty -Name Credentials -Value $null
                         }
                         foreach ($credential in $AdminUserProfile.Credentials)
                         {
                             if (Test-Member -InputObject $credential -Name Systems)
                             {
                                 if ($se.Identity -in $credential.systems)
-                                {$se.credential = $credential.Identity}
+                                {$se.credentials = @($credential.Identity)}
                             }
                         }
                     }
@@ -267,7 +270,7 @@ function UpdateAdminUserProfileObjectVersion
                             }
                         }
                     )
-                    $AdminUserProfile.Credentials = $UpdatedCredentialObjects   
+                    $AdminUserProfile.Credentials = $UpdatedCredentialObjects
                 }#end $_ -lt 1
                 {$_ -eq 1}
                 {
@@ -290,6 +293,19 @@ function UpdateAdminUserProfileObjectVersion
                     $AdminUserProfile.Organization.Identity = $AdminUserProfile.General.OrganizationIdentity
                     $AdminUserProfile | Remove-member -member General
                     $AdminUserProfile.ProfileTypeVersion = 1.1
+                }
+                {$_ -eq 1.1}
+                {
+                    #SystemEntries Update to user possibly separate credentials for PSSession and Service
+                    foreach ($se in $AdminUserProfile.Systems)
+                    {
+                        if (-not (Test-Member -InputObject $se -Name Credentials))
+                        {
+                            $se | Add-Member -MemberType NoteProperty -name Credentials -Value [pscustomobject]@{PSSession = $se.Credential;Service = $se.Credential}
+                            $Se | Remove-Member -Member Credential
+                        }
+                    }
+                    $AdminUserProfile.ProfileTypeVersion = 1.2
                 }
             }#end switch
         }
@@ -321,7 +337,7 @@ function AddAdminUserProfileFolders
     }
 function GetAdminUserProfileSystemPropertySet
     {
-        "Identity","AutoConnect","AutoImport","Credential","PreferredEndpoint","PreferredPrefix"
+        "Identity","AutoConnect","AutoImport","Credentials","PreferredEndpoint","PreferredPrefix"
     }
 #end function GetAdminUserProfileSystemPropertySet
 function GetSelectProfile
@@ -1586,24 +1602,31 @@ Function Use-AdminUserProfile
             $OrgSystems = $OrgProfile.systems
             $AdminSystems = $AdminUserProfile.systems
             $JoinedSystems = join-object -Left $OrgSystems -Right $AdminSystems -LeftJoinProperty Identity -RightJoinProperty Identity
+            #Write-Verbose -Message $("Members of Joined Systems: " + $($JoinedSystems | get-member -MemberType Properties | Select-Object -ExpandProperty Name) -join ',')
+            #Write-Verbose -Message $("Members of Joined Systems Credentials: " + $($JoinedSystems.credentials | get-member -MemberType Properties | Select-Object -ExpandProperty Name) -join ',')
             $Script:CurrentSystems = 
             @(
                 foreach ($js in $JoinedSystems)
                 {
-                    $PreCredential = @($AdminUserProfile.credentials | Where-Object -FilterScript {$_.Identity -eq $js.Credential})
-                    switch ($PreCredential.count)
+                    foreach ($p in @('PSSession','Service'))
                     {
-                        1
+                        $PreCredential = @($AdminUserProfile.credentials | Where-Object -FilterScript {$_.Identity -eq $js.Credentials.$p})
+                        switch ($PreCredential.count)
                         {
-                            $SSPassword = $PreCredential[0].password | ConvertTo-SecureString
-                            $Credential = New-Object System.Management.Automation.PSCredential($PreCredential[0].Username,$SSPassword)
+                            1
+                            {
+                                $SSPassword = $PreCredential[0].password | ConvertTo-SecureString
+                                $Credential = New-Object System.Management.Automation.PSCredential($PreCredential[0].Username,$SSPassword)
+                                #Write-Verbose -Message "Service Credential Found for $($js.name)"
+                            }
+                            0
+                            {
+                                $Credential = $null
+                                #Write-Verbose -Message "Service Credential Not Found for $($js.name)"
+                            }
                         }
-                        0
-                        {
-                            $Credential = $null
-                        }
+                        $js.Credentials.$p = $Credential
                     }
-                    $js.Credential = $Credential
                     Write-Output -InputObject $js
                 }
             )
@@ -1727,7 +1750,7 @@ function Set-AdminUserProfile
             }
             foreach ($p in $PSBoundParameters.GetEnumerator())
             {
-                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','Credentials','Systems')
+                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress') #,'Credentials','Systems')
                 {$AdminUserProfile.$($p.key) = $p.value}
             }#end foreach
             Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
@@ -1824,9 +1847,6 @@ Function Set-AdminUserProfileSystem
             [bool]$AutoImport
             ,
             [parameter()]
-            [String]$Credential
-            ,
-            [parameter()]
             [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
             [string]$PreferredPrefix
             ,
@@ -1877,17 +1897,6 @@ Function Set-AdminUserProfileSystem
                     else
                     {
                         throw("Invalid Endpoint Identity $PreferredEndpoint was provided. No such endpoint exists for system $($system.identity).")
-                    }
-                }
-                {$_.key -eq 'Credential'}
-                {
-                    if ($_.value -in $AdminProfile.Credentials.Identity)
-                    {
-                        $system.Credential = $Credential
-                    }
-                    else
-                    {
-                        throw("Invalid Credential Identity $Credential was provided. No such credential exists for admin profile $($adminprofile.identity).")
                     }
                 }
             }
@@ -1971,6 +1980,10 @@ Function Set-AdminUserProfileSystemCredential
             [string]$CredentialIdentity
             ,
             [parameter()]
+            [ValidateSet('All','PSSession','Service')]
+            $Purpose = 'All'
+            ,
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
@@ -2011,7 +2024,16 @@ Function Set-AdminUserProfileSystemCredential
                 }
             )
             if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
-            $system.Credential = $SelectedCredentialIdentity
+            #Remove any existing credential with the same purpose (only one of each purpose is allowed at one time)
+            if ($Purpose -eq 'All')
+            {
+                $system.Credentials.PSSession = $SelectedCredentialIdentity
+                $system.Credentials.Service = $SelectedCredentialIdentity
+            }
+            else
+            {
+                $system.Credentials.$purpose = $SelectedCredentialIdentity
+            }
             $system = $system | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
             #Save the system changes to the Admin Profile
             $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
@@ -2260,6 +2282,7 @@ function Remove-AdminUserProfileCredential
                 ErrorAction = 'Stop'
             }
             Export-AdminUserProfile @exportAdminUserProfileParams
+            #NeededCode:  Remove references to the removed credential from Admin Systems?
         }
     }
 #end function Remove-AdminUserProfileCredential

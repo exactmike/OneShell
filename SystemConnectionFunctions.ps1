@@ -328,7 +328,7 @@ function Get-OneShellSystemEndpointPSSessionParameter
             $NewPSSessionParams = @{
                 ErrorAction = 'Stop'
                 Name = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
-                Credential = $ServiceObject.Credential
+                Credential = $ServiceObject.Credentials.PSSession
             }
             #Apply Service Type Defaults
             foreach ($p in $ServiceTypeDefinition.PSSessionParameters)
