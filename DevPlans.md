@@ -18,7 +18,7 @@
 - [ ] Update Azure AD system test command to Get-AzrueADCurrentSessionInfo
 - [ ] Finish SQL Connection logic in ServiceTypes - need to add the right initialization commands
 - [ ] Convert Write-Log to use System.IO.FileStream . . . 
-
+- [ ] Does $PSSenderInfo have any use cases for OneShell
 ## AAD Connect Improvements
 
 - [ ] add function to report AADConnect/AADSync status - that is, if a synchronization is in progress, what kind of sync it is and when it started. (<http://www.anexinet.com/blog/scripting-a-manual-dirsync-with-powershell-in-azure-ad-connect-v-1-1/>)
