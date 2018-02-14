@@ -10,7 +10,7 @@
 - [ ] Make parameters which ask for a computer consistently named ComputerName?
 - [ ] modify test-directorysynchronization to use Azure AD test as an option and to use non-recipient exchange objects
 - [ ] create a Write-Progress helper function for showing progress every nth record, showing time to completion, making the experience more consistent across functions, etc.
-- [ ] Admin Profile Editing/Creation GUI improvements: List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
+- [ ] Admin Profile Editing/Creation GUI improvements (compared to the old one that is deprecated): List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
 - [x] per-admin per service prefix configuration
 - [ ] Follow <http://semver.org/> for Versioning
 - [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
