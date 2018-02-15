@@ -301,7 +301,7 @@ function UpdateAdminUserProfileObjectVersion
                     {
                         if (-not (Test-Member -InputObject $se -Name Credentials))
                         {
-                            $se | Add-Member -MemberType NoteProperty -name Credentials -Value [pscustomobject]@{PSSession = $se.Credential;Service = $se.Credential}
+                            $se | Add-Member -MemberType NoteProperty -Name Credentials -Value $([pscustomobject]@{PSSession = $se.Credential;Service = $se.Credential})
                             $Se | Remove-Member -Member Credential
                         }
                     }
