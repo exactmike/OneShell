@@ -1884,7 +1884,7 @@ Function Set-AdminUserProfileSystem
                 {$_.key -eq 'AutoConnect'}
                 {$System.AutoConnect = $AutoConnect}
                 {$_.key -eq 'AutoImport'}
-                {$System.AutoConnect = $AutoImport}
+                {$System.AutoImport = $AutoImport}
                 {$_.key -eq 'PreferredPrefix'}
                 {$System.PreferredPrefix = $PreferredPrefix}
                 {$_.key -eq 'PreferredEndpoint'}
@@ -2025,13 +2025,9 @@ Function Set-AdminUserProfileSystemCredential
             )
             if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
             #If this is the first time a credential has been added we may need to add Properties/Attributes
-            if (-not (Test-Member -InputObject $System.Credentials -Name PSSession))
+            if ($null -eq $system.Credentials)
             {
-                $system.credentials | Add-Member -MemberType NoteProperty -Name PSSession -Value $null
-            }
-            if (-not (Test-Member -InputObject $System.Credentials -Name Service))
-            {
-                $system.credentials | Add-Member -MemberType NoteProperty -Name Service -Value $null
+                $system.Credentials = [PSCustomObject]@{PSSession = $null;Service = $null}
             }
             #Remove any existing credential with the same purpose (only one of each purpose is allowed at one time)
             if ($Purpose -eq 'All')
@@ -2055,38 +2051,46 @@ function Update-AdminUserProfileTypeVersion
         [cmdletbinding()]
         param
         (
-            [parameter(Mandatory=$true)]
-            $Identity
-            ,
             $Path
         )
-        $GetAdminUserProfileParams = @{
-            Identity = $Identity
-            errorAction = 'Stop'
-        }
-        if ($PSBoundParameters.ContainsKey('Path'))
+        DynamicParam
         {
-            $GetAdminUserProfileParams.Path = $Path
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $true -Position 1
+            Write-Output -inputobject $dictionary
         }
-        $AdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams
-        $BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the Admin User Profile $($AdminUserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes','No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
-        if ($BackupProfileUserChoice -eq 'Yes')
+        End
         {
-            $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
-            if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
+            Set-DynamicParameterVariable -dictionary $dictionary
+            $GetAdminUserProfileParams = @{
+                Identity = $Identity
+                errorAction = 'Stop'
+            }
+            if ($PSBoundParameters.ContainsKey('Path'))
             {
-                if ($Folder -ne $AdminUserProfile.General.ProfileFolder -and $folder -ne $AdminUserProfile.ProfileFolder)
+                $GetAdminUserProfileParams.Path = $Path
+            }
+            $AdminUserProfile = Get-AdminUserProfile @GetAdminUserProfileParams
+            $BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the Admin User Profile $($AdminUserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes','No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
+            if ($BackupProfileUserChoice -eq 'Yes')
+            {
+                $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the Admin User Profile $($AdminUserProfile.General.Name). This should NOT be the current location of the Admin User Profile." -ErrorAction Stop
+                if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
                 {
-                    Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop  > $null
-                }
-                else
-                {
-                    throw 'Choose a different directory.'
+                    if ($Folder -ne $AdminUserProfile.General.ProfileFolder -and $folder -ne $AdminUserProfile.ProfileFolder)
+                    {
+                        Export-AdminUserProfile -profile $AdminUserProfile -path $Folder -ErrorAction Stop  > $null
+                    }
+                    else
+                    {
+                        throw 'Choose a different directory.'
+                    }
                 }
             }
+            $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+            Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.profilefolder  > $null
         }
-        $UpdatedAdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
-        Export-AdminUserProfile -profile $UpdatedAdminUserProfile -path $AdminUserProfile.profilefolder  > $null
     }
 #end function Update-AdminUserProfileTypeVersion
 function Update-AdminUserProfileSystem
