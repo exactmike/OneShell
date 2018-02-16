@@ -43,6 +43,7 @@
 - [x] Session Management Groups aren't being written to the org profile system object for powershell type systems
 - [ ] Connection to MSOnline system types can fail when a different credential than the logged on user is used.  This may be isolated to SSO/Federation scenarios but the scope is currently unclear. This does not affect connections to other AzureAD system types or Exchange Online.
 - [ ] If you remove a credential from an admin user profile the references to that credential in individual systems are left behind.  They have to be updated by usage of Set-AdminUserProfileSystemCredential.
+- [ ] Get-AllParametersWithAValue leaves out bound parameters that intentially include a $null value.  Need up add an override switch OR exempt bound parameters from this logic. 
 
 ## Requested Features
 
