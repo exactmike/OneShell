@@ -516,11 +516,13 @@
                     "Phase3":[
                         {
                             "command":"Connect-MsolService",
-                            "parameters":{
-                                "Name":"Credential",
-                                "ValueType":"ScriptBlock",
-                                "Value": "$ServiceObject.Credentials.Service"
-                            }
+                            "parameters":[
+                                {
+                                    "Name":"Credential",
+                                    "ValueType":"ScriptBlock",
+                                    "Value": "$ServiceObject.Credentials.Service"
+                                }
+                            ]
                         }
                     ]
                 }
