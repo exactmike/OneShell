@@ -36,8 +36,8 @@
 
 - [ ] If you use a non-valid dynamic parameter name with New-OrgProfileSystem (and perhaps other commands) you'll get a non-helpful error about postitional parameters "Cannot bind positional parameters because no names were given."
 - [ ] Set-OrgProfileSystemEndpoint does not work to update an endpoint address
-- [ ] Need to be able to use separate credential for connections to MSOnline,AzureAD,AzureADPReview,etc. (one credential for pssession another for service connection)
-- [ ] Need to implement SessionManagementGroups logic to create and update/manage the group variables
+- [x] Need to be able to use separate credential for connections to MSOnline,AzureAD,AzureADPReview,etc. (one credential for pssession another for service connection)
+- [x] Need to implement SessionManagementGroups logic to create and update/manage the group variables (partially complete - need to integrate connection removals as well)
 - [ ] Need to add explicit loading of required module to establish PSSession for special cases (like SkypeForBusinessOnline)
 - [x] Fix Test existing Session command logic - might need to convert to scriptblock first
 - [x] Session Management Groups aren't being written to the org profile system object for powershell type systems
