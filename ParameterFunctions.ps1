@@ -324,9 +324,9 @@ function Get-AllParametersWithAValue
             AllParameters = $AllParameters
         }
         if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
-        $allParameterKeys = Get-AllParameters @getAllParametersParams
+        $AllParameterKeys = Get-AllParameters @getAllParametersParams
         $AllParametersWithAValue = @(
-            foreach ($k in $allParameterKeys)
+            foreach ($k in $AllParameterKeys)
             {
                 try
                 {
