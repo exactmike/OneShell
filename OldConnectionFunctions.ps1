@@ -1107,42 +1107,7 @@ Function Connect-LotusNotesDatabase
         Write-EndFunctionStatus -CallingFunction $MyInvocation.MyCommand
     }
 }#function Connect-LotusNotesDatabase
-Function Update-SessionManagementGroups {
-  [cmdletbinding(DefaultParameterSetName = 'Profile')]
-  Param(
-    [parameter(Mandatory=$true)]
-    $SessionName
-    ,[parameter(Mandatory=$true)]
-    [string[]]$ManagementGroups
-  )#param
-  foreach ($MG in $ManagementGroups)
-  {
-    $SessionGroup = $MG + '_Sessions'
-    #Check if the Session Group already exists
-    if (Test-Path -Path "variable:\$SessionGroup") 
-    {
-      #since the session group already exists, add the session to it if it is not already present
-        $existingSessions = Get-Variable -Name $SessionGroup -Scope Global -ValueOnly
-        $existingSessionNames = $existingSessions | Select-Object -ExpandProperty Name
-        $existingSessionIDs = $existingSessions | Select-Object -ExpandProperty ID
-        if ($SessionName -in $existingSessionNames) 
-        {
-            $NewSession = Get-PSSession -Name $SessionName
-            $newvalue = @($existingSessions | Where-Object -FilterScript {$_.Name -ne $SessionName})
-            $newvalue += $NewSession
-            Set-Variable -Name $SessionGroup -Value $newvalue -Scope Global
-        } else {
-            $NewSession = Get-PSSession -Name $SessionName
-            $newvalue = @(Get-PSSession -Name $existingSessionNames)
-            $newvalue += $NewSession
-            Set-Variable -Name $SessionGroup -Value $newvalue -Scope Global
-        }
-    } else {
-      #since the session group does not exist, create it and add the session to it
-        New-Variable -Name $SessionGroup -Value @($(Get-PSSession -Name $SessionName)) -Scope Global
-    }#else
-  }#foreach
-}#function Update-SessionManagementGroups
+
 Function Update-SQLConnections {
   [cmdletbinding()]
   Param(

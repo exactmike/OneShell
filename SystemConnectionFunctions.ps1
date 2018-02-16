@@ -608,9 +608,18 @@ Function Connect-OneShellSystem
                         }
                         $true
                         {
+                            Write-Log -Message "Successfully Connected to $($ServiceObject.Name) with PSSession $($ServiceSession.Name)" -Verbose
+                            $SessionManagementGroups = @(
+                                if ($null -ne $ServiceObject.ServiceTypeAttributes -and $null -ne $ServiceObject.ServiceTypeAttributes.SessionManagementGroups)
+                                {
+                                    $ServiceObject.ServiceTypeAttributes.SessionManagementGroups
+                                }
+                                $ServiceObject.ServiceType
+                            )
+                            Update-SessionManagementGroups -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
                             if ($ServiceObject.AutoImport -eq $true)
                             {
-                                #NeededCode: Auto import activities
+                                Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
                             }
                             #NeededCode: Set/Update SessionManagementGroups
                         }
@@ -859,6 +868,68 @@ function Add-FunctionToPSSession
     Invoke-Command -Session $PSSession -ScriptBlock $ScriptBlock -ErrorAction Stop
     }
 #end function Add-FunctionToPSSession
+Function Update-SessionManagementGroups
+    {
+        [cmdletbinding()]
+        Param
+        (
+            [parameter(Mandatory=$true)]
+            $ServiceSession
+            ,[parameter(Mandatory=$true)]
+            [string[]]$ManagementGroups
+        )
+        foreach ($MG in $ManagementGroups)
+        {
+            $SessionGroup = $MG + '_PSSessions'
+            #Check if the Session Group already exists
+            if (Test-Path -Path "variable:\$SessionGroup") 
+            {
+                #since the session group already exists, add the session to it if it is not already present
+                $ExistingSessions = Get-Variable -Name $SessionGroup -Scope Global -ValueOnly
+                $ExistingSessionNames = $existingSessions | Select-Object -ExpandProperty Name
+                if ($ServiceSession.name -in $ExistingSessionNames) 
+                {
+                    $NewValue = @($ExistingSessions | Where-Object -FilterScript {$_.Name -ne $ServiceSession.Name})
+                    $NewValue += $ServiceSession
+                    Set-Variable -Name $SessionGroup -Value $NewValue -Scope Global
+                } else {
+                    $NewValue = $ExistingSessions + $ServiceSession
+                    Set-Variable -Name $SessionGroup -Value $NewValue -Scope Global
+                }
+            }
+            else #since the session group does not exist, create it and add the session to it
+            {
+                New-Variable -Name $SessionGroup -Value @($ServiceSession) -Scope Global
+            }# end else
+        }# end foreach
+    }
+#end function Update-SessionManagementGroups
+Function Import-OneShellSystem
+{
+    [CmdletBinding(DefaultParameterSetName = 'ServiceObjectAndSession')]
+    param
+    (
+        [parameter(ParameterSetName = 'ServiceObjectAndSession')]
+        [psobject]$ServiceObject
+        ,
+        [parameter(ParameterSetName = 'ServiceObjectAndSession')]
+        [PSSession]$ServiceSession
+        ,
+        [parameter(ParameterSetName = 'Identity')]
+        [string]$Identity
+    )
+    switch($PSCmdlet.ParameterSetName)
+    {
+        'ServiceObjectAndSession'
+        {
+
+        }
+        'Identity'
+        {
+            
+        }
+    }
+}
 #################################################
 # Need to update
 #################################################
