@@ -2024,6 +2024,15 @@ Function Set-AdminUserProfileSystemCredential
                 }
             )
             if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
+            #If this is the first time a credential has been added we may need to add Properties/Attributes
+            if (-not (Test-Member -InputObject $System.Credentials -Name PSSession))
+            {
+                $system.credentials | Add-Member -MemberType NoteProperty -Name PSSession -Value $null
+            }
+            if (-not (Test-Member -InputObject $System.Credentials -Name Service))
+            {
+                $system.credentials | Add-Member -MemberType NoteProperty -Name Service -Value $null
+            }
             #Remove any existing credential with the same purpose (only one of each purpose is allowed at one time)
             if ($Purpose -eq 'All')
             {
