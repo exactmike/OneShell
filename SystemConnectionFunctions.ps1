@@ -951,11 +951,15 @@ Function Import-OneShellSystem
         ModuleInfo = Import-PSSession @ImportPSSessionParams
     }
     $CommandPrefix = Find-CommandPrefixToUse -ServiceObject $ServiceObject
+    $message = "Import OneShell System $($ServiceObject.Name) Session $($ServiceSession.Name) into Current Session"
     if ($null -ne $CommandPrefix -and -not  [string]::IsNullOrWhiteSpace($CommandPrefix))
     {
         $ImportModuleParams.Prefix = $CommandPrefix
+        $message = $message + "with Command Prefix $CommandPrefix"
     }
+    Write-Log -Message $message -EntryType Attempting
     $ImportedModule  = Import-Module @ImportModuleParams
+    Write-Log -Message $message -EntryType Succeeded -Verbose
 }
 #################################################
 # Need to update
