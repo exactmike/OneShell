@@ -766,7 +766,7 @@ function Initialize-OneShellSystemPSSession
                             }
                             Try
                             {
-                                Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:Cmd).command) @using:CmdParams} | Out-Null
+                                Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:cmd).command) @using:CmdParams} -ErrorAction Stop | Out-Null
                                 Write-Output -InputObject $true
                             }#end Try
                             Catch
@@ -913,7 +913,7 @@ Function Import-OneShellSystem
         [psobject]$ServiceObject
         ,
         [parameter(ParameterSetName = 'ServiceObjectAndSession')]
-        [PSSession]$ServiceSession
+        [System.Management.Automation.Runspaces.PSSession]$ServiceSession
         ,
         [parameter(ParameterSetName = 'Identity')]
         [string]$Identity
@@ -928,7 +928,34 @@ Function Import-OneShellSystem
         {
             
         }
+    } #end switch
+    $ImportPSSessionParams = @{
+        ErrorAction = 'Stop'
+        Session = $ServiceSession
     }
+    switch ($ServiceObject.ServiceType)
+    {
+        'MSOnline'
+        {
+            $ImportPSSessionParams.Module = 'MSOnline'
+        }
+        'ExchangeOnline'
+        {
+
+        }
+    }
+    $ImportModuleParams = @{
+        ErrorAction = 'Stop'
+        Passthru = $true
+        Global = $true
+        ModuleInfo = Import-PSSession @ImportPSSessionParams
+    }
+    $CommandPrefix = Find-CommandPrefixToUse -ServiceObject $ServiceObject
+    if ($null -ne $CommandPrefix -and -not  [string]::IsNullOrWhiteSpace($CommandPrefix))
+    {
+        $ImportModuleParams.Prefix = $CommandPrefix
+    }
+    $ImportedModule  = Import-Module @ImportModuleParams
 }
 #################################################
 # Need to update
