@@ -20,6 +20,7 @@
 - [ ] Convert Write-Log to use System.IO.FileStream . . . 
 - [ ] Does $PSSenderInfo have any use cases for OneShell
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
+- [ ] Add sophisticated CommandPrefix validation for org and admin profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
 
 ## AAD Connect Improvements
 
