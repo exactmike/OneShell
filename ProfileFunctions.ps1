@@ -726,7 +726,8 @@ function New-OrgProfileSystem
             $AuthMethod
             ,
             [parameter()]
-            [ValidateLength(2,5)]
+            [AllowEmptyString()]
+            [AllowNull()]
             [string]$CommandPrefix
             ,
             [parameter()]
@@ -823,7 +824,8 @@ function Set-OrgProfileSystem
             $AuthMethod
             ,
             [parameter()]
-            [ValidateLength(2,5)]
+            [AllowEmptyString()]
+            [AllowNull()]
             [string]$CommandPrefix
             ,
             [parameter()]
@@ -836,7 +838,7 @@ function Set-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 
-            #build  service type specific parameters that may be needed
+            #build service type specific parameters that may be needed
             $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
