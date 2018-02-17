@@ -19,7 +19,8 @@
 - [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
 - [ ] Remove imported modules from session when re-connecting to a System
 - [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the module's onremove capability: <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
-- [ ] Improve CommandPrefix configurations with profiles - allow NULL or blank and check for duplicates in some situations (like between Exchange Orgs)
+- [x] Improve CommandPrefix configurations with profiles - allow NULL or blank
+- [ ] Add sophisticated CommandPrefix validation for org and admin profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
 - [ ] Make parameters which ask for a computer consistently named ComputerName?
 - [ ] Convert Write-Log to use System.IO.FileStream . . . 
 - [ ] Does $PSSenderInfo have any use cases for OneShell
@@ -41,6 +42,7 @@
 - [ ] Need to add explicit loading of required module to establish PSSession for special cases (like SkypeForBusinessOnline)
 - [ ] Connection to MSOnline system types can fail when a different credential than the logged on user is used.  This may be isolated to SSO/Federation scenarios but the scope is currently unclear. This does not affect connections to other AzureAD system types or Exchange Online.
 - [ ] If you remove a credential from an admin user profile the references to that credential in individual systems are left behind.  They have to be updated by usage of Set-AdminUserProfileSystemCredential.
+- [ ] Get-AllParametersWithAValue leaves out bound parameters that intentially include a $null value.  Need up add an override switch OR exempt bound parameters from this logic. 
 
 ## Requested Features
 

@@ -932,30 +932,39 @@ Function Import-OneShellSystem
     $ImportPSSessionParams = @{
         ErrorAction = 'Stop'
         Session = $ServiceSession
+        WarningAction = 'SilentlyContinue'
     }
-    switch ($ServiceObject.ServiceType)
+    $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
     {
-        'MSOnline'
+        $null
+        {}
+        {$_ -ge 1}
         {
-            $ImportPSSessionParams.Module = 'MSOnline'
+            $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.Name
         }
-        'ExchangeOnline'
-        {
-
-        }
+    }
+    $CommandPrefix = Find-CommandPrefixToUse -ServiceObject $ServiceObject
+    $message = "Import OneShell System $($ServiceObject.Name) Session $($ServiceSession.Name) into Current Session"
+    if ($null -ne $CommandPrefix -and -not  [string]::IsNullOrWhiteSpace($CommandPrefix))
+    {
+        $ImportPSSessionParams.Prefix = $CommandPrefix
+        $message = $message + " with Command Prefix $CommandPrefix"
     }
     $ImportModuleParams = @{
         ErrorAction = 'Stop'
+        WarningAction = 'SilentlyContinue'
         Passthru = $true
         Global = $true
         ModuleInfo = Import-PSSession @ImportPSSessionParams
     }
-    $CommandPrefix = Find-CommandPrefixToUse -ServiceObject $ServiceObject
     if ($null -ne $CommandPrefix -and -not  [string]::IsNullOrWhiteSpace($CommandPrefix))
     {
         $ImportModuleParams.Prefix = $CommandPrefix
     }
+    Write-Log -Message $message -EntryType Attempting
     $ImportedModule  = Import-Module @ImportModuleParams
+    Write-Log -Message $message -EntryType Succeeded -Verbose
 }
 #################################################
 # Need to update
