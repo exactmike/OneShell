@@ -1994,21 +1994,21 @@ Function Set-AdminUserProfileSystemCredential
         [cmdletbinding()]
         param
         (
-            [parameter()]
-            [string]$SystemIdentity
+            [parameter(ValueFromPipelineByPropertyName)]
+            [string[]]$SystemIdentity
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [string]$CredentialIdentity
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateSet('All','PSSession','Service')]
             $Purpose = 'All'
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
         )#end param
@@ -2019,51 +2019,57 @@ Function Set-AdminUserProfileSystemCredential
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             Write-Output -inputobject $dictionary
         }
-        End
+        Begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Profile
             $AdminProfile = GetSelectProfile -ProfileType Admin -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
             #Get/Select the System
             $Systems = Get-AdminUserProfileSystem -ProfileIdentity $AdminProfile.Identity -Path $Path -ErrorAction 'Stop'
-            $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $SystemIdentity -Operation Edit
-            #Get/Select the Credential
-            $Credentials = @(Get-AdminUserProfileCredential -ProfileIdentity $AdminProfile.Identity -ErrorAction 'Stop' -Path $path)
-            $SelectedCredentialIdentity = $(
-                if ($PsBoundParameters.ContainsKey('CredentialIdentity'))
-                {
-                    if ($CredentialIdentity -in $Credentials.Identity)
-                    {$CredentialIdentity}
+        }
+        Process
+        {
+            foreach ($i in $SystemIdentity)
+            {
+                $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $i -Operation Edit
+                #Get/Select the Credential
+                $Credentials = @(Get-AdminUserProfileCredential -ProfileIdentity $AdminProfile.Identity -ErrorAction 'Stop' -Path $path)
+                $SelectedCredentialIdentity = $(
+                    if ($PsBoundParameters.ContainsKey('CredentialIdentity'))
+                    {
+                        if ($CredentialIdentity -in $Credentials.Identity)
+                        {$CredentialIdentity}
+                        else
+                        {
+                            throw("Invalid Credential Identity $CredentialIdentity was provided. No such Credential exists for admin profiel $ProfileIdentity.")
+                        }
+                    }
                     else
                     {
-                        throw("Invalid Credential Identity $CredentialIdentity was provided. No such Credential exists for admin profiel $ProfileIdentity.")
+                        Select-AdminUserProfileCredential -Credentials $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
                     }
+                )
+                if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
+                #If this is the first time a credential has been added we may need to add Properties/Attributes
+                if ($null -eq $system.Credentials)
+                {
+                    $system.Credentials = [PSCustomObject]@{PSSession = $null;Service = $null}
+                }
+                #Remove any existing credential with the same purpose (only one of each purpose is allowed at one time)
+                if ($Purpose -eq 'All')
+                {
+                    $system.Credentials.PSSession = $SelectedCredentialIdentity
+                    $system.Credentials.Service = $SelectedCredentialIdentity
                 }
                 else
                 {
-                    Select-AdminUserProfileCredential -Credentials $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
+                    $system.Credentials.$purpose = $SelectedCredentialIdentity
                 }
-            )
-            if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
-            #If this is the first time a credential has been added we may need to add Properties/Attributes
-            if ($null -eq $system.Credentials)
-            {
-                $system.Credentials = [PSCustomObject]@{PSSession = $null;Service = $null}
+                $system = $system | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
+                #Save the system changes to the Admin Profile
+                $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
+                Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
             }
-            #Remove any existing credential with the same purpose (only one of each purpose is allowed at one time)
-            if ($Purpose -eq 'All')
-            {
-                $system.Credentials.PSSession = $SelectedCredentialIdentity
-                $system.Credentials.Service = $SelectedCredentialIdentity
-            }
-            else
-            {
-                $system.Credentials.$purpose = $SelectedCredentialIdentity
-            }
-            $system = $system | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
-            #Save the system changes to the Admin Profile
-            $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
-            Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
         }#end End
     }
 #end function Set-AdminUserProfileSystemCredential
