@@ -699,38 +699,38 @@ function New-OrgProfileSystem
         [cmdletbinding()]
         param
         (
-            [parameter(Mandatory)]
+            [parameter(Mandatory,ValueFromPipelineByPropertyName)]
             [string]$Name
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [string]$Description
             ,
-            [parameter(Mandatory)]
+            [parameter(Mandatory,ValueFromPipelineByPropertyName)]
             [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')] 
             [string]$ServiceType
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [validateset($true,$false)]
             [bool]$ProxyEnabled
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [validateset($true,$false)]
             [bool]$AuthenticationRequired
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [validateset($true,$false)]
             [bool]$UseTLS
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateSet('Basic','Kerberos','Integrated')]
             $AuthMethod
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [AllowEmptyString()]
             [AllowNull()]
             [string]$CommandPrefix
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
         )#end param
@@ -751,16 +751,17 @@ function New-OrgProfileSystem
             }
             Write-Output -InputObject $dictionary
         }#End DynamicParam
-        End
+        Begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the OrgProfile
             $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
-
+        }
+        Process
+        {
             #Build the System Object
             $GenericSystemObject = NewGenericOrgSystemObject
             $GenericSystemObject.ServiceType = $ServiceType
-
             #Edit the selected System
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             #Set the common System Attributes
@@ -1851,28 +1852,28 @@ Function Set-AdminUserProfileSystem
         [cmdletbinding()]
         param
         (
-            [parameter(Position = 1)]
+            [parameter(Position = 1,ValueFromPipelineByPropertyName)]
             [string]$Identity
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [bool]$AutoConnect
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [bool]$AutoImport
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
             [string]$PreferredPrefix
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [allowNull()]
             [string]$PreferredEndpoint
             ,        
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
         )#end param
@@ -1883,7 +1884,7 @@ Function Set-AdminUserProfileSystem
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             Write-Output -inputobject $dictionary
         }
-        End
+        Begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Profile
@@ -1891,35 +1892,41 @@ Function Set-AdminUserProfileSystem
             Write-Verbose -Message "Loaded Admin User Profile $($adminProfile.name) with Identity $($adminProfile.Identity)"
             #Get/Select the System
             $Systems = Get-AdminUserProfileSystem -ProfileIdentity $AdminProfile.Identity -Path $Path -ErrorAction 'Stop'
-            $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $Identity -Operation Edit
-            #Edit the System
-            switch ($PSBoundParameters.getenumerator())
+        }
+        Process
+        {
+            foreach ($i in $Identity)
             {
-                {$_.key -eq 'AutoConnect'}
-                {$System.AutoConnect = $AutoConnect}
-                {$_.key -eq 'AutoImport'}
-                {$System.AutoImport = $AutoImport}
-                {$_.key -eq 'PreferredPrefix'}
-                {$System.PreferredPrefix = $PreferredPrefix}
-                {$_.key -eq 'PreferredEndpoint'}
+                $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $i -Operation Edit
+                #Edit the System
+                switch ($PSBoundParameters.getenumerator())
                 {
-                    $Endpoints = Get-OrgProfileSystemEndpoint -Identity $PreferredEndpoint -SystemIdentity $system.Identity -ProfileIdentity $AdminProfile.Organization.Identity -Path $OrgProfilePath -ErrorAction 'Stop'
-                    if ($_.value -in $Endpoints.Identity -or $null -eq $_.value)
+                    {$_.key -eq 'AutoConnect'}
+                    {$System.AutoConnect = $AutoConnect}
+                    {$_.key -eq 'AutoImport'}
+                    {$System.AutoImport = $AutoImport}
+                    {$_.key -eq 'PreferredPrefix'}
+                    {$System.PreferredPrefix = $PreferredPrefix}
+                    {$_.key -eq 'PreferredEndpoint'}
                     {
-                        $System.PreferredEndpoint = $PreferredEndpoint
-                    }
-                    else
-                    {
-                        throw("Invalid Endpoint Identity $PreferredEndpoint was provided. No such endpoint exists for system $($system.identity).")
+                        $Endpoints = Get-OrgProfileSystemEndpoint -Identity $PreferredEndpoint -SystemIdentity $system.Identity -ProfileIdentity $AdminProfile.Organization.Identity -Path $OrgProfilePath -ErrorAction 'Stop'
+                        if ($_.value -in $Endpoints.Identity -or $null -eq $_.value)
+                        {
+                            $System.PreferredEndpoint = $PreferredEndpoint
+                        }
+                        else
+                        {
+                            throw("Invalid Endpoint Identity $PreferredEndpoint was provided. No such endpoint exists for system $($system.identity).")
+                        }
                     }
                 }
+                #remove any extraneous properties
+                $System = $System | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
+                #Save the system changes to the Admin Profile
+                $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
+                Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
             }
-            #remove any extraneous properties
-            $System = $System | Select-Object -Property $(GetAdminUserProfileSystemPropertySet)
-            #Save the system changes to the Admin Profile
-            $AdminProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $AdminProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
-            Export-AdminUserProfile -profile $AdminProfile -path $path -ErrorAction 'Stop'
-        }#end End
+        }#end Process
     }
 #end function Set-AdminUserProfileSystem
 Function Set-AdminUserProfileSystemPreferredEndpoint
