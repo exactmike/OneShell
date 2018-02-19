@@ -793,42 +793,42 @@ function Set-OrgProfileSystem
         [cmdletbinding()]
         param
         (
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
             ,
-            [parameter(Mandatory)]
+            [parameter(Mandatory,ValueFromPipelineByPropertyName)]
             [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [string]$Name
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [string]$Description
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [validateset($true,$false)]
             [bool]$ProxyEnabled
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [validateset($true,$false)]
             [bool]$AuthenticationRequired
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [validateset($true,$false)]
             [bool]$UseTLS
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateSet('Basic','Kerberos','Integrated')]
             $AuthMethod
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [AllowEmptyString()]
             [AllowNull()]
             [string]$CommandPrefix
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
         )#end param
@@ -849,42 +849,48 @@ function Set-OrgProfileSystem
             }
             Write-Output -InputObject $dictionary
         }#End DynamicParam
-        End
+        Begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Org Profile
             $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
-            #Get/Select the System
-            $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $Identity -Operation Edit
-            if ($ServiceType -ne $System.ServiceType) {throw("ServiceType specified does not match the system.")}
-            #Edit the selected System
-            $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
-            #Set the common System Attributes
-            foreach ($vp in $AllValuedParameters)
+        }
+        Process
+        {
+            foreach ($i in $Identity)
             {
-                if ($vp.name -in 'Name','Description','ServiceType')
-                {$System.$($vp.name) = $($vp.value)}
+                #Get/Select the System
+                $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $i -Operation Edit
+                if ($ServiceType -ne $System.ServiceType) {throw("ServiceType specified does not match the system.")}
+                #Edit the selected System
+                $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+                #Set the common System Attributes
+                foreach ($vp in $AllValuedParameters)
+                {
+                    if ($vp.name -in 'Name','Description','ServiceType')
+                    {$System.$($vp.name) = $($vp.value)}
+                }
+                #set the default System Attributes
+                foreach ($vp in $AllValuedParameters)
+                {
+                    if ($vp.name -in 'UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod')
+                    {$System.defaults.$($vp.name) = $($vp.value)}
+                }
+                #Set the ServiceType Specific System Attributes
+                $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+                if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+                {
+                    $ServiceTypeAttributeNames = @($ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
+                }
+                foreach ($vp in $AllValuedParameters)
+                {
+                    if ($vp.name -in $ServiceTypeAttributeNames)
+                    {$System.ServiceTypeAttributes.$($vp.name) = $($vp.value)}
+                }
+                #update the system entry in the org profile
+                $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+                Export-OrgProfile -profile $OrgProfile -Path $Path
             }
-            #set the default System Attributes
-            foreach ($vp in $AllValuedParameters)
-            {
-                if ($vp.name -in 'UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod')
-                {$System.defaults.$($vp.name) = $($vp.value)}
-            }
-            #Set the ServiceType Specific System Attributes
-            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
-            if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
-            {
-                $ServiceTypeAttributeNames = @($ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
-            }
-            foreach ($vp in $AllValuedParameters)
-            {
-                if ($vp.name -in $ServiceTypeAttributeNames)
-                {$System.ServiceTypeAttributes.$($vp.name) = $($vp.value)}
-            }
-            #update the system entry in the org profile
-            $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-            Export-OrgProfile -profile $OrgProfile -Path $Path
         }
     }
 #end function Set-OrgSystemObject
@@ -958,7 +964,7 @@ Function Remove-OrgProfileSystem
         [cmdletbinding()]
         param
         (
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
             ,
@@ -974,16 +980,22 @@ Function Remove-OrgProfileSystem
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'ProfileIdentity'
             Write-Output -InputObject $dictionary
         }
-        End
+        Begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the Org Profile
             $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
-            #Get/Select the System
-            $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $Identity -Operation Remove
-            #Remove the system from the Org Profile
-            $OrgProfile = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-            Export-OrgProfile -profile $OrgProfile -Path $path -ErrorAction Stop
+        }
+        Process
+        {
+            Foreach ($i in $Identity)
+            {
+                #Get/Select the System
+                $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $i -Operation Remove
+                #Remove the system from the Org Profile
+                $OrgProfile = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+                Export-OrgProfile -profile $OrgProfile -Path $path -ErrorAction Stop
+            }
         }
     }
 #end function Remove-OrgProfileSystem
