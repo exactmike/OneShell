@@ -917,6 +917,9 @@ Function Import-OneShellSystem
         ,
         [parameter(ParameterSetName = 'Identity')]
         [string]$Identity
+        ,
+        [parameter()]
+        [string]$CommandPrefix
     )
     switch($PSCmdlet.ParameterSetName)
     {
@@ -926,7 +929,7 @@ Function Import-OneShellSystem
         }
         'Identity'
         {
-            
+            #here we need to get the ServiceObject and the Session Object
         }
     } #end switch
     $ImportPSSessionParams = @{
@@ -944,9 +947,29 @@ Function Import-OneShellSystem
             $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.Name
         }
     }
-    $CommandPrefix = Find-CommandPrefixToUse -ServiceObject $ServiceObject
+    #Setup for CommandPrefix
+    if ($PSBoundParameters.ContainsKey('CommandPrefix'))
+    {
+        $CommandPrefixExists = $true
+    }
+    else
+    {
+        $CommandPrefix = Find-CommandPrefixToUse -ServiceObject $ServiceObject
+        $CommandPrefixExists = Test-IsNotNullOrWhiteSpace -String $CommandPrefix
+    }
+    #Imported Session Module Cleanup and Tracking
+    if (-not (Test-Path -Path variable:Script:ImportedSessionModules))
+    {
+        New-Variable -Name 'ImportedSessionModules' -Value @{} -Description 'Modules Imported From OneShell Sessions' -Scope Script
+    }
+    if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
+    {
+        $ImportedSessionModule = $Script:ImportedSessionModules.$($ServiceObject.Identity)
+        Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+    }
+
     $message = "Import OneShell System $($ServiceObject.Name) Session $($ServiceSession.Name) into Current Session"
-    if ($null -ne $CommandPrefix -and -not  [string]::IsNullOrWhiteSpace($CommandPrefix))
+    if ($CommandPrefixExists -eq $true)
     {
         $ImportPSSessionParams.Prefix = $CommandPrefix
         $message = $message + " with Command Prefix $CommandPrefix"
@@ -958,13 +981,15 @@ Function Import-OneShellSystem
         Global = $true
         ModuleInfo = Import-PSSession @ImportPSSessionParams
     }
-    if ($null -ne $CommandPrefix -and -not  [string]::IsNullOrWhiteSpace($CommandPrefix))
+    if ($CommandPrefixExists -eq $true)
     {
         $ImportModuleParams.Prefix = $CommandPrefix
     }
     Write-Log -Message $message -EntryType Attempting
     $ImportedModule  = Import-Module @ImportModuleParams
     Write-Log -Message $message -EntryType Succeeded -Verbose
+
+    $script:ImportedSessionModules.$($ServiceObject.Identity) = [PSCustomObject]${Identity = $serviceobject.Identity; CommandPrefix = $CommandPrefix; Name = $ImportedModule.name; ServiceType = $ServiceObject.ServiceType}
 }
 #################################################
 # Need to update
