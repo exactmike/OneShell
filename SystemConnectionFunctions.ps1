@@ -989,7 +989,7 @@ Function Import-OneShellSystem
     $ImportedModule  = Import-Module @ImportModuleParams
     Write-Log -Message $message -EntryType Succeeded -Verbose
 
-    $script:ImportedSessionModules.$($ServiceObject.Identity) = [PSCustomObject]${Identity = $serviceobject.Identity; CommandPrefix = $CommandPrefix; Name = $ImportedModule.name; ServiceType = $ServiceObject.ServiceType}
+    $script:ImportedSessionModules.$($ServiceObject.Identity) = [PSCustomObject]@{Identity = $serviceobject.Identity; CommandPrefix = $CommandPrefix; Name = $ImportedModule.name; ServiceType = $ServiceObject.ServiceType}
 }
 #################################################
 # Need to update
