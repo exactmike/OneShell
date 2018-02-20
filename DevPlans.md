@@ -9,7 +9,7 @@
 - [ ] Add LotusNotesDatabase ServiceType support
 - [ ] Add Exchange 2007 ServiceType support
 - [ ] Add MigrationWiz/BitTitan ServiceType Support
-- [ ] Add Azure AD RMS ServiceType Support
+- [ ] Add Azure AD RMS ServiceType Support <https://docs.microsoft.com/en-us/information-protection/deploy-use/install-powershell>
 - [ ] Add Non-PSRemoting Service Attribute and Connection support
 - [ ] Add auto-connect of AutoConnect Service types with Use-AdminUserProfile unless suppressed by -NoAutoConnect
 - [ ] Add suppression of auto Import with -NoAutoImport on Connect-OneShellSystem and Use-AdminUserProfile
