@@ -2474,14 +2474,14 @@ function Select-ProfileSystem
         )
         $message = "Select system to $Operation"
         $CredChoices = @(foreach ($s in $Systems){"$($s.servicetype):$($s.name):$($s.Identity)"})
-        $whichone = 
-            switch ($host.Name -like 'Console*')
-            {
-                $false
-                {Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
-                $true
-                {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Numbered} #-Title $message
-            }
+        $whichone = Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered -Vertical
+            #switch ($host.Name -like 'Console*')
+            #{
+            #    $false
+            #    {Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
+            #    $true
+            #    {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Numbered} #-Title $message
+            #}
         Write-Output -InputObject $systems[$whichone]
     }
 #end function Select-ProfileSystem
