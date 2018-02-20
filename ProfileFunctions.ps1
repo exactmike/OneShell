@@ -1563,6 +1563,8 @@ Function Use-AdminUserProfile
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
+            ,
+            [switch]$NoAutoConnect
         )
         DynamicParam
         {
@@ -1677,6 +1679,13 @@ Function Use-AdminUserProfile
                     $Script:ExportDataPath = $script:CurrentAdminUserProfile.ExportDataFolder + '\'
             }
         }#begin
+        end
+        {
+            if ($NoAutoConnect -ne $true)
+            {
+                Get-OneShellAvailableSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true} | % {Connect-OneShellSystem -identity $_.Identity}
+            }
+        }
     }
 #end function Use-AdminUserProfile
 function Set-AdminUserProfile
