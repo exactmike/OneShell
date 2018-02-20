@@ -2533,15 +2533,16 @@ function Select-OrgProfileSystemEndpoint
         )
         $message = "Select endpoint to $Operation"
         $Choices = @(foreach ($i in $EndPoints){"$($i.ServiceType):$($i.address):$($i.Identity)"})
-        $whichone = $(
-            switch ($host.Name -like 'Console*')
-            {
-                $false
-                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-                $true
-                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
-            }
-        )
+        $whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        #$(
+        #    switch ($host.Name -like 'Console*')
+        #    {
+        #        $false
+        #        {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+        #        $true
+        #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
+        #    }
+        #)
         Write-Output -InputObject $EndPoints[$whichone]
     }
 #end function Select-OrgProfileSystemEndpoint
@@ -2559,15 +2560,16 @@ function Select-AdminUserProfileCredential
         )
         $message = "Select credential to $Operation"
         $Choices = @(foreach ($i in $Credentials){"$($i.username):$($i.Identity)"})
-        $whichone = $(
-            switch ($host.Name -like 'Console*')
-            {
-                $false
-                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-                $true
-                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
-            }
-        )
+        $whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        #$(
+        #    switch ($host.Name -like 'Console*')
+        #    {
+        #        $false
+        #        {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+        #        $true
+        #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
+        #    }
+        #)
         Write-Output -InputObject $Credentials[$whichone]
     }
 #end function Select-AdminUserProfileCredential
@@ -2585,15 +2587,16 @@ function Select-Profile
         )
         $message = "Select profile to $Operation"
         $Choices = @(foreach ($i in $Profiles){"$($i.name):$($i.Identity)"})
-        $whichone = $(
-            switch ($host.Name -like 'Console*')
-            {
-                $false
-                {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-                $true
-                {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
-            }
-        )
+        $whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        #$(
+        #    switch ($host.Name -like 'Console*')
+        #    {
+        #        $false
+        #        {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
+        #        $true
+        #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
+        #    }
+        #)
         Write-Output -InputObject $Profiles[$whichone]
     }
 #end function Select-Profile
