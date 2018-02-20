@@ -761,7 +761,7 @@
                                 {
                                     "Name":"Server",
                                     "ValueType":"ScriptBlock",
-                                    "Value":"$($ServiceObject.ServiceTypeAttributes.ADDomainFQDN + ':3268')"
+                                    "Value":"$($ServiceObject.ServiceTypeAttributes.ADForestFQDN + ':3268')"
                                 },
                                 {
                                     "Name":"Root",
