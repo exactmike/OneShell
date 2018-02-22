@@ -392,6 +392,9 @@ Function Connect-OneShellSystem
         [parameter()]
         [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
         [string[]]$ServiceType #used only to filter list of available system identities and names
+        ,
+        [parameter()]
+        [switch]$NoAutoImport
     )
     DynamicParam
     {
@@ -617,11 +620,10 @@ Function Connect-OneShellSystem
                                 $ServiceObject.ServiceType
                             )
                             Update-SessionManagementGroups -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
-                            if ($ServiceObject.AutoImport -eq $true)
+                            if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
                             {
                                 Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
                             }
-                            #NeededCode: Set/Update SessionManagementGroups
                         }
                     }
                 } 
