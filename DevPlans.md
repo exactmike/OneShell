@@ -11,8 +11,8 @@
 - [ ] Add MigrationWiz/BitTitan ServiceType Support
 - [ ] Add Azure AD RMS ServiceType Support <https://docs.microsoft.com/en-us/information-protection/deploy-use/install-powershell>
 - [ ] Add Non-PSRemoting Service Attribute and Connection support
-- [ ] Add auto-connect of AutoConnect Service types with Use-AdminUserProfile unless suppressed by -NoAutoConnect
-- [ ] Add suppression of auto Import with -NoAutoImport on Connect-OneShellSystem and Use-AdminUserProfile
+- [x] Add auto-connect of AutoConnect Service types with Use-AdminUserProfile unless suppressed by -NoAutoConnect
+- [x] Add suppression of auto Import with -NoAutoImport on Connect-OneShellSystem and Use-AdminUserProfile
 - [ ] modify test-directorysynchronization to use Azure AD test as an option and to use non-recipient exchange objects
 - [ ] create a Write-Progress helper function for showing progress every nth record, showing time to completion, making the experience more consistent across functions, etc.
 - [ ] Follow <http://semver.org/> for Versioning
