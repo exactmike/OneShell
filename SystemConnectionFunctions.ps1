@@ -470,6 +470,18 @@ Function Connect-OneShellSystem
                     {
                         try
                         {
+                            if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
+                            {
+                                $ImportedSessionModule = $script:ImportedSessionModules.$($ServiceObject.Identity)
+                                try
+                                {
+                                    Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+                                }
+                                catch
+                                {
+                                    
+                                }
+                            }
                             $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
                             Write-Log -Message $message -EntryType Attempting
                             Remove-PSSession -Session $ExistingSession -ErrorAction Stop
@@ -967,7 +979,10 @@ Function Import-OneShellSystem
     if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
     {
         $ImportedSessionModule = $Script:ImportedSessionModules.$($ServiceObject.Identity)
-        Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+        if ($null -ne (Get-Module -Name $ImportedSessionModule.Name))
+        {
+            Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+        }
     }
 
     $message = "Import OneShell System $($ServiceObject.Name) Session $($ServiceSession.Name) into Current Session"
