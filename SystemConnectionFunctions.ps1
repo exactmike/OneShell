@@ -473,19 +473,33 @@ Function Connect-OneShellSystem
                             if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
                             {
                                 $ImportedSessionModule = $script:ImportedSessionModules.$($ServiceObject.Identity)
+                                $message = "Remove Previously Imported Session Module $ImportedSessionModule for System $($ServiceObject.Identity)"
                                 try
                                 {
+                                    Write-Log -Message $message -EntryType Attempting
                                     Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+                                    Write-Log -Message $message -EntryType Succeeded
                                 }
                                 catch
                                 {
-                                    
+                                    $myerror = $_
+                                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                                    Write-Log -Message $myerror.tostring() -ErrorLog
                                 }
                             }
                             $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
-                            Write-Log -Message $message -EntryType Attempting
-                            Remove-PSSession -Session $ExistingSession -ErrorAction Stop
-                            Write-Log -Message $message -EntryType Succeeded
+                            Try
+                            {
+                                Write-Log -Message $message -EntryType Attempting
+                                Remove-PSSession -Session $ExistingSession -ErrorAction Stop
+                                Write-Log -Message $message -EntryType Succeeded
+                            }
+                            Catch
+                            {
+                                $myerror = $_
+                                Write-Log -Message $message -EntryType Failed -ErrorLog
+                                Write-Log -Message $myerror.tostring() -ErrorLog
+                            }
                         }
                         catch
                         {
@@ -939,7 +953,6 @@ Function Import-OneShellSystem
     {
         'ServiceObjectAndSession'
         {
-
         }
         'Identity'
         {
