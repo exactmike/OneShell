@@ -1007,6 +1007,7 @@ Function Import-OneShellSystem
     $ImportModuleParams = @{
         ErrorAction = 'Stop'
         WarningAction = 'SilentlyContinue'
+        AllowClobber = $true
         Passthru = $true
         Global = $true
         ModuleInfo = Import-PSSession @ImportPSSessionParams
