@@ -2,7 +2,8 @@
 
 - [ ] Write GUI/Wizard Functions for Org and Admin Profile Creation
 - [ ] Admin Profile Editing/Creation GUI improvements (compared to the old one that is deprecated): List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
-- [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.)
+- [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
+- [ ] Add/Enable Identity parameter for get-oneshellavailablesystem,get-oneshellsystempssession,import-oneshellsystem, etc.
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
 - [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
 - [ ] Finish SQL ServiceType support (initialization)
