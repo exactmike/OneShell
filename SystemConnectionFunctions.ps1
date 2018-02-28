@@ -963,6 +963,7 @@ Function Import-OneShellSystem
         ErrorAction = 'Stop'
         Session = $ServiceSession
         WarningAction = 'SilentlyContinue'
+        AllowClobber = $true
     }
     $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
@@ -1007,7 +1008,6 @@ Function Import-OneShellSystem
     $ImportModuleParams = @{
         ErrorAction = 'Stop'
         WarningAction = 'SilentlyContinue'
-        AllowClobber = $true
         Passthru = $true
         Global = $true
         ModuleInfo = Import-PSSession @ImportPSSessionParams
