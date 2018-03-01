@@ -3,6 +3,7 @@
 - [ ] Write GUI/Wizard Functions for Org and Admin Profile Creation
 - [ ] Admin Profile Editing/Creation GUI improvements (compared to the old one that is deprecated): List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
 - [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
+- [ ] Add a DynamicParameter capability for ValueFromPipeline options (<https://stackoverflow.com/questions/28604116/how-to-get-value-from-pipeline-for-a-dynamicparam-in-powershell>)
 - [ ] Add/Enable Identity parameter for get-oneshellavailablesystem,get-oneshellsystempssession,import-oneshellsystem, etc.
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
 - [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
@@ -23,7 +24,7 @@
 - [x] Improve CommandPrefix configurations with profiles - allow NULL or blank
 - [ ] Add sophisticated CommandPrefix validation for org and admin profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
 - [ ] Make parameters which ask for a computer consistently named ComputerName?
-- [ ] Convert Write-Log to use System.IO.FileStream . . . 
+- [ ] Convert Write-Log to use System.IO.FileStream . . . and allow concurrent/asynch writing.
 - [ ] Does $PSSenderInfo have any use cases for OneShell
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
 - [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
