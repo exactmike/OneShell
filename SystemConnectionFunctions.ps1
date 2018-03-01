@@ -142,35 +142,52 @@ function Find-CommandPrefixToUse
 #end function Find-CommandPrefixToUse
 function Get-OneShellAvailableSystem
     {
-        [cmdletbinding()]
+        [cmdletbinding(DefaultParameterSetName = 'ServiceType')]
         param
         (
+            [parameter(ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string[]]$Identity
         )
         DynamicParam
         {
-            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgprofilesystemservicetypes) -Type $([string[]]) -Mandatory $false
+            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgprofilesystemservicetypes) -Type $([string[]]) -Mandatory $false -ParameterSetName 'ServiceType'
             Write-Output -InputObject $dictionary
         }
-        end
+        begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             if ($null -eq $script:CurrentOrgProfile)
             {throw('No OneShell Organization profile is active.  Use function Use-OrgProfile to load an organization profile.')}
             if ($null -eq $script:CurrentAdminUserProfile)
             {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
-            Write-Verbose -Message "ServiceType is set to $($serviceType -join ',')"
-            (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
-            Where-object -FilterScript {$null -eq $ServiceType -or $_.ServiceType -in $ServiceType}
+        }
+        Process
+        {
+            foreach ($st in $ServiceType)
+            {
+                Write-Verbose -Message "ServiceType is set to $($serviceType -join ',')"
+                (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
+                Where-object -FilterScript {$null -eq $st -or $_.ServiceType -in $st}
+            }
+            foreach ($i in $Identity)
+            {
+                Write-Verbose -Message "Identity is set to $i"
+                (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
+                Where-object -FilterScript {$_.identity -eq $i}
+            }
         }
     }
 #end function Get-OneShellAvailableSystem
 function Get-OneShellSystemPSSession
     {
-        [cmdletbinding()]
+        [cmdletbinding(DefaultParameterSetName = 'ServiceObject')]
         param
         (
-            [parameter(Mandatory)]
+            [parameter(Mandatory,ParameterSetName = 'ServiceObject')]
             $serviceObject
+            ,
+            [parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName,ParameterSetName = 'Identity')]
+            [string[]]$Identity
         )
         begin
         {
@@ -194,7 +211,6 @@ function Get-OneShellSystemPSSession
             }
             Write-Output -InputObject $ServiceSession
         }
-
     }
 #end function Get-OneShellSystemPSSession
 function Test-OneShellSystemConnection
@@ -993,7 +1009,7 @@ Function Import-OneShellSystem
     if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
     {
         $ImportedSessionModule = $Script:ImportedSessionModules.$($ServiceObject.Identity)
-        if ($null -ne (Get-Module -Name $ImportedSessionModule.Name))
+        if ((Test-IsNotNullOrWhiteSpace -String $ImportedSessionModule.Name) -and $null -ne (Get-Module -Name $ImportedSessionModule.Name))
         {
             Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
         }
