@@ -142,38 +142,43 @@ function Find-CommandPrefixToUse
 #end function Find-CommandPrefixToUse
 function Get-OneShellAvailableSystem
     {
-        [cmdletbinding(DefaultParameterSetName = 'ServiceType')]
+        [cmdletbinding(DefaultParameterSetName = 'Identity')]
         param
         (
-            [parameter(ValueFromPipeline,ValueFromPipelineByPropertyName)]
-            [string[]]$Identity
         )
         DynamicParam
         {
-            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgprofilesystemservicetypes) -Type $([string[]]) -Mandatory $false -ParameterSetName 'ServiceType'
+            if ($null -eq $script:CurrentAdminUserProfile)
+            {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
+            $AvailableServiceTypes = @($script:CurrentSystems | Select-object -ExpandProperty ServiceType | Select-Object -Unique)
+            $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name;$script:CurrentSystems.Identity)
+            $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity
+            $Dictionary = New-DynamicParameter -Name ServiceType -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableServiceTypes -Position 1 -DPDictionary $Dictionary -ParameterSetName ServiceType
             Write-Output -InputObject $dictionary
-        }
+        }#DynamicParam
         begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
-            if ($null -eq $script:CurrentOrgProfile)
-            {throw('No OneShell Organization profile is active.  Use function Use-OrgProfile to load an organization profile.')}
-            if ($null -eq $script:CurrentAdminUserProfile)
-            {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
         }
         Process
         {
-            foreach ($st in $ServiceType)
+            switch ($PSCmdlet.ParameterSetName)
             {
-                Write-Verbose -Message "ServiceType is set to $($serviceType -join ',')"
-                (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
-                Where-object -FilterScript {$null -eq $st -or $_.ServiceType -in $st}
-            }
-            foreach ($i in $Identity)
-            {
-                Write-Verbose -Message "Identity is set to $i"
-                (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
-                Where-object -FilterScript {$_.identity -eq $i}
+                'Identity'
+                {
+                    if ($null -eq $Identity)
+                    {
+                        $script:CurrentSystems
+                    }
+                    foreach ($i in $Identity)
+                    {
+                        $script:CurrentSystems | Where-Object -FilterScript {$_.Identity -eq $i}
+                    }
+                }
+                'ServiceType'
+                {
+                    $script:CurrentSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType}
+                }
             }
         }
     }
