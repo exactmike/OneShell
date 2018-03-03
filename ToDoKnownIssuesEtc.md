@@ -29,6 +29,7 @@
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
 - [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
 - [ ] spin off parameter functions to a separate module
+- [ ] need to add disconnect-oneshellsystem function to clean up modules/sessions when not needed
 
 
 ## AAD Connect Improvements
