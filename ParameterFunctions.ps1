@@ -168,66 +168,66 @@ Function New-DynamicParameter
     param
     (
         [parameter(Mandatory)]
-        [string]
-        $Name
+        [string]$Name
         ,
-        [System.Type]
-        $Type = [string]
+        [parameter()]
+        [System.Type]$Type = [string]
         ,
-        [string[]]
-        $Alias = @()
+        [parameter()]
+        [string[]]$Alias = @()
         ,
-        [string[]]
-        $ValidateSet
+        [parameter()]
+        [string[]]$ValidateSet
         ,
-        [bool]
-        $Mandatory = $true
+        [parameter()]
+        [bool]$ValidateNotNullOrEmpty
         ,
-        [string]
-        $ParameterSetName="__AllParameterSets"
+        [parameter()]
+        [bool]$Mandatory = $true
         ,
-        [int]
-        $Position
+        [parameter()]
+        [string]$ParameterSetName="__AllParameterSets"
         ,
-        [switch]
-        $ValueFromPipelineByPropertyName
+        [parameter()]
+        [int]$Position
         ,
-        [string]
-        $HelpMessage
+        [parameter()]
+        [bool]$ValueFromPipelineByPropertyName = $false
         ,
+        [parameter()]
+        [bool]$ValueFromPipeline = $false
+        ,
+        [parameter()]
+        [string]$HelpMessage
+        ,
+        [parameter()]
         $DefaultValue
         ,
+        [parameter()]
         $DPDictionary
     )
-    #Create attribute object, add attributes, add to collection   
-        $ParamAttr = New-Object System.Management.Automation.ParameterAttribute
-        $ParamAttr.ParameterSetName = $ParameterSetName
-        if($mandatory)
-        {
-            $ParamAttr.Mandatory = $True
-        }
-        if($Position -ne $null)
-        {
-            $ParamAttr.Position=$Position
-        }
-        if($ValueFromPipelineByPropertyName)
-        {
-            $ParamAttr.ValueFromPipelineByPropertyName = $True
-        }
-        if($HelpMessage)
-        {
-            $ParamAttr.HelpMessage = $HelpMessage
-        }
+    $ParamAttr = New-Object System.Management.Automation.ParameterAttribute
+    $ParamAttr.ParameterSetName = $ParameterSetName
+    $ParamAttr.Mandatory = $Mandatory
+    if($PSBoundParameters.ContainsKey('Position'))
+    {
+        $ParamAttr.Position=$Position
+    }
+    $ParamAttr.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName
+    $ParamAttr.ValueFromPipeline = $ValueFromPipeline
+    if($PSboundParameters.ContainsKey('HelpMessage'))
+    {
+        $ParamAttr.HelpMessage = $HelpMessage
+    }
 
-        $AttributeCollection = New-Object 'Collections.ObjectModel.Collection[System.Attribute]'
-        $AttributeCollection.Add($ParamAttr)
-    
-    #param validation set if specified
-        if($ValidateSet)
-        {
-            $ParamOptions = New-Object System.Management.Automation.ValidateSetAttribute -ArgumentList $ValidateSet
-            $AttributeCollection.Add($ParamOptions)
-        }
+    $AttributeCollection = New-Object 'Collections.ObjectModel.Collection[System.Attribute]'
+    $AttributeCollection.Add($ParamAttr)
+
+    if($PSBoundParameters.ContainsKey('ValidateSet'))
+    {
+        $ParamOptions = New-Object System.Management.Automation.ValidateSetAttribute -ArgumentList $ValidateSet
+        $AttributeCollection.Add($ParamOptions)
+    }
     #Aliases if specified
         if($Alias.count -gt 0) {
             $ParamAlias = New-Object System.Management.Automation.AliasAttribute -ArgumentList $Alias
