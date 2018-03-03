@@ -1,4 +1,5 @@
-function Find-ADUser {
+function Find-ADUser
+{
     [cmdletbinding(DefaultParameterSetName = 'Default')]
     param(
         [parameter(Mandatory = $true,valuefrompipeline = $true, valuefrompipelinebypropertyname = $true, ParameterSetName='Default')]
@@ -25,12 +26,12 @@ function Find-ADUser {
     )#param
     DynamicParam {
         $NewDynamicParameterParams=@{
-            Name = 'ActiveDirectoryInstance'
-            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ActiveDirectoryInstances' | Select-Object -ExpandProperty Name)
-            Alias = @('AD','Instance')
+            Name = 'ADInstance'
+            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -like 'ActiveDirectory*').name
+
             Position = 2
         }
-        $Dictionary = New-DynamicParameter @NewDynamicParameterParams
+        $Dictionary = New-DynamicParameter @NewDynamicParameterParams -Type []
         Write-Output -InputObject $Dictionary
     }#DynamicParam
     Begin
@@ -171,7 +172,8 @@ function Find-ADUser {
         if ($DoNotPreserveLocation -ne $true) {Pop-Location -StackName 'Lookup-ADUser'}#if
     }#end
 }#Find-ADUser
-function Find-ADContact {
+function Find-ADContact
+{
     [cmdletbinding()]
     param(
         [parameter(Mandatory = $true,valuefrompipeline = $true, valuefrompipelinebypropertyname = $true)]
@@ -307,26 +309,28 @@ function Find-ADContact {
     }#end
 }#Find-ADContact
 function Get-AdObjectDomain
-{
-[cmdletbinding(DefaultParameterSetName='ADObject')]
-param(
-[parameter(Mandatory,ParameterSetName='ADObject')]
-[ValidateScript({Test-Member -InputObject $_ -Name CanonicalName})]
-$adobject
-,
-[parameter(Mandatory,ParameterSetName='ExchangeObject')]
-[ValidateScript({Test-Member -InputObject $_ -Name Identity})]
-$ExchangeObject
-)
-switch ($PSCmdlet.ParameterSetName)
-{
-    'ADObject'
-    {[string]$domain=$adobject.canonicalname.split('/')[0]}
-    'ExchangeObject'
-    {[string]$domain=$ExchangeObject.Identity.split('/')[0]}
-}
-Write-Output -InputObject $domain
-}
+    {
+        [cmdletbinding(DefaultParameterSetName='ADObject')]
+        param
+        (
+            [parameter(Mandatory,ParameterSetName='ADObject')]
+            [ValidateScript({Test-Member -InputObject $_ -Name CanonicalName})]
+            $adobject
+            ,
+            [parameter(Mandatory,ParameterSetName='ExchangeObject')]
+            [ValidateScript({Test-Member -InputObject $_ -Name Identity})]
+            $ExchangeObject
+        )
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'ADObject'
+            {[string]$domain=$adobject.canonicalname.split('/')[0]}
+            'ExchangeObject'
+            {[string]$domain=$ExchangeObject.Identity.split('/')[0]}
+        }
+        $domain
+    }
+#end function Get-ADObjectDomain
 Function Get-ADAttributeSchema
 {
   [cmdletbinding()]
