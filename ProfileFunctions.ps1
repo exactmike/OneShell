@@ -1565,6 +1565,8 @@ Function Use-AdminUserProfile
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
             ,
             [switch]$NoAutoConnect
+            , 
+            [switch]$NoAutoImport
         )
         DynamicParam
         {
@@ -1683,7 +1685,19 @@ Function Use-AdminUserProfile
         {
             if ($NoAutoConnect -ne $true)
             {
-                Get-OneShellAvailableSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true} | % {Connect-OneShellSystem -identity $_.Identity}
+                $AutoConnectSystems = Get-OneShellAvailableSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true}
+                
+                if ($NoAutoImport -eq $true)
+                {
+                    $ConnectOneShellSystemParams = @{
+                        NoAutoImport = $true
+                    }
+                }
+                else
+                {
+                    $ConnectOneShellSystemParams = @{}
+                }
+                $AutoConnectSystems | foreach-object {Connect-OneShellSystem -identity $_.Identity @ConnectOneShellSystemParams}
             }
         }
     }

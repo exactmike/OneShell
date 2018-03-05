@@ -142,35 +142,57 @@ function Find-CommandPrefixToUse
 #end function Find-CommandPrefixToUse
 function Get-OneShellAvailableSystem
     {
-        [cmdletbinding()]
+        [cmdletbinding(DefaultParameterSetName = 'Identity')]
         param
         (
         )
         DynamicParam
         {
-            $dictionary = New-DynamicParameter -name ServiceType -ValidateSet $(getorgprofilesystemservicetypes) -Type $([string[]]) -Mandatory $false
-            Write-Output -InputObject $dictionary
-        }
-        end
-        {
-            Set-DynamicParameterVariable -dictionary $dictionary
-            if ($null -eq $script:CurrentOrgProfile)
-            {throw('No OneShell Organization profile is active.  Use function Use-OrgProfile to load an organization profile.')}
             if ($null -eq $script:CurrentAdminUserProfile)
             {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
-            Write-Verbose -Message "ServiceType is set to $($serviceType -join ',')"
-            (Get-OneShellVariableValue -Name CurrentSystems -ErrorAction Stop).GetEnumerator() |
-            Where-object -FilterScript {$null -eq $ServiceType -or $_.ServiceType -in $ServiceType}
+            $AvailableServiceTypes = @($script:CurrentSystems | Select-object -ExpandProperty ServiceType | Select-Object -Unique)
+            $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name;$script:CurrentSystems.Identity)
+            $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity
+            $Dictionary = New-DynamicParameter -Name ServiceType -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableServiceTypes -Position 1 -DPDictionary $Dictionary -ParameterSetName ServiceType
+            Write-Output -InputObject $dictionary
+        }#DynamicParam
+        begin
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+        }
+        Process
+        {
+            switch ($PSCmdlet.ParameterSetName)
+            {
+                'Identity'
+                {
+                    if ($null -eq $Identity)
+                    {
+                        $script:CurrentSystems
+                    }
+                    foreach ($i in $Identity)
+                    {
+                        $script:CurrentSystems | Where-Object -FilterScript {$_.Identity -eq $i}
+                    }
+                }
+                'ServiceType'
+                {
+                    $script:CurrentSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType}
+                }
+            }
         }
     }
 #end function Get-OneShellAvailableSystem
 function Get-OneShellSystemPSSession
     {
-        [cmdletbinding()]
+        [cmdletbinding(DefaultParameterSetName = 'ServiceObject')]
         param
         (
-            [parameter(Mandatory)]
+            [parameter(Mandatory,ParameterSetName = 'ServiceObject')]
             $serviceObject
+            ,
+            [parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName,ParameterSetName = 'Identity')]
+            [string[]]$Identity
         )
         begin
         {
@@ -194,7 +216,6 @@ function Get-OneShellSystemPSSession
             }
             Write-Output -InputObject $ServiceSession
         }
-
     }
 #end function Get-OneShellSystemPSSession
 function Test-OneShellSystemConnection
@@ -392,6 +413,9 @@ Function Connect-OneShellSystem
         [parameter()]
         [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
         [string[]]$ServiceType #used only to filter list of available system identities and names
+        ,
+        [parameter()]
+        [switch]$NoAutoImport
     )
     DynamicParam
     {
@@ -467,10 +491,36 @@ Function Connect-OneShellSystem
                     {
                         try
                         {
+                            if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
+                            {
+                                $ImportedSessionModule = $script:ImportedSessionModules.$($ServiceObject.Identity)
+                                $message = "Remove Previously Imported Session Module $ImportedSessionModule for System $($ServiceObject.Identity)"
+                                try
+                                {
+                                    Write-Log -Message $message -EntryType Attempting
+                                    Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+                                    Write-Log -Message $message -EntryType Succeeded
+                                }
+                                catch
+                                {
+                                    $myerror = $_
+                                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                                    Write-Log -Message $myerror.tostring() -ErrorLog
+                                }
+                            }
                             $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
-                            Write-Log -Message $message -EntryType Attempting
-                            Remove-PSSession -Session $ExistingSession -ErrorAction Stop
-                            Write-Log -Message $message -EntryType Succeeded
+                            Try
+                            {
+                                Write-Log -Message $message -EntryType Attempting
+                                Remove-PSSession -Session $ExistingSession -ErrorAction Stop
+                                Write-Log -Message $message -EntryType Succeeded
+                            }
+                            Catch
+                            {
+                                $myerror = $_
+                                Write-Log -Message $message -EntryType Failed -ErrorLog
+                                Write-Log -Message $myerror.tostring() -ErrorLog
+                            }
                         }
                         catch
                         {
@@ -617,11 +667,10 @@ Function Connect-OneShellSystem
                                 $ServiceObject.ServiceType
                             )
                             Update-SessionManagementGroups -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
-                            if ($ServiceObject.AutoImport -eq $true)
+                            if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
                             {
                                 Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
                             }
-                            #NeededCode: Set/Update SessionManagementGroups
                         }
                     }
                 } 
@@ -925,7 +974,6 @@ Function Import-OneShellSystem
     {
         'ServiceObjectAndSession'
         {
-
         }
         'Identity'
         {
@@ -936,6 +984,7 @@ Function Import-OneShellSystem
         ErrorAction = 'Stop'
         Session = $ServiceSession
         WarningAction = 'SilentlyContinue'
+        AllowClobber = $true
     }
     $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
@@ -965,7 +1014,10 @@ Function Import-OneShellSystem
     if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
     {
         $ImportedSessionModule = $Script:ImportedSessionModules.$($ServiceObject.Identity)
-        Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+        if ((Test-IsNotNullOrWhiteSpace -String $ImportedSessionModule.Name) -and $null -ne (Get-Module -Name $ImportedSessionModule.Name))
+        {
+            Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+        }
     }
 
     $message = "Import OneShell System $($ServiceObject.Name) Session $($ServiceSession.Name) into Current Session"
