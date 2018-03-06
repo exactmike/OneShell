@@ -532,13 +532,17 @@ function Set-OrgProfile
         [cmdletbinding(DefaultParameterSetName = 'Identity')]
         param
         (
-            [parameter(ParameterSetName = 'Object')]
+            [parameter(ParameterSetName = 'Object',ValueFromPipeline)]
             [ValidateScript({$_.ProfileType -eq 'OneShellOrgProfile'})]
-            [psobject]$OrgProfile
+            [psobject[]]$OrgProfile
             ,
             [parameter()]
             [ValidateNotNullOrEmpty()]
             [string]$Name
+            ,
+            [parameter()]
+            [ValidateNotNullOrEmpty()]
+            [psobject[]]$Systems #Enables copying systems from one org profile to another.  No validation is implemented, however. Replaces all existing Systems when used so use or build an array of systems to use.
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
@@ -552,7 +556,7 @@ function Set-OrgProfile
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
             Write-Output -InputObject $dictionary
         }
-        End
+        Begin
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             switch ($PSCmdlet.ParameterSetName)
@@ -576,17 +580,24 @@ function Set-OrgProfile
                 }
                 'Object'
                 {
+                    #nothing to do here at this point
                 }
             }#end Switch
-            Write-Verbose -Message "Selected Org Profile is $($orgProfile.Name)"
-            foreach ($p in $PSBoundParameters.GetEnumerator())
+        }
+        Process
+        {
+            foreach ($op in $OrgProfile)
             {
-                if ($p.key -in @('Name'))
+                Write-Verbose -Message "Selected Org Profile is $($op.Name)"
+                foreach ($p in $PSBoundParameters.GetEnumerator())
                 {
-                    $OrgProfile.$($p.key) = $p.value
+                    if ($p.key -in @('Name','Systems'))
+                    {
+                        $op.$($p.key) = $p.value
+                    }
                 }
+                Export-OrgProfile -profile $op -Path $Path -ErrorAction 'Stop'
             }
-            Export-OrgProfile -profile $OrgProfile -Path $Path -ErrorAction 'Stop'
         }
     }
 #end function Set-OrgProfile
