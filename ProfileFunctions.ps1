@@ -809,7 +809,7 @@ function Set-OrgProfileSystem
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
             ,
-            [parameter(Mandatory,ValueFromPipelineByPropertyName)]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
@@ -849,28 +849,19 @@ function Set-OrgProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 
-            #build service type specific parameters that may be needed
-            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
-            if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
-            {
-                foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
-                {
-                    $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $false -DPDictionary $dictionary
-                }
-            }
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
             Write-Output -InputObject $dictionary
         }#End DynamicParam
         Begin
         {
-            Set-DynamicParameterVariable -dictionary $dictionary
-            #Get/Select the Org Profile
-            $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
         }
         Process
         {
             foreach ($i in $Identity)
             {
+                Set-DynamicParameterVariable -dictionary $dictionary
+                #Get/Select the Org Profile
+                $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
                 #Get/Select the System
                 $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $i -Operation Edit
                 if ($ServiceType -ne $System.ServiceType) {throw("ServiceType specified does not match the system.")}
@@ -888,6 +879,55 @@ function Set-OrgProfileSystem
                     if ($vp.name -in 'UseTLS','ProxyEnabled','CommandPrefix','AuthenticationRequired','AuthMethod')
                     {$System.defaults.$($vp.name) = $($vp.value)}
                 }
+                #update the system entry in the org profile
+                $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+                Export-OrgProfile -profile $OrgProfile -Path $Path
+            }
+        }
+    }
+#end function Set-OrgSystemObject
+function Set-OrgProfileSystemServiceTypeAttributes
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter(ValueFromPipelineByPropertyName)]
+            [ValidateNotNullOrEmpty()]
+            [string[]]$Identity #System Identity or Name
+            ,
+            [parameter(Mandatory)]
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
+            [string]$ServiceType
+        )#end param
+        DynamicParam
+        {
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
+            #build service type specific parameters that may be needed
+            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+            {
+                foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+                {
+                    $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $false -DPDictionary $dictionary -ValueFromPipelineByPropertyName $true
+                }
+            }
+            Write-Output -InputObject $dictionary
+        }#End DynamicParam
+        Process
+        {
+            foreach ($i in $Identity)
+            {
+                Set-DynamicParameterVariable -dictionary $dictionary
+                #Get/Select the Org Profile
+                $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
+                #Get/Select the System
+                $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $i -Operation Edit
+                if ($ServiceType -ne $System.ServiceType) {throw("ServiceType specified does not match the system.")}
+                #Edit the selected System
+                $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
                 #Set the ServiceType Specific System Attributes
                 $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
                 if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
@@ -955,7 +995,7 @@ Function Get-OrgProfileSystem
             $OutputSystems = @(
                 foreach ($p in $profiles)
                 {
-                    $p.systems | Select-Object -Property *,@{n='OrgName';e={$p.Name}},@{n='OrgIdentity';e={$p.Identity}}
+                    $p.systems | Select-Object -Property *,@{n='OrgName';e={$p.Name}},@{n='OrgIdentity';e={$p.Identity}},@{n='ProfileIdentity';e={$p.Identity}}
                 }
             )
             #Filter outputSystems if required by specified parameters
@@ -1718,25 +1758,21 @@ function Set-AdminUserProfile
         [cmdletbinding(DefaultParameterSetName="Identity")]
         param
         (
-            [Parameter(ParameterSetName = 'Object',ValueFromPipeline,Mandatory)]
-            [ValidateScript({$_.ProfileType -eq 'OneShellAdminUserProfile'})]
-            [psobject]$ProfileObject 
-            ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string]$ProfileFolder
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [string]$Name
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-EmailAddress -EmailAddress $_})]
             $MailFromSMTPAddress
             ,
             [parameter()]
             [switch]$UpdateSystemsFromOrgProfile
             ,
-            [parameter(ParameterSetName = 'Identity')]
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
@@ -1748,62 +1784,57 @@ function Set-AdminUserProfile
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -ParameterSetName 'Identity' -Mandatory $false
+            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet $AdminProfileIdentities -Mandatory $true -ValueFromPipelineByPropertyName $true
             Write-Output -InputObject $dictionary
         }
-        End
+        Process
         {
             Set-DynamicParameterVariable -dictionary $dictionary
-            switch ($PSCmdlet.ParameterSetName)
+            foreach ($i in $Identity)
             {
-                'Object'
-                {}
-                'Identity'
-                {
-                    $AdminUserProfile = GetSelectProfile -ProfileType Admin -Path $path -PotentialProfiles $paProfiles -Identity $Identity -Operation Edit
-                }
-            }
-            $GetOrgProfileParams = @{
-                ErrorAction = 'Stop'
-                Path = $orgProfilePath
-                Identity = $AdminUserProfile.organization.identity
-            }
-            $targetOrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
-            #Check the Org Identity for validity (exists, not ambiguous)
-            switch ($targetOrgProfile.Count)
-            {
-                1
-                {}
-                0
-                {
-                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
-                    $PSCmdlet.ThrowTerminatingError($errorRecord)
-                }
-                Default
-                {
-                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
-                    $PSCmdlet.ThrowTerminatingError($errorRecord)
-                }
-            }
-            #Update the Admin User Profile Version if necessary
-            $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
-            #Update the profile itself
-            if ($PSBoundParameters.ContainsKey('UpdateSystemsFromOrgProfile') -and $UpdateSystemsFromOrgProfile -eq $true)
-            {
-                $UpdateAdminUserProfileSystemParams = @{
+                $AdminUserProfile = GetSelectProfile -ProfileType Admin -Path $path -PotentialProfiles $paProfiles -Identity $i -Operation Edit
+                $GetOrgProfileParams = @{
                     ErrorAction = 'Stop'
-                    ProfileObject = $AdminUserProfile
-                    OrgProfilePath = $OrgProfilePath
+                    Path = $orgProfilePath
+                    Identity = $AdminUserProfile.organization.identity
                 }
-                Update-AdminUserProfileSystem @UpdateAdminUserProfileSystemParams
-            }
-            foreach ($p in $PSBoundParameters.GetEnumerator())
-            {
-                if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress') #,'Credentials','Systems')
-                {$AdminUserProfile.$($p.key) = $p.value}
+                $targetOrgProfile = @(Get-OrgProfile @GetOrgProfileParams)
+                #Check the Org Identity for validity (exists, not ambiguous)
+                switch ($targetOrgProfile.Count)
+                {
+                    1
+                    {}
+                    0
+                    {
+                        $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $AdminUserProfile.organization.identity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+                        $PSCmdlet.ThrowTerminatingError($errorRecord)
+                    }
+                    Default
+                    {
+                        $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $AdminUserProfile.organization.identity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+                        $PSCmdlet.ThrowTerminatingError($errorRecord)
+                    }
+                }
+                #Update the Admin User Profile Version if necessary
+                $AdminUserProfile = UpdateAdminUserProfileObjectVersion -AdminUserProfile $AdminUserProfile
+                #Update the profile itself
+                if ($PSBoundParameters.ContainsKey('UpdateSystemsFromOrgProfile') -and $UpdateSystemsFromOrgProfile -eq $true)
+                {
+                    $UpdateAdminUserProfileSystemParams = @{
+                        ErrorAction = 'Stop'
+                        ProfileObject = $AdminUserProfile
+                        OrgProfilePath = $OrgProfilePath
+                    }
+                    Update-AdminUserProfileSystem @UpdateAdminUserProfileSystemParams
+                }
+                foreach ($p in $PSBoundParameters.GetEnumerator())
+                {
+                    if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress') #,'Credentials','Systems')
+                    {$AdminUserProfile.$($p.key) = $p.value}
+                }#end foreach
+                Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
             }#end foreach
-            Export-AdminUserProfile -profile $AdminUserProfile -ErrorAction 'Stop'
-        }#End End
+        }#End Process
     }
 #end function Set-AdminUserProfile
 Function Get-AdminUserProfileSystem
