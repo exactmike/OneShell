@@ -1,8 +1,8 @@
 # To Do Items
 
+- [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
 - [ ] Write GUI/Wizard Functions for Org and Admin Profile Creation
 - [ ] Admin Profile Editing/Creation GUI improvements (compared to the old one that is deprecated): List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
-- [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
 - [ ] Add a DynamicParameter capability for ValueFromPipeline options (<https://stackoverflow.com/questions/28604116/how-to-get-value-from-pipeline-for-a-dynamicparam-in-powershell>)
 - [ ] Add/Enable Identity parameter for get-oneshellavailablesystem,get-oneshellsystempssession,import-oneshellsystem, etc.
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
