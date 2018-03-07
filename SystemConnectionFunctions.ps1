@@ -183,6 +183,30 @@ function Get-OneShellAvailableSystem
         }
     }
 #end function Get-OneShellAvailableSystem
+function GetOneShellSystemPSSession
+{
+    [cmdletbinding()]
+    param
+    (
+        $ServiceObject
+    )
+    [string]$SessionNameWildcard = $($ServiceObject.Identity) + '*'
+    $message = "Run Get-PSSession for name like $SessionNameWildcard"
+    try
+    {
+        Write-Log -Message $message -EntryType Attempting
+        $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
+        Write-Log -Message $message -EntryType Succeeded
+    }
+    catch
+    {
+        $myerror = $_
+        Write-Log -Message $message -EntryType Failed
+        Write-Log -Message $myerror.tostring() -ErrorLog
+    }
+    $ServiceSession
+}
+#end function GetOneShellSystemPSSession
 function Get-OneShellSystemPSSession
     {
         [cmdletbinding(DefaultParameterSetName = 'ServiceObject')]
@@ -190,31 +214,37 @@ function Get-OneShellSystemPSSession
         (
             [parameter(Mandatory,ParameterSetName = 'ServiceObject')]
             $serviceObject
-            ,
-            [parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName,ParameterSetName = 'Identity')]
-            [string[]]$Identity
         )
+        DynamicParam
+        {
+            if ($null -eq $script:CurrentAdminUserProfile)
+            {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
+            $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name;$script:CurrentSystems.Identity)
+            $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
+            Write-Output -InputObject $dictionary
+        }#DynamicParam
         begin
         {
             Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         }
-        end
+        process
         {
-            [string]$SessionNameWildcard = $($serviceObject.Identity) + '*'
-            $message = "Run Get-PSSession for name like $SessionNameWildcard"
-            try
+            switch ($PSCmdlet.ParameterSetName)
             {
-                Write-Log -Message $message -EntryType Attempting
-                $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
-                Write-Log -Message $message -EntryType Succeeded
+                'Identity'
+                {
+                    Set-DynamicParameterVariable -dictionary $Dictionary
+                    foreach ($i in $Identity)
+                    {
+                        $ServiceObject = $script:CurrentSystems | Where-Object -FilterScript {$_.Identity -eq $i -or $_.name -eq $i}
+                        GetOneShellSystemPSSession -ServiceObject $ServiceObject
+                    }
+                }
+                'ServiceObject'
+                {
+                    GetOneShellSystemPSSession -ServiceObject $ServiceObject
+                }
             }
-            catch
-            {
-                $myerror = $_
-                Write-Log -Message $message -EntryType Failed
-                Write-Log -Message $myerror.tostring() -ErrorLog
-            }
-            Write-Output -InputObject $ServiceSession
         }
     }
 #end function Get-OneShellSystemPSSession
