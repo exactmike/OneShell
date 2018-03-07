@@ -458,259 +458,262 @@ Function Connect-OneShellSystem
             $AvailableOneShellSystems = @(Get-OneShellAvailableSystem)
         }
         $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name;$AvailableOneShellSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1
+        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
         Write-Output -InputObject $dictionary
     }#DynamicParam
     begin
     {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     }
-    end
+    process
     {
         Set-DynamicParameterVariable -dictionary $Dictionary
-        $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $Identity -or $_.Identity -eq $Identity}
-        Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
-        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
-        Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
-        $EndPointGroups = @(
-            Write-Verbose -Message "Selecting an Endpoint"
-            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
+        foreach ($id in $identity)
+        {
+            $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $id -or $_.Identity -eq $id}
+            Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
+            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
+            Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
+            $EndPointGroups = @(
+                Write-Verbose -Message "Selecting an Endpoint"
+                switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
+                {
+                    $true
+                    {
+                        Write-Verbose -Message "Get Well Known Endpoint(s)."
+                        Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
+                    }
+                    Default
+                    {
+                        $FindEndPointToUseParams = @{
+                            ErrorAction = 'Stop'
+                            ServiceObject = $ServiceObject
+                        }
+                        switch ($PSCmdlet.ParameterSetName)
+                        {
+                            'Default'
+                            {}
+                            'EndPointIdentity'
+                            {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
+                            'EndPointGroup'
+                            {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
+                        }
+                        Find-EndPointToUse @FindEndPointToUseParams
+                    }
+                }
+            )
+            if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
+            {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
+            #Test for an existing connection
+            switch ($ServiceObject.defaults.UsePSRemoting -or $true)
             {
                 $true
                 {
-                    Write-Verbose -Message "Get Well Known Endpoint(s)."
-                    Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
-                }
-                Default
-                {
-                    $FindEndPointToUseParams = @{
-                        ErrorAction = 'Stop'
-                        ServiceObject = $ServiceObject
-                    }
-                    switch ($PSCmdlet.ParameterSetName)
+                    $ExistingConnectionIsValid,$ExistingSession = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop -ReturnSession
+                    #check results of the test for an existing session
+                    if ($ExistingConnectionIsValid)
                     {
-                        'Default'
-                        {}
-                        'EndPointIdentity'
-                        {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
-                        'EndPointGroup'
-                        {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
-                    }
-                    Find-EndPointToUse @FindEndPointToUseParams
-                }
-            }
-        )
-        if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
-        {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
-        #Test for an existing connection
-        switch ($ServiceObject.defaults.UsePSRemoting -or $true)
-        {
-            $true
-            {
-                $ExistingConnectionIsValid,$ExistingSession = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop -ReturnSession
-                #check results of the test for an existing session
-                if ($ExistingConnectionIsValid)
-                {
-                    Write-Log -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
-                    #nothing further to do since existing connection is valid
-                    #add logic for preferred endpoint/specified endpoint checking?
-                }#end if
-                else
-                {
-                    if ($null -ne $ExistingSession)
+                        Write-Log -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
+                        #nothing further to do since existing connection is valid
+                        #add logic for preferred endpoint/specified endpoint checking?
+                    }#end if
+                    else
                     {
-                        try
+                        if ($null -ne $ExistingSession)
                         {
-                            if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
+                            try
                             {
-                                $ImportedSessionModule = $script:ImportedSessionModules.$($ServiceObject.Identity)
-                                $message = "Remove Previously Imported Session Module $ImportedSessionModule for System $($ServiceObject.Identity)"
-                                try
+                                if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
+                                {
+                                    $ImportedSessionModule = $script:ImportedSessionModules.$($ServiceObject.Identity)
+                                    $message = "Remove Previously Imported Session Module $ImportedSessionModule for System $($ServiceObject.Identity)"
+                                    try
+                                    {
+                                        Write-Log -Message $message -EntryType Attempting
+                                        Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+                                        Write-Log -Message $message -EntryType Succeeded
+                                    }
+                                    catch
+                                    {
+                                        $myerror = $_
+                                        Write-Log -Message $message -EntryType Failed -ErrorLog
+                                        Write-Log -Message $myerror.tostring() -ErrorLog
+                                    }
+                                }
+                                $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
+                                Try
                                 {
                                     Write-Log -Message $message -EntryType Attempting
-                                    Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
+                                    Remove-PSSession -Session $ExistingSession -ErrorAction Stop
                                     Write-Log -Message $message -EntryType Succeeded
                                 }
-                                catch
+                                Catch
                                 {
                                     $myerror = $_
                                     Write-Log -Message $message -EntryType Failed -ErrorLog
                                     Write-Log -Message $myerror.tostring() -ErrorLog
                                 }
                             }
-                            $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
-                            Try
-                            {
-                                Write-Log -Message $message -EntryType Attempting
-                                Remove-PSSession -Session $ExistingSession -ErrorAction Stop
-                                Write-Log -Message $message -EntryType Succeeded
-                            }
-                            Catch
-                            {
-                                $myerror = $_
-                                Write-Log -Message $message -EntryType Failed -ErrorLog
-                                Write-Log -Message $myerror.tostring() -ErrorLog
-                            }
-                        }
-                        catch
-                        {
-                            $myerror = $_
-                            Write-Log -Message $message -EntryType Failed -ErrorLog
-                            Write-Log -Message $myerror.tostring() -EntryType -ErrorLog
-                            throw ($myerror)
-                        }
-                    }#end if 
-                    Write-Log -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
-                    #create and test the new session
-                    $ConnectionReady = $false #we switch this to true when a session is connected and initialized with required modules and settings
-                    #Work through the endpoint groups to try connecting in order of precedence
-                    for ($i = 0; $i -lt $EndPointGroups.count -and $ConnectionReady -eq $false; $i++)
-                    {
-                        #get the first endpoint group and randomly order them, then work through them one at a time until successfully connected
-                        $g  = $endPointGroups[$i]
-                        $endpoints = @($g.group | Sort-Object -Property {Get-Random})
-                        for ($ii = 0; $ii -lt $endpoints.Count -and $ConnectionReady -eq $false; $ii++)
-                        {
-                            $e = $endpoints[$ii]
-                            $NewPSSessionParams = Get-OneShellSystemEndpointPSSessionParameter -ServiceObject $ServiceObject -Endpoint $e -ErrorAction Stop
-                            $NewPSSessionCmdlet = 'New-PSSession'
-                            try
-                            {
-                                if ($null -ne $ServiceTypeDefinition.PSSessionCmdlet)
-                                {
-                                    $NewPSSessionCmdlet = $ServiceTypeDefinition.PSSessionCmdlet
-                                }
-                                $message = "Create PsSession using command $NewPSsessionCmdlet with name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
-                                Write-Log -Message $message -EntryType Attempting
-                                $ServiceSession = Invoke-Command -ScriptBlock {& $NewPSSessionCmdlet @NewPSSessionParams}
-                                Write-Log -Message $message -EntryType Succeeded
-                                $PSSessionConnected = $true
-                            }#end Try
                             catch
                             {
                                 $myerror = $_
-                                $PSSessionConnected = $false
                                 Write-Log -Message $message -EntryType Failed -ErrorLog
-                                Write-Log -Message $myerror.tostring() -ErrorLog
-                            }#end Catch
-                            #determine if the session needs to be initialized with imported modules, variables, etc. based on ServiceType
-                            $Phase1InitializationCompleted = $(
-                                if ($PSSessionConnected -eq $true)
+                                Write-Log -Message $myerror.tostring() -EntryType -ErrorLog
+                                throw ($myerror)
+                            }
+                        }#end if 
+                        Write-Log -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
+                        #create and test the new session
+                        $ConnectionReady = $false #we switch this to true when a session is connected and initialized with required modules and settings
+                        #Work through the endpoint groups to try connecting in order of precedence
+                        for ($i = 0; $i -lt $EndPointGroups.count -and $ConnectionReady -eq $false; $i++)
+                        {
+                            #get the first endpoint group and randomly order them, then work through them one at a time until successfully connected
+                            $g  = $endPointGroups[$i]
+                            $endpoints = @($g.group | Sort-Object -Property {Get-Random})
+                            for ($ii = 0; $ii -lt $endpoints.Count -and $ConnectionReady -eq $false; $ii++)
+                            {
+                                $e = $endpoints[$ii]
+                                $NewPSSessionParams = Get-OneShellSystemEndpointPSSessionParameter -ServiceObject $ServiceObject -Endpoint $e -ErrorAction Stop
+                                $NewPSSessionCmdlet = 'New-PSSession'
+                                try
                                 {
-                                    $message = "Perform Phase 1 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
-                                    try
+                                    if ($null -ne $ServiceTypeDefinition.PSSessionCmdlet)
                                     {
-                                        Write-Log -Message $message -EntryType Attempting
-                                        Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
-                                        Write-Log -Message $message -EntryType Succeeded
+                                        $NewPSSessionCmdlet = $ServiceTypeDefinition.PSSessionCmdlet
                                     }
-                                    catch
+                                    $message = "Create PsSession using command $NewPSsessionCmdlet with name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
+                                    Write-Log -Message $message -EntryType Attempting
+                                    $ServiceSession = Invoke-Command -ScriptBlock {& $NewPSSessionCmdlet @NewPSSessionParams}
+                                    Write-Log -Message $message -EntryType Succeeded
+                                    $PSSessionConnected = $true
+                                }#end Try
+                                catch
+                                {
+                                    $myerror = $_
+                                    $PSSessionConnected = $false
+                                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                                    Write-Log -Message $myerror.tostring() -ErrorLog
+                                }#end Catch
+                                #determine if the session needs to be initialized with imported modules, variables, etc. based on ServiceType
+                                $Phase1InitializationCompleted = $(
+                                    if ($PSSessionConnected -eq $true)
                                     {
-                                        $myerror = $_
-                                        Write-Log -Message $message -EntryType Failed
-                                        Write-Log -Message $myerror.tostring() -ErrorLog
+                                        $message = "Perform Phase 1 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
+                                        try
+                                        {
+                                            Write-Log -Message $message -EntryType Attempting
+                                            Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
+                                            Write-Log -Message $message -EntryType Succeeded
+                                        }
+                                        catch
+                                        {
+                                            $myerror = $_
+                                            Write-Log -Message $message -EntryType Failed
+                                            Write-Log -Message $myerror.tostring() -ErrorLog
+                                            $false
+                                        }
+                                    }
+                                    else
+                                    {
+                                        $false    
+                                    }
+                                )
+                                $Phase2InitializationCompleted = $(
+                                    if ($Phase1InitializationCompleted -ne $false)
+                                    {
+                                        try
+                                        {
+                                            $message = "Import Required Module(s) into PSSession $($serviceSession.Name) for $($serviceObject.Name)"
+                                            Write-Log -Message $message -EntryType Attempting
+                                            Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
+                                            Write-Log -Message $message -EntryType Succeeded
+                                        }
+                                        catch
+                                        {
+                                            $myerror = $_
+                                            Write-Log -Message $message -EntryType Failed
+                                            Write-Log -Message $myerror.tostring() -ErrorLog
+                                            $false
+                                        }
+                                    }
+                                    else 
+                                    {
                                         $false
                                     }
-                                }
-                                else
-                                {
-                                    $false    
-                                }
-                            )
-                            $Phase2InitializationCompleted = $(
-                                if ($Phase1InitializationCompleted -ne $false)
-                                {
-                                    try
+                                )
+                                $Phase3InitializationCompleted = $(
+                                    if ($Phase2InitializationCompleted -ne $false)
                                     {
-                                        $message = "Import Required Module(s) into PSSession $($serviceSession.Name) for $($serviceObject.Name)"
-                                        Write-Log -Message $message -EntryType Attempting
-                                        Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
-                                        Write-Log -Message $message -EntryType Succeeded
-                                    }
-                                    catch
+                                        try
+                                        {
+                                            $message = "Perform Phase 3 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
+                                            Write-Log -Message $message -EntryType Attempting
+                                            Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
+                                            Write-Log -Message $message -EntryType Succeeded
+                                        }
+                                        catch
+                                        {
+                                            $myerror = $_
+                                            Write-Log -Message $message -EntryType Failed
+                                            Write-Log -Message $myerror.tostring() -ErrorLog
+                                            $false
+                                        }
+                                        #determine if the session needs further initialization
+                                    }#end if
+                                    else
                                     {
-                                        $myerror = $_
-                                        Write-Log -Message $message -EntryType Failed
-                                        Write-Log -Message $myerror.tostring() -ErrorLog
                                         $false
                                     }
+                                )
+                                $message = "Connection and Initialization of PSSession $($serviceSession.name) for $($serviceobject.name)"
+                                if (@($Phase1InitializationCompleted,$Phase2InitializationCompleted,$Phase3InitializationCompleted) -notcontains $false)
+                                {
+                                    Write-Log -Message $message -EntryType Succeeded
+                                    $ConnectionReady = $true
                                 }
                                 else 
                                 {
-                                    $false
-                                }
-                            )
-                            $Phase3InitializationCompleted = $(
-                                if ($Phase2InitializationCompleted -ne $false)
-                                {
-                                    try
+                                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                                    if ($null -ne $ServiceSession)
                                     {
-                                        $message = "Perform Phase 3 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
-                                        Write-Log -Message $message -EntryType Attempting
-                                        Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
-                                        Write-Log -Message $message -EntryType Succeeded
+                                        Remove-PSSession -Session $ServiceSession -ErrorAction Stop
                                     }
-                                    catch
-                                    {
-                                        $myerror = $_
-                                        Write-Log -Message $message -EntryType Failed
-                                        Write-Log -Message $myerror.tostring() -ErrorLog
-                                        $false
-                                    }
-                                    #determine if the session needs further initialization
-                                }#end if
-                                else
-                                {
-                                    $false
                                 }
-                            )
-                            $message = "Connection and Initialization of PSSession $($serviceSession.name) for $($serviceobject.name)"
-                            if (@($Phase1InitializationCompleted,$Phase2InitializationCompleted,$Phase3InitializationCompleted) -notcontains $false)
-                            {
-                                Write-Log -Message $message -EntryType Succeeded
-                                $ConnectionReady = $true
-                            }
-                            else 
-                            {
-                                Write-Log -Message $message -EntryType Failed -ErrorLog
-                                if ($null -ne $ServiceSession)
-                                {
-                                    Remove-PSSession -Session $ServiceSession -ErrorAction Stop
-                                }
-                            }
+                            }#end for
                         }#end for
-                    }#end for
-                    switch ($ConnectionReady)
-                    {
-                        $false #we couldn't connect after trying all applicable endpoints
+                        switch ($ConnectionReady)
                         {
-                            Write-Log -Message "Failed to Connect to $($ServiceObject.Name). Review the errors and resolve them to connect." -ErrorLog -Verbose
-                        }
-                        $true
-                        {
-                            Write-Log -Message "Successfully Connected to $($ServiceObject.Name) with PSSession $($ServiceSession.Name)" -Verbose
-                            $SessionManagementGroups = @(
-                                if ($null -ne $ServiceObject.ServiceTypeAttributes -and $null -ne $ServiceObject.ServiceTypeAttributes.SessionManagementGroups)
-                                {
-                                    $ServiceObject.ServiceTypeAttributes.SessionManagementGroups
-                                }
-                                $ServiceObject.ServiceType
-                            )
-                            Update-SessionManagementGroups -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
-                            if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
+                            $false #we couldn't connect after trying all applicable endpoints
                             {
-                                Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
+                                Write-Log -Message "Failed to Connect to $($ServiceObject.Name). Review the errors and resolve them to connect." -ErrorLog -Verbose
+                            }
+                            $true
+                            {
+                                Write-Log -Message "Successfully Connected to $($ServiceObject.Name) with PSSession $($ServiceSession.Name)" -Verbose
+                                $SessionManagementGroups = @(
+                                    if ($null -ne $ServiceObject.ServiceTypeAttributes -and $null -ne $ServiceObject.ServiceTypeAttributes.SessionManagementGroups)
+                                    {
+                                        $ServiceObject.ServiceTypeAttributes.SessionManagementGroups
+                                    }
+                                    $ServiceObject.ServiceType
+                                )
+                                Update-SessionManagementGroups -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
+                                if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
+                                {
+                                    Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
+                                }
                             }
                         }
-                    }
-                } 
-            }#end $true
-            default
-            {
-                Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"
-            }#end $false
-        }#end Switch
-    }#end End
+                    } 
+                }#end $true
+                default
+                {
+                    Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"
+                }#end $false
+            }#end Switch    
+        }#end foreach i in Identity
+    }#end Process
 }#function Connect-OneShellSystem
 function Import-ModuleInOneShellSystemPSSession
     {
