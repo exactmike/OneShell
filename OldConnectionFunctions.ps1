@@ -1068,81 +1068,82 @@ Function Connect-RemoteSystems
         Write-Output -InputObject $ProcessStatus.Connections
     }
 }
-function Invoke-ExchangeCommand {
-[cmdletbinding(DefaultParameterSetName = 'String')]
-param(
-    [parameter(Mandatory,Position = 1)]
-    [ValidateScript({$_ -like '*-*'})]
-    [string]$cmdlet
-    ,
-    [parameter(Position = 3,ParameterSetName='Splat')]
-    [hashtable]$splat
-    ,
-    [parameter(Position = 3,ParameterSetName = 'String')]
-    [string]$string = ''
-    ,
-    [string]$CommandPrefix
-    ,
-    [switch]$checkConnection
-)#Param
-DynamicParam
+function Invoke-ExchangeCommand
 {
-    $Dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory
-    Write-Output -InputObject $Dictionary
-}#DynamicParam
-begin
-{
-    #Dynamic Parameter to Variable Binding
-    Set-DynamicParameterVariable -dictionary $Dictionary
-    # Bind the dynamic parameter to a friendly variable
-    if ([string]::IsNullOrWhiteSpace($CommandPrefix))
+    [cmdletbinding(DefaultParameterSetName = 'String')]
+    param(
+        [parameter(Mandatory,Position = 1)]
+        [ValidateScript({$_ -like '*-*'})]
+        [string]$cmdlet
+        ,
+        [parameter(Position = 3,ParameterSetName='Splat')]
+        [hashtable]$splat
+        ,
+        [parameter(Position = 3,ParameterSetName = 'String')]
+        [string]$string = ''
+        ,
+        [string]$CommandPrefix
+        ,
+        [switch]$checkConnection
+    )#Param
+    DynamicParam
     {
-        $Org = $ExchangeOrganization
-        if (-not [string]::IsNullOrWhiteSpace($Org))
+        $Dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory
+        Write-Output -InputObject $Dictionary
+    }#DynamicParam
+    begin
+    {
+        #Dynamic Parameter to Variable Binding
+        Set-DynamicParameterVariable -dictionary $Dictionary
+        # Bind the dynamic parameter to a friendly variable
+        if ([string]::IsNullOrWhiteSpace($CommandPrefix))
         {
-            $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
-            $CommandPrefix = $orgobj.CommandPrefix
+            $Org = $ExchangeOrganization
+            if (-not [string]::IsNullOrWhiteSpace($Org))
+            {
+                $orgobj = $Script:CurrentOrgAdminProfileSystems |  Where-Object SystemType -eq 'ExchangeOrganizations' | Where-Object {$_.name -eq $org}
+                $CommandPrefix = $orgobj.CommandPrefix
+            }#if
+            else {$CommandPrefix = ''}#else
         }#if
-        else {$CommandPrefix = ''}#else
-    }#if
-    if ($checkConnection -eq $true)
-    {
-        if ((Connect-Exchange -exchangeorganization $ExchangeOrganization) -ne $true)
-        {throw ("Connection to Exchange Organization $ExchangeOrganization failed.")}
-    }
-}#begin
-Process
-{
-    #Build the Command String and convert to Scriptblock
-    switch ($PSCmdlet.ParameterSetName)
-    {
-        'splat' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) @splat")}#splat
-        'string' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) $string")}#string
-    }#switch
-    #Store and Set and Restore ErrorAction Preference; Execute the command String
-    try
-    {
-        if ($ErrorActionPreference -eq 'Stop')
+        if ($checkConnection -eq $true)
         {
-            $originalGlobalErrorAction = $global:ErrorActionPreference
-            $global:ErrorActionPreference = 'Stop'
+            if ((Connect-Exchange -exchangeorganization $ExchangeOrganization) -ne $true)
+            {throw ("Connection to Exchange Organization $ExchangeOrganization failed.")}
         }
-        &$commandstring
-        if ($ErrorActionPreference -eq 'Stop')
-        {
-            $global:ErrorActionPreference = $originalGlobalErrorAction
-        }
-    }#try
-    catch
+    }#begin
+    process
     {
-        $myerror = $_
-        if ($ErrorActionPreference -eq 'Stop')
+        #Build the Command String and convert to Scriptblock
+        switch ($PSCmdlet.ParameterSetName)
         {
-            $global:ErrorActionPreference = $originalGlobalErrorAction
-        }
-        throw $myerror
-    }#catch
-}#Process
+            'splat' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) @splat")}#splat
+            'string' {$commandstring = [scriptblock]::Create("$($cmdlet.split('-')[0])-$CommandPrefix$($cmdlet.split('-')[1]) $string")}#string
+        }#switch
+        #Store and Set and Restore ErrorAction Preference; Execute the command String
+        try
+        {
+            if ($ErrorActionPreference -eq 'Stop')
+            {
+                $originalGlobalErrorAction = $global:ErrorActionPreference
+                $global:ErrorActionPreference = 'Stop'
+            }
+            &$commandstring
+            if ($ErrorActionPreference -eq 'Stop')
+            {
+                $global:ErrorActionPreference = $originalGlobalErrorAction
+            }
+        }#try
+        catch
+        {
+            $myerror = $_
+            if ($ErrorActionPreference -eq 'Stop')
+            {
+                $global:ErrorActionPreference = $originalGlobalErrorAction
+            }
+            throw $myerror
+        }#catch
+    }#Process
 }#Function Invoke-ExchangeCommand
 function Test-ExchangeCommandExists
 {
@@ -1512,40 +1513,3 @@ Function Initialize-AdminEnvironment
         }#Switch
     }#Process
 }
-function New-ExchangeOrganizationDynamicParameter
-{
-    [cmdletbinding()]
-    param
-    (
-        [switch]$Mandatory
-        ,
-        [int]$Position
-        ,
-        [string]$ParameterSetName
-        ,
-        [switch]$Multivalued
-    )
-    $NewDynamicParameterParams=@{
-        Name = 'ExchangeOrganization'
-        ValidateSet = @(Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | Select-Object -ExpandProperty Name)
-        Alias = @('Org','ExchangeOrg')
-    }
-    if ($PSBoundParameters.ContainsKey('Mandatory'))
-    {
-        $NewDynamicParameterParams.Mandatory = $true
-    }
-    if ($PSBoundParameters.ContainsKey('Multivalued'))
-    {
-        $NewDynamicParameterParams.Type = [string[]]
-    }
-    if ($PSBoundParameters.ContainsKey('Position'))
-    {
-        $NewDynamicParameterParams.Position = $Position
-    }
-    if ($PSBoundParameters.ContainsKey('ParameterSetName'))
-    {
-        $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
-    }
-    New-DynamicParameter @NewDynamicParameterParams
-}
-#end function New-ExchangeOrganizationDynamicParameter
