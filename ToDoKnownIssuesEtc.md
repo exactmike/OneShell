@@ -37,6 +37,10 @@
 - [ ] add function to report AADConnect/AADSync status - that is, if a synchronization is in progress, what kind of sync it is and when it started. (<http://www.anexinet.com/blog/scripting-a-manual-dirsync-with-powershell-in-azure-ad-connect-v-1-1/>)
 - [ ] add function to export connectors, disconnectors, etc. from connector spaces for validation of new AAD Connect instances (In Progress)
 
+## Exchange Function Improvements
+- [ ] Implement Proxy Functions to add an ExchangeOrganization Parameter . . . 
+- [ ] Implement multi-ExchangeOrganization Test-ProxyAddress and Test-Alias
+
 ## Bugs/Known Issues
 
 - [ ] If you use a non-valid dynamic parameter name with New-OrgProfileSystem (and perhaps other commands) you'll get a non-helpful error about postitional parameters "Cannot bind positional parameters because no names were given."
