@@ -138,181 +138,184 @@ function Get-RecipientCmdlet
   $cmdlet
 }#Get-RecipientCmdlet
 function Get-ExchangeRecipient
-{
-    [cmdletbinding()]
-    param(
-    [parameter(Mandatory)]
-    [string[]]$Identity
-    )
-    DynamicParam
     {
-        $dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory -Multivalued
-        Write-Output -InputObject $dictionary
-    }
-    begin
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
-        foreach ($o in $ExchangeOrganization)
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string[]]$Identity
+            ,
+            [parameter(Mandatory)]
+            [System.Management.Automation.Runspaces.PSSession[]]$ExchangeSession
+        )
+        DynamicParam
         {
-            if ((Connect-Exchange -ExchangeOrganization $o) -ne $true)
-            {throw ("Connection to Exchange Organization $o Failed")}
+            $dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory -Multivalued
+            Write-Output -InputObject $dictionary
         }
-    }
-    process
-    {
-        foreach ($ID in $Identity)
+        begin
         {
-            $InvokeExchangeCommandParams = @{
-                #ErrorAction = 'Stop'
-                WarningAction = 'SilentlyContinue'
-                Cmdlet = 'Get-Recipient'
-                splat = @{
-                    Identity = $ID
-                    WarningAction = 'SilentlyContinue'
+            #Test the ExchangeSession(s)   
+        }
+        process
+        {
+            foreach ($id in $Identity)
+            {
+                $InvokeCommandParams = @{
                     #ErrorAction = 'Stop'
+                    WarningAction = 'SilentlyContinue'
+                    ErrorAction = 'Continue'
+                    scriptblock = [scriptblock]{Get-Recipient -Identity $id -WarningAction SilentlyContinue -ErrorAction Continue}
+                    Cmdlet = 'Get-Recipient'
+                }
+                foreach ($s in $ExchangeSession)
+                {
+                    $InvokeCommandParams.Session = $s
+                    Invoke-Command @InvokeCommandParams
                 }
             }
-            foreach ($o in $exchangeOrganization)
-            {
-                $InvokeExchangeCommandParams.ExchangeOrganization = $o
-                Invoke-ExchangeCommand @InvokeExchangeCommandParams
-            }
-        }
-    }#process
-}
+        }#process
+    }
 #end function Get-ExchangeRecipient
 function Find-PrimarySMTPAddress
-{
-    [cmdletbinding()]
-    Param
-    (
-        [parameter(mandatory = $true)]
-        [Alias('EmailAddresses')]
-        [string[]]$ProxyAddresses
-    )
-    $PrimaryAddresses = @($ProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | ForEach-Object {($_ -split ':')[1]})
-    switch ($PrimaryAddresses.count) 
     {
-        1 
+        [cmdletbinding()]
+        Param
+        (
+            [parameter(mandatory = $true)]
+            [Alias('EmailAddresses')]
+            [string[]]$ProxyAddresses
+        )
+        $PrimaryAddresses = @($ProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | ForEach-Object {($_ -split ':')[1]})
+        switch ($PrimaryAddresses.count) 
         {
-            $PrimarySMTPAddress = $PrimaryAddresses[0]
-            Write-Output -InputObject $PrimarySMTPAddress
-        }#1
-        0 
-        {
-            Write-Output -InputObject $null
-        }#0
-        Default 
-        {
-            Write-Output -InputObject $false
-        }#Default
-    }#switch 
-}
+            1 
+            {
+                $PrimarySMTPAddress = $PrimaryAddresses[0]
+                Write-Output -InputObject $PrimarySMTPAddress
+            }#1
+            0 
+            {
+                Write-Output -InputObject $null
+            }#0
+            Default 
+            {
+                Write-Output -InputObject $false
+            }#Default
+        }#switch 
+    }
 #end function Find-PrimarySMTPAddress
 function New-TestExchangeAlias
-{
-  [cmdletbinding()]
-  param
-  (
-    [parameter(Mandatory=$true)]
-    [string]$ExchangeOrganization
-  )
-    $Script:TestExchangeAlias =@{}
-    Connect-Exchange -ExchangeOrganization $ExchangeOrganization
-    $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
-    $RecordCount = $AllRecipients.count
-    $cr=0
-    foreach ($r in $AllRecipients) 
     {
-        $cr++
-        $writeProgressParams = @{
-            Activity = 'Processing Recipient Alias for Test-ExchangeAlias.  Building Global Variable which future uses of Test-ExchangeAlias will use unless the -RefreshAliasData parameter is used.'
-            Status = "Record $cr of $RecordCount"
-            PercentComplete = $cr/$RecordCount * 100
-            CurrentOperation = "Processing Recipient: $($r.GUID.tostring())"
-        }
-        Write-Progress @writeProgressParams
-        $alias = $r.alias
-        if ($Script:TestExchangeAlias.ContainsKey($alias)) 
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory=$true)]
+            [string]$ExchangeSession
+        )
+        $Script:TestExchangeAlias =@{}
+        $AllRecipients = Invoke-Command -Session $ExchangeSession -scriptblock {Get-Recipient -ResultSize Unlimited -ErrorAction Stop}
+        $RecordCount = $AllRecipients.count
+        $cr=0
+        foreach ($r in $AllRecipients) 
         {
-            $Script:TestExchangeAlias.$alias += $r.guid.tostring()
+            $cr++
+            $writeProgressParams = @{
+                Activity = 'Processing Recipient Alias for Test-ExchangeAlias.  Building Global Variable which future uses of Test-ExchangeAlias will use unless the -RefreshAliasData parameter is used.'
+                Status = "Record $cr of $RecordCount"
+                PercentComplete = $cr/$RecordCount * 100
+                CurrentOperation = "Processing Recipient: $($r.GUID.tostring())"
+            }
+            Write-Progress @writeProgressParams
+            $alias = $r.alias
+            if ($Script:TestExchangeAlias.ContainsKey($alias)) 
+            {
+                $Script:TestExchangeAlias.$alias += $r.guid.tostring()
+            }
+            else 
+            {
+                $Script:TestExchangeAlias.$alias = @()
+                $Script:TestExchangeAlias.$alias += $r.guid.tostring()
+            }
+        }
+        Write-Progress @writeProgressParams -Completed
+    }
+#end function New-TestExchangeAlias
+Function Test-ExchangeAlias
+    {
+        [cmdletbinding()]
+        param(
+            [string]$Alias
+            ,
+            [string[]]$ExemptObjectGUIDs
+            ,
+            [switch]$RefreshAliasData
+            ,
+            [switch]$ReturnConflicts
+            ,
+            [parameter(Mandatory=$true)]
+            [string]$ExchangeSession
+        )
+        #Populate the TestExchangeAlias Hash Table if needed
+        if (Test-Path -Path variable:Script:TestExchangeAlias) 
+        {
+            if ($RefreshAliasData) 
+            {
+                Write-Log -message 'Running New-TestExchangeAlias'
+                New-TestExchangeAlias -ExchangeSession $ExchangeSession
+            }
         }
         else 
         {
-            $Script:TestExchangeAlias.$alias = @()
-            $Script:TestExchangeAlias.$alias += $r.guid.tostring()
+            Write-Log -message 'Running New-TestExchangeAlias'
+            New-TestExchangeAlias -ExchangeSession $ExchangeSession
+        }
+        #Test the Alias
+        if ($Script:TestExchangeAlias.ContainsKey($Alias))
+        {
+            $ConflictingGUIDs = @($Script:TestExchangeAlias.$Alias | Where-Object {$_ -notin $ExemptObjectGUIDs})
+            if ($ConflictingGUIDs.count -gt 0)
+            {
+                if ($ReturnConflicts)
+                {
+                    Return $ConflictingGUIDs
+                }
+                else
+                {
+                    $false
+                }
+            }
+            else
+            {
+                $true
+            }
+        }
+        else
+        {
+            $true
         }
     }
-    Write-Progress @writeProgressParams -Completed
-}
-Function Test-ExchangeAlias
-{
-  [cmdletbinding()]
-  param(
-    [string]$Alias
-    ,
-    [string[]]$ExemptObjectGUIDs
-    ,
-    [switch]$RefreshAliasData
-    ,
-    [switch]$ReturnConflicts
-    ,
-    [parameter(Mandatory=$true)]
-    [string]$ExchangeOrganization
-  )
-  #Populate the Global TestExchangeAlias Hash Table if needed
-  if (Test-Path -Path variable:Script:TestExchangeAlias) 
-  {
-    if ($RefreshAliasData) 
-    {
-        Write-Log -message 'Running New-TestExchangeAlias'
-        New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
-    }
-  }
-  else 
-  {
-    Write-Log -message 'Running New-TestExchangeAlias'
-    New-TestExchangeAlias -ExchangeOrganization $ExchangeOrganization
-  }
-  #Test the Alias
-  if ($Script:TestExchangeAlias.ContainsKey($Alias))
-  {
-    $ConflictingGUIDs = @($Script:TestExchangeAlias.$Alias | Where-Object {$_ -notin $ExemptObjectGUIDs})
-    if ($ConflictingGUIDs.count -gt 0) {
-        if ($ReturnConflicts) {
-            Return $ConflictingGUIDs
-        }
-        else {
-            Write-Output -InputObject $false
-        }
-    }
-    else {
-        Write-Output -InputObject $true
-    }
-  }
-  else {
-    Write-Output -InputObject $true
-  }
-}
+#end function Test-ExchangeAlias
 Function Add-ExchangeAliasToTestExchangeAlias
-{
-  [cmdletbinding()]
-  param(
-    [string]$Alias
-    ,
-    [string]$ObjectGUID #should be the AD ObjectGuid
-  )
-    if ($Script:TestExchangeAlias.ContainsKey($alias))
     {
-        Write-Log -Message 'Alias already exists in the TestExchangeAlias Table' -EntryType Failed
-        Write-Output -InputObject $false
+    [cmdletbinding()]
+    param
+    (
+        [string]$Alias
+        ,
+        [string[]]$ObjectGUID #should be the AD ObjectGuid
+    )
+        if ($Script:TestExchangeAlias.ContainsKey($alias))
+        {
+            throw("Alias $Alias already exists in the TestExchangeAlias Table")
+        }
+        else
+        {
+            $Script:TestExchangeAlias.$alias = @()
+            $Script:TestExchangeAlias.$alias += $ObjectGUID
+        }
     }
-    else
-    {
-        $Script:TestExchangeAlias.$alias = @()
-        $Script:TestExchangeAlias.$alias += $ObjectGUID
-    }
-}
+#end function Add-ExchangeAliasToTestExchangeAlias
 function New-TestExchangeProxyAddress
 {
   [cmdletbinding()]
