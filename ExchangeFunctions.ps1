@@ -211,7 +211,7 @@ function New-TestExchangeAlias
         param
         (
             [parameter(Mandatory=$true)]
-            [string]$ExchangeSession
+            [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
         )
         $Script:TestExchangeAlias =@{}
         $AllRecipients = Invoke-Command -Session $ExchangeSession -scriptblock {Get-Recipient -ResultSize Unlimited -ErrorAction Stop}
@@ -254,7 +254,7 @@ Function Test-ExchangeAlias
             [switch]$ReturnConflicts
             ,
             [parameter(Mandatory=$true)]
-            [string]$ExchangeSession
+            [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
         )
         #Populate the TestExchangeAlias Hash Table if needed
         if (Test-Path -Path variable:Script:TestExchangeAlias) 
