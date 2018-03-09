@@ -322,13 +322,14 @@ function New-TestExchangeProxyAddress
     param
     (
         [parameter(Mandatory=$true)]
-        [string]$ExchangeOrganization
+        [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
     )
-        $Script:TestExchangeProxyAddress =@{}
-        $AllRecipients = Invoke-Command -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
+        $AllRecipients = Invoke-Command -Session $ExchangeSession -ScriptBlock {Get-Recipient -ResultSize Unlimited -ErrorAction Stop -WarningAction Continue} -ErrorAction Stop -WarningAction Continue
         $RecordCount = $AllRecipients.count
         $cr=0
-        foreach ($r in $AllRecipients) {
+        $Script:TestExchangeProxyAddress =@{}
+        foreach ($r in $AllRecipients)
+        {
             $cr++
             $writeProgressParams = @{
                 Activity = 'Processing Recipient Proxy Addresses for Test-ExchangeProxyAddress.  Building Global Variable which future uses of Test-ExchangeProxyAddress will use unless the -RefreshProxyAddressData parameter is used.'
@@ -338,7 +339,8 @@ function New-TestExchangeProxyAddress
             }
             Write-Progress @writeProgressParams
             $ProxyAddresses = $r.EmailAddresses
-            foreach ($ProxyAddress in $ProxyAddresses) {
+            foreach ($ProxyAddress in $ProxyAddresses)
+            {
                 if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
                     $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
                 }
@@ -352,95 +354,105 @@ function New-TestExchangeProxyAddress
     }
 #end function New-TestExchangeProxyAddress
 Function Test-ExchangeProxyAddress
-{
-  [cmdletbinding()]
-  param(
-    [string]$ProxyAddress
-    ,
-    [string[]]$ExemptObjectGUIDs
-    ,
-    [switch]$RefreshProxyAddressData
-    ,
-    [switch]$ReturnConflicts
-    ,
-    [parameter(Mandatory=$true)]
-    [string]$ExchangeOrganization
-    ,
-    [parameter()]
-    [ValidateSet('SMTP','X500')]
-    [string]$ProxyAddressType = 'SMTP'
-  )
-  #Populate the Global TestExchangeProxyAddress Hash Table if needed
-  if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
-  {
-    if ($RefreshProxyAddressData)
     {
-        Write-Log -message 'Running New-TestExchangeProxyAddress'
-        New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
-    }
-  }
-  else
-  {
-    Write-Log -message 'Running New-TestExchangeProxyAddress'
-    New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
-  }
-  #Fix the ProxyAddress if needed
-  if ($ProxyAddress -notlike "$($proxyaddresstype):*")
-  {
-    $ProxyAddress = "$($proxyaddresstype):$ProxyAddress"
-  }
-  #Test the ProxyAddress
-  if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
-  {
-    $ConflictingGUIDs = @($Script:TestExchangeProxyAddress.$ProxyAddress | Where-Object {$_ -notin $ExemptObjectGUIDs})
-    if ($ConflictingGUIDs.count -gt 0)
-    {
-        if ($ReturnConflicts)
+        [cmdletbinding()]
+        param(
+            [string]$ProxyAddress
+            ,
+            [string[]]$ExemptObjectGUIDs
+            ,
+            [switch]$RefreshProxyAddressData
+            ,
+            [switch]$ReturnConflicts
+            ,
+            [parameter()]
+            [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
+            ,
+            [parameter()]
+            [ValidateSet('SMTP','X500')]
+            [string]$ProxyAddressType = 'SMTP'
+        )
+        #Populate the Global TestExchangeProxyAddress Hash Table if needed
+        if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
         {
-            Return $ConflictingGUIDs
+            if ($RefreshProxyAddressData)
+            {
+                if ($null -eq $ExchangeSession)
+                {
+                    throw('You must include the Exchange Session to use the RefreshProxyAddressData switch')
+                }
+                Write-Log -message 'Running New-TestExchangeProxyAddress'
+                New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
+            }
         }
-        else {
+        else
+        {
+            Write-Log -message 'Running New-TestExchangeProxyAddress'
+            New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
+        }
+        #Fix the ProxyAddress if needed
+        if ($ProxyAddress -notlike "$($proxyaddresstype):*")
+        {
+            $ProxyAddress = "$($proxyaddresstype):$ProxyAddress"
+        }
+        #Test the ProxyAddress
+        if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
+        {
+            $ConflictingGUIDs = @($Script:TestExchangeProxyAddress.$ProxyAddress | Where-Object {$_ -notin $ExemptObjectGUIDs})
+            if ($ConflictingGUIDs.count -gt 0)
+            {
+                if ($ReturnConflicts)
+                {
+                    $ConflictingGUIDs
+                }
+                else
+                {
+                    $false
+                }
+            }
+            else
+            {
+                $true
+            }
+        }
+        else
+        {
+            $true
+        }
+    }
+#end function Test-ExchangeProxyAddress
+Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
+    {
+        [cmdletbinding()]
+        param
+        (
+            [string]$ProxyAddress
+            ,
+            [string]$ObjectGUID #should be the AD ObjectGuid
+            ,
+            [parameter()]
+            [ValidateSet('SMTP','X500')]
+            [string]$ProxyAddressType = 'SMTP'
+        )
+
+        #Fix the ProxyAddress if needed
+        if ($ProxyAddress -notlike "{$proxyaddresstype}:*")
+        {
+            $ProxyAddress = "${$proxyaddresstype}:$ProxyAddress"
+        }
+        #Test the Proxy Address
+        if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
+        {
+            Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
             Write-Output -InputObject $false
         }
+        else
+        {
+            $Script:TestExchangeProxyAddress.$ProxyAddress = @()
+            $Script:TestExchangeProxyAddress.$ProxyAddress += $ObjectGUID
+        }
     }
-    else {
-        Write-Output -InputObject $true
-    }
-  }
-  else {
-    Write-Output -InputObject $true
-  }
-}
-Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
-{
-  [cmdletbinding()]
-  param(
-    [string]$ProxyAddress
-    ,
-    [string]$ObjectGUID #should be the AD ObjectGuid
-    ,
-    [parameter()]
-    [ValidateSet('SMTP','X500')]
-    [string]$ProxyAddressType = 'SMTP'
-  )
-
-  #Fix the ProxyAddress if needed
-  if ($ProxyAddress -notlike "{$proxyaddresstype}:*")
-  {
-    $ProxyAddress = "${$proxyaddresstype}:$ProxyAddress"
-  }
-  #Test the Proxy Address
-  if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
-  {
-    Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
-    Write-Output -InputObject $false
-  }
-  else
-  {
-    $Script:TestExchangeProxyAddress.$ProxyAddress = @()
-    $Script:TestExchangeProxyAddress.$ProxyAddress += $ObjectGUID
-  }
-}#function Add-ExchangeProxyAddressToTestExchangeProxyAddress
+#end function Add-ExchangeProxyAddressToTestExchangeProxyAddress
 
 function Test-RecipientObjectForUnwantedSMTPAddresses
 {
