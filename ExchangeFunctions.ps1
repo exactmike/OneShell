@@ -317,40 +317,40 @@ Function Add-ExchangeAliasToTestExchangeAlias
     }
 #end function Add-ExchangeAliasToTestExchangeAlias
 function New-TestExchangeProxyAddress
-{
-  [cmdletbinding()]
-  param
-  (
-    [parameter(Mandatory=$true)]
-    [string]$ExchangeOrganization
-  )
-    $Script:TestExchangeProxyAddress =@{}
-    Connect-Exchange -ExchangeOrganization $ExchangeOrganization
-    $AllRecipients = Invoke-ExchangeCommand -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
-    $RecordCount = $AllRecipients.count
-    $cr=0
-    foreach ($r in $AllRecipients) {
-        $cr++
-        $writeProgressParams = @{
-            Activity = 'Processing Recipient Proxy Addresses for Test-ExchangeProxyAddress.  Building Global Variable which future uses of Test-ExchangeProxyAddress will use unless the -RefreshProxyAddressData parameter is used.'
-            Status = "Record $cr of $RecordCount"
-            PercentComplete = $cr/$RecordCount * 100
-            CurrentOperation = "Processing Recipient: $($r.GUID.tostring())"
-        }
-        Write-Progress @writeProgressParams
-        $ProxyAddresses = $r.EmailAddresses
-        foreach ($ProxyAddress in $ProxyAddresses) {
-            if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
-                $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
+    {
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory=$true)]
+        [string]$ExchangeOrganization
+    )
+        $Script:TestExchangeProxyAddress =@{}
+        $AllRecipients = Invoke-Command -ExchangeOrganization $exchangeOrganization -cmdlet Get-Recipient -string '-ResultSize Unlimited'
+        $RecordCount = $AllRecipients.count
+        $cr=0
+        foreach ($r in $AllRecipients) {
+            $cr++
+            $writeProgressParams = @{
+                Activity = 'Processing Recipient Proxy Addresses for Test-ExchangeProxyAddress.  Building Global Variable which future uses of Test-ExchangeProxyAddress will use unless the -RefreshProxyAddressData parameter is used.'
+                Status = "Record $cr of $RecordCount"
+                PercentComplete = $cr/$RecordCount * 100
+                CurrentOperation = "Processing Recipient: $($r.GUID.tostring())"
             }
-            else {
-                $Script:TestExchangeProxyAddress.$ProxyAddress = @()
-                $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
+            Write-Progress @writeProgressParams
+            $ProxyAddresses = $r.EmailAddresses
+            foreach ($ProxyAddress in $ProxyAddresses) {
+                if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress)) {
+                    $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
+                }
+                else {
+                    $Script:TestExchangeProxyAddress.$ProxyAddress = @()
+                    $Script:TestExchangeProxyAddress.$ProxyAddress += $r.guid.tostring()
+                }
             }
         }
+        Write-Progress @writeProgressParams -Completed
     }
-    Write-Progress @writeProgressParams -Completed
-}
+#end function New-TestExchangeProxyAddress
 Function Test-ExchangeProxyAddress
 {
   [cmdletbinding()]
