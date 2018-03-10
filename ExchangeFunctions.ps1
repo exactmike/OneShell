@@ -1,6 +1,45 @@
 ##########################################################################################################
-#Exchange Recipient Related Functions
+#Exchange Related Functions
 ##########################################################################################################
+function New-ExchangeOrganizationDynamicParameter
+    {
+        [cmdletbinding()]
+        param
+        (
+            [switch]$Mandatory
+            ,
+            [int]$Position
+            ,
+            [string]$ParameterSetName
+            ,
+            [switch]$Multivalued
+        )
+        $NewDynamicParameterParams=@{
+            Name = 'ExchangeOrganization'
+            ValidateSet = @(
+                Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | 
+                ForEach-Object -Process {$_.Name;$_.Identity} | Sort-Object
+            )
+        }
+        if ($PSBoundParameters.ContainsKey('Mandatory'))
+        {
+            $NewDynamicParameterParams.Mandatory = $true
+        }
+        if ($PSBoundParameters.ContainsKey('Multivalued'))
+        {
+            $NewDynamicParameterParams.Type = [string[]]
+        }
+        if ($PSBoundParameters.ContainsKey('Position'))
+        {
+            $NewDynamicParameterParams.Position = $Position
+        }
+        if ($PSBoundParameters.ContainsKey('ParameterSetName'))
+        {
+            $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
+        }
+        New-DynamicParameter @NewDynamicParameterParams
+    }
+#end function New-ExchangeOrganizationDynamicParameter
 function Get-RecipientCmdlet
 {
   [cmdletbinding()]
@@ -137,46 +176,7 @@ function Get-RecipientCmdlet
   }#switch Verb
   $cmdlet
 }#Get-RecipientCmdlet
-function Get-ExchangeRecipient
-    {
-        [cmdletbinding()]
-        param
-        (
-            [parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
-            [string[]]$Identity
-            ,
-            [parameter(Mandatory)]
-            [System.Management.Automation.Runspaces.PSSession[]]$ExchangeSession
-        )
-        DynamicParam
-        {
-            $dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory -Multivalued
-            Write-Output -InputObject $dictionary
-        }
-        begin
-        {
-            #Test the ExchangeSession(s)   
-        }
-        process
-        {
-            foreach ($id in $Identity)
-            {
-                $InvokeCommandParams = @{
-                    #ErrorAction = 'Stop'
-                    WarningAction = 'SilentlyContinue'
-                    ErrorAction = 'Continue'
-                    scriptblock = [scriptblock]{Get-Recipient -Identity $id -WarningAction SilentlyContinue -ErrorAction Continue}
-                    Cmdlet = 'Get-Recipient'
-                }
-                foreach ($s in $ExchangeSession)
-                {
-                    $InvokeCommandParams.Session = $s
-                    Invoke-Command @InvokeCommandParams
-                }
-            }
-        }#process
-    }
-#end function Get-ExchangeRecipient
+
 function Find-PrimarySMTPAddress
     {
         [cmdletbinding()]
@@ -192,15 +192,15 @@ function Find-PrimarySMTPAddress
             1 
             {
                 $PrimarySMTPAddress = $PrimaryAddresses[0]
-                Write-Output -InputObject $PrimarySMTPAddress
+                $PrimarySMTPAddress
             }#1
             0 
             {
-                Write-Output -InputObject $null
+                $null
             }#0
             Default 
             {
-                Write-Output -InputObject $false
+                $false
             }#Default
         }#switch 
     }
@@ -444,7 +444,7 @@ Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
         if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
         {
             Write-Log -Message "ProxyAddress $ProxyAddress already exists in the TestExchangeProxyAddress Table" -EntryType Failed
-            Write-Output -InputObject $false
+            $false
         }
         else
         {
@@ -453,171 +453,441 @@ Function Add-ExchangeProxyAddressToTestExchangeProxyAddress
         }
     }
 #end function Add-ExchangeProxyAddressToTestExchangeProxyAddress
-
 function Test-RecipientObjectForUnwantedSMTPAddresses
-{
-    [cmdletbinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string[]]$WantedDomains
-        ,
-        [Parameter(Mandatory)]
-        [ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
-        [psobject[]]$Recipient
-        ,
-        [Parameter(Mandatory)]
-        [ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
-        [string]$Operation = 'TestOnly'
-        ,
-        [bool]$ValidateSMTPAddress = $true
-    )
-    foreach ($R in $Recipient)
     {
-        Switch ($R)
+        [cmdletbinding()]
+        param(
+            [Parameter(Mandatory)]
+            [string[]]$WantedDomains
+            ,
+            [Parameter(Mandatory)]
+            [ValidateScript({($_ | Test-Member -name 'EmailAddresses') -or ($_ | Test-Member -name 'ProxyAddresses')})]
+            [psobject[]]$Recipient
+            ,
+            [Parameter()]
+            [ValidateSet('ReportUnwanted','ReportAll','TestOnly')]
+            [string]$Operation = 'TestOnly'
+            ,
+            [bool]$ValidateSMTPAddress = $true
+        )
+        foreach ($R in $Recipient)
         {
-            {$R | Test-Member -Name 'EmailAddresses'}
-            {$AddrAtt = 'EmailAddresses'}
-            {$R | Test-Member -Name 'ProxyAddresses'}
-            {$AddrAtt = 'ProxyAddresses'}
-        }
-        $Addresses = @($R.$addrAtt)
-        $TestedAddresses = @(
-            foreach ($A in $Addresses)
+            Switch ($R)
             {
-                if ($A -like 'smtp:*')
+                {$R | Test-Member -Name 'EmailAddresses'}
+                {$AddrAtt = 'EmailAddresses'}
+                {$R | Test-Member -Name 'ProxyAddresses'}
+                {$AddrAtt = 'ProxyAddresses'}
+            }
+            $Addresses = @($R.$addrAtt)
+            $TestedAddresses = @(
+                foreach ($A in $Addresses)
                 {
-                    $RawA = $A.split(':')[1]
-                    $ADomain = $RawA.split('@')[1]
-                    $IsSupportedDomain = $ADomain -in $WantedDomains
-                    $outputRecord = 
-                        [pscustomobject]@{
-                            DistinguishedName = $R.DistinguishedName
-                            Identity = $R.Identity
-                            Address = $RawA
-                            Domain = $ADomain
-                            IsSupportedDomain = $IsSupportedDomain
-                            IsValidSMTPAddress = $null
-                        }
-                    if ($ValidateSMTPAddress)
+                    if ($A -like 'smtp:*')
                     {
-                        $IsValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA
-                        $outputRecord.IsValidSMTPAddress = $IsValidSMTPAddress
+                        $RawA = $A.split(':')[1]
+                        $ADomain = $RawA.split('@')[1]
+                        $IsSupportedDomain = $ADomain -in $WantedDomains
+                        $outputRecord = 
+                            [pscustomobject]@{
+                                DistinguishedName = $R.DistinguishedName
+                                Identity = $R.Identity
+                                Address = $RawA
+                                Domain = $ADomain
+                                IsSupportedDomain = $IsSupportedDomain
+                                IsValidSMTPAddress = $null
+                            }
+                        if ($ValidateSMTPAddress)
+                        {
+                            $IsValidSMTPAddress = Test-EmailAddress -EmailAddress $RawA
+                            $outputRecord.IsValidSMTPAddress = $IsValidSMTPAddress
+                        }
+                    }
+                    $outputRecord
+                }
+            )
+        switch ($Operation)
+        {
+                'TestOnly'
+                {
+                    if ($TestedAddresses.IsSupportedDomain -contains $false -or $TestedAddresses.IsValidSMTPAddress -contains $false)
+                    {$false}
+                    else 
+                    {$true}
+                }
+                'ReportUnwanted'
+                {
+                    $UnwantedAddresses = @($TestedAddresses | Where-Object -FilterScript {$_.IsSupportedDomain -eq $false -or $_.IsValidSMTPAddress -eq $false})
+                    if ($UnwantedAddresses.Count -ge 1)
+                    {
+                        $UnwantedAddresses
                     }
                 }
-                Write-Output -InputObject $outputRecord
-            }
-        )
-       switch ($Operation)
-       {
-            'TestOnly'
-            {
-                if ($TestedAddresses.IsSupportedDomain -contains $false -or $TestedAddresses.IsValidSMTPAddress -contains $false)
-                {Write-Output -InputObject $false}
-                else 
-                {Write-Output -InputObject $true}
-            }
-            'ReportUnwanted'
-            {
-                $UnwantedAddresses = @($TestedAddresses | Where-Object -FilterScript {$_.IsSupportedDomain -eq $false -or $_.IsValidSMTPAddress -eq $false})
-                if ($UnwantedAddresses.Count -ge 1)
+                'ReportAll'
                 {
-                    Write-Output -InputObject $UnwantedAddresses
+                    $TestedAddresses
                 }
-            }
-            'ReportAll'
-            {
-                Write-Output -InputObject $TestedAddresses
-            }
-       }
-    }#foreach R in Recipient
-}#function
-function Get-DuplicateEmailAddresses
-{
-    [cmdletbinding()]
-    param(
-        [parameter(Mandatory)]
-        $ExchangeOrganization
-    )
-    Write-Verbose -Message "Building Exchange Proxy Address Hashtable with New-TestExchangeProxyAddress"
-    New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
-    #$TestExchangeProxyAddress = Get-OneShellVariableValue -Name TestExchangeProxyAddress
-    Write-Verbose -Message "Filtering Exchange Proxy Address Hashtable for Addresses Assigned to Multiple Recipients"
-    $duplicateAddresses = $TestExchangeProxyAddress.GetEnumerator() | Where-Object -FilterScript {$_.Value.count -gt 1}
-    Write-Verbose -Message "Iterating through duplicate addresses and creating output"
-    $duplicatnum = 0
-    foreach ($dup in $duplicateAddresses)
+        }
+        }#foreach R in Recipient
+    }
+#end function Test-RecipientObjectForUnwantedSMTPAddresses
+
+######################################################
+#Need Updates
+######################################################
+function New-ResourceMailboxIntermediateObject
     {
-        $duplicatnum++
-        foreach ($val in $dup.value)
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory)]
+            [psobject]$resource
+            ,
+            [parameter(Mandatory)]
+            [System.Management.Automation.Runspaces.PSSession]$TargetExchangeOrganizationSession
+            ,
+            [parameter(Mandatory)]
+            [string]$NewPrefix
+            ,
+            [parameter(Mandatory)]
+            [string]$TargetSMTPDomain
+            ,
+            [parameter(Mandatory)]
+            [string]$TargetDeliveryDomain
+            ,
+            [parameter()]
+            [string[]]$DomainsToRemove
+        )
+        $IntermediateObjects = @(
+        :nextResource foreach ($r in $resource)
         {
-            $splat =@{
-                cmdlet = 'get-recipient'
-                ExchangeOrganization = $ExchangeOrganization
-                ErrorAction = 'Stop'
-                splat = @{
-                    Identity = $val
-                    ErrorAction = 'Stop'
-                }#innersplat
-            }#outersplat
-            try
+            $FriendlyIdentity = $r.PrimarySmtpAddress
+            $message = "Get New Alias for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
             {
-                $Recipient = Invoke-ExchangeCommand @splat
-            }#try
+                Write-Log -Message $message -EntryType Attempting
+                $DesiredAlias = Get-DesiredTargetAlias -SourceAlias $r.alias -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -Verbose -NewPrefix $NewPrefix -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
             catch
             {
-                $message = "Get-Recipient $val in Exchange Organization $ExchangeOrganization"
-                Write-Log -Message $message -EntryType Failed -ErrorLog
-            }#catch
-            $duplicateobject = [pscustomobject]@{
-                DuplicateAddress = $dup.Name
-                DuplicateNumber = $duplicatnum
-                DuplicateRecipientCount = $dup.Value.Count
-                RecipientDN = $Recipient.distinguishedName
-                RecipientAlias = $recipient.alias
-                RecipientPrimarySMTPAddress = $recipient.primarysmtpaddress
-                RecipientGUID = $Recipient.guid
-                RecipientTypeDetails = $Recipient.RecipientTypeDetails
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
             }
-            Write-Output -InputObject $duplicateobject
-        }#Foreach
-    }
-}#function
-function New-ExchangeOrganizationDynamicParameter
-{
-    [cmdletbinding()]
-    param
-    (
-        [switch]$Mandatory
-        ,
-        [int]$Position
-        ,
-        [string]$ParameterSetName
-        ,
-        [switch]$Multivalued
-    )
-    $NewDynamicParameterParams=@{
-        Name = 'ExchangeOrganization'
-        ValidateSet = @(
-            Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | 
-            ForEach-Object -Process {$_.Name;$_.Identity} | Sort-Object
+            $message = "Get New SMTP Proxy Address for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                $DesiredNewProxyAddress = Get-DesiredTargetPrimarySMTPAddress -TargetExchangeOrganization $TargetExchangeOrganization -DesiredAlias $DesiredAlias -TargetSMTPDomain $TargetSMTPDomain -Verbose -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Get All Desired Proxy Addresses for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                $GetDesiredProxyAddressesParams = @{
+                    CurrentProxyAddresses=$r.EmailAddresses
+                    DesiredOrCurrentAlias=$DesiredAlias
+                    DesiredPrimaryAddress=$r.PrimarySmtpAddress
+                    LegacyExchangeDNs=$r.LegacyExchangeDN
+                    TargetDeliveryDomain=$TargetDeliveryDomain
+                    VerifyAddTargetAddress=$true
+                    VerifySMTPAddressValidity=$true
+                    AddressesToAdd="smtp:$DesiredNewProxyAddress"
+                    ErrorAction = 'Stop'
+                }
+                if ($DomainsToRemove.Count -gt 0) {$GetDesiredProxyAddressesParams.DomainsToRemove = $DomainsToRemove}
+                $DesiredAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Check All Desired Proxy Addresses for $FriendlyIdentity $($r.ExchangeGUID) for conflicts in target Exchange Organization $TargetExchangeOrganization"
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                $AnyConflicts = @(
+                foreach ($a in $DesiredAddresses)
+                {
+                    $result = Test-ExchangeProxyAddress -ProxyAddress $a -ReturnConflicts -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
+                    if ($result -ne $true)
+                    {
+                        $result
+                    }
+                })
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+                if ($AnyConflicts.Count -gt 0)
+                {
+                    $conflictingGUIDsString = $AnyConflicts -join '|'
+                    throw "$FriendlyIdentity $($r.ExchangeGUID) has conflicts in target Exchange Organization $TargetExchangeOrganization with the following objects:  $conflictingGUIDsString"
+                }
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Get Desired Name for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
+            {
+                $DesiredName = Get-DesiredTargetName -NewPrefix $NewPrefix -SourceName $r.Name -Verbose -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Check $FriendlyIdentity $($r.ExchangeGUID) RecipientTypeDetails $($r.RecipientTypeDetails) and Convert to SharedMailbox if needed"
+            Write-Log -Message $message -EntryType Notification
+            if ($r.RecipientTypeDetails -eq 'UserMailbox')
+            {
+                $message = "Convert $FriendlyIdentity $($r.ExchangeGUID) to SharedMailbox from $($r.RecipientTypeDetails)"
+                Write-Log -Message $message -EntryType Notification
+                $RTD = 'SharedMailbox'
+            }
+            else
+            {
+                $message = "Preserve $FriendlyIdentity $($r.ExchangeGUID) as $($r.RecipientTypeDetails)"
+                Write-Log -Message $message -EntryType Notification
+                $RTD = $r.RecipientTypeDetails
+            }
+            $message = "Get msExchRecipientDisplayType to use for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                $msExchRecipientDisplayType = Get-msExchRecipientDisplayTypeValue -RecipientTypeDetails $RTD -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Get msExchRecipientTypeDetails to use for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
+            {
+                $msExchRecipientTypeDetails = Get-msExchRecipientTypeDetailsValue -RecipientTypeDetails $RTD -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Get msExchRemoteRecipientType to use for $FriendlyIdentity $($r.ExchangeGUID)"
+            try 
+            {
+                $msExchRemoteRecipientType = Get-msExchRemoteRecipientTypeValue -RecipientTypeDetails $RTD -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
+            $message = "Build Intermediate Object to use for creation of target object for $FriendlyIdentity $($r.ExchangeGUID)"
+            Write-Log -Message $message -EntryType Notification
+            $SAMLength = [math]::Min($desiredAlias.length,20)
+            $IntermediateObject=[pscustomobject]@{
+                msExchRecipientDisplayType = $msExchRecipientDisplayType
+                msExchRecipientTypeDetails = $msExchRecipientTypeDetails
+                msExchVersion = 44220983382016
+                msExchUsageLocation = 'US'
+                c = 'US'
+                co = 'United States'
+                extensionattribute5 = $r.Guid.Guid
+                msExchPoliciesExcluded = '{26491cfc-9e50-4857-861b-0cb8df22b5d7}'
+                msExchMailboxGUID = $($r.ExchangeGuid)
+                Mail = $r.PrimarySmtpAddress
+                TargetAddress = 'SMTP:' + $r.PrimarySmtpAddress
+                mailNickName = $DesiredAlias
+                SamAccountName = $DesiredAlias.substring(0,$SAMLength)
+                proxyaddresses = [string[]]$DesiredAddresses
+                Name = $DesiredName
+                DisplayName = $DesiredName
+                UserPrincipalName = $r.PrimarySmtpAddress
+                employeeType = 'Shared Mailbox'
+            }
+            Write-Output -InputObject $IntermediateObject
+        }
         )
+        Write-Output -InputObject $IntermediateObjects
     }
-    if ($PSBoundParameters.ContainsKey('Mandatory'))
+#end function New-ResourceMailboxIntermediateObject
+function Publish-ResourceObjects
     {
-        $NewDynamicParameterParams.Mandatory = $true
+        :nextI foreach ($i in $IntermediateResourceObjects)
+        {
+            $message = "Create AD User Object for $($I.UserPrincipalName) $($I.msExchMailboxGUID.guid)"
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                Push-Location
+                Set-Location -Path $($targetActiveDirectory + ':\')
+                $IHash = Convert-ObjectToHashTable -InputObject $I -NoEmpty -Exclude SAMAccountName -ErrorAction Stop
+                $newADUser = New-ADUser -Path $targetUserOUDN -Server $targetDomain -Enabled:$false -OtherAttributes $IHash -Name $I.Name -ErrorAction Stop -SamAccountName $I.SamAccountName -PassThru #-WhatIf 
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Pop-Location
+            }
+            catch
+            {
+                Pop-Location
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextI
+            }
+            $message = "Add New Proxy Address and New Alias to Exchange Alias and Proxy Address Test tables"
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $($i.mailNickName + '@' + $TargetSMTPDomain) -ObjectGUID $i.msExchMailboxGUID.Guid -ProxyAddressType SMTP
+                Add-ExchangeAliasToTestExchangeAlias -Alias $i.mailNickName -ObjectGUID $i.msExchMailboxGUID.Guid 
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextI
+            }
+            $message = "Add TargetDeliveryAddress $($i.mailNickName + "@$TargetDeliveryDomain") to Source Object $($i.UserPrincipalName) $($i.msExchMailboxGUID) "
+            try 
+            {
+                Write-Log -Message $message -EntryType Attempting
+                $AddEmailAddressParams = @{
+                    ExchangeOrganization=$SourceExchangeOrganization
+                    Identity=$i.msExchMailboxGUID
+                    EmailAddresses=$($i.mailNickName + "@$TargetDeliveryDomain")
+                    ErrorAction='Stop'
+                }
+                Add-EmailAddress @AddEmailAddressParams
+                Write-Log -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+            }
+        }
     }
-    if ($PSBoundParameters.ContainsKey('Multivalued'))
+#end function Publish-ResourceObjects
+function Get-DuplicateEmailAddresses
     {
-        $NewDynamicParameterParams.Type = [string[]]
+        [cmdletbinding()]
+        param(
+            [parameter(Mandatory)]
+            $ExchangeOrganization
+        )
+        Write-Verbose -Message "Building Exchange Proxy Address Hashtable with New-TestExchangeProxyAddress"
+        New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
+        #$TestExchangeProxyAddress = Get-OneShellVariableValue -Name TestExchangeProxyAddress
+        Write-Verbose -Message "Filtering Exchange Proxy Address Hashtable for Addresses Assigned to Multiple Recipients"
+        $duplicateAddresses = $TestExchangeProxyAddress.GetEnumerator() | Where-Object -FilterScript {$_.Value.count -gt 1}
+        Write-Verbose -Message "Iterating through duplicate addresses and creating output"
+        $duplicatnum = 0
+        foreach ($dup in $duplicateAddresses)
+        {
+            $duplicatnum++
+            foreach ($val in $dup.value)
+            {
+                $splat =@{
+                    cmdlet = 'get-recipient'
+                    ExchangeOrganization = $ExchangeOrganization
+                    ErrorAction = 'Stop'
+                    splat = @{
+                        Identity = $val
+                        ErrorAction = 'Stop'
+                    }#innersplat
+                }#outersplat
+                try
+                {
+                    $Recipient = Invoke-ExchangeCommand @splat
+                }#try
+                catch
+                {
+                    $message = "Get-Recipient $val in Exchange Organization $ExchangeOrganization"
+                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                }#catch
+                $duplicateobject = [pscustomobject]@{
+                    DuplicateAddress = $dup.Name
+                    DuplicateNumber = $duplicatnum
+                    DuplicateRecipientCount = $dup.Value.Count
+                    RecipientDN = $Recipient.distinguishedName
+                    RecipientAlias = $recipient.alias
+                    RecipientPrimarySMTPAddress = $recipient.primarysmtpaddress
+                    RecipientGUID = $Recipient.guid
+                    RecipientTypeDetails = $Recipient.RecipientTypeDetails
+                }
+                $duplicateobject
+            }#Foreach
+        }
     }
-    if ($PSBoundParameters.ContainsKey('Position'))
+#end function Get-DuplicateEmailAddresses
+function Get-ExchangeRecipient
     {
-        $NewDynamicParameterParams.Position = $Position
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string[]]$Identity
+            ,
+            [parameter(Mandatory)]
+            [System.Management.Automation.Runspaces.PSSession[]]$ExchangeSession
+        )
+        DynamicParam
+        {
+            $dictionary = New-ExchangeOrganizationDynamicParameter -Mandatory -Multivalued
+            $dictionary
+        }
+        begin
+        {
+            #Test the ExchangeSession(s)   
+        }
+        process
+        {
+            foreach ($id in $Identity)
+            {
+                $InvokeCommandParams = @{
+                    #ErrorAction = 'Stop'
+                    WarningAction = 'SilentlyContinue'
+                    ErrorAction = 'Continue'
+                    scriptblock = [scriptblock]{Get-Recipient -Identity $id -WarningAction SilentlyContinue -ErrorAction Continue}
+                    Cmdlet = 'Get-Recipient'
+                }
+                foreach ($s in $ExchangeSession)
+                {
+                    $InvokeCommandParams.Session = $s
+                    Invoke-Command @InvokeCommandParams
+                }
+            }
+        }#process
     }
-    if ($PSBoundParameters.ContainsKey('ParameterSetName'))
-    {
-        $NewDynamicParameterParams.ParameterSetName = $ParameterSetName
-    }
-    New-DynamicParameter @NewDynamicParameterParams
-}
-#end function New-ExchangeOrganizationDynamicParameter
+#end function Get-ExchangeRecipient
