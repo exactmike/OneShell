@@ -172,7 +172,7 @@ function Get-OneShellAvailableSystem
                     }
                     foreach ($i in $Identity)
                     {
-                        $script:CurrentSystems | Where-Object -FilterScript {$_.Identity -eq $i}
+                        $script:CurrentSystems | Where-Object -FilterScript {$_.Identity -eq $i -or $_.name -eq $i}
                     }
                 }
                 'ServiceType'
