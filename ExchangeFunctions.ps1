@@ -17,7 +17,7 @@ function New-ExchangeOrganizationDynamicParameter
         $NewDynamicParameterParams=@{
             Name = 'ExchangeOrganization'
             ValidateSet = @(
-                Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter | 
+                Get-OneShellAvailableSystem -ServiceType ExchangeOnPremises,ExchangeOnline,ExchangeComplianceCenter |
                 ForEach-Object -Process {$_.Name;$_.Identity} | Sort-Object
             )
         }
@@ -100,7 +100,7 @@ function Get-RecipientCmdlet
         }#Get
         'Set'
         {
-            switch ($Recipient.recipienttypedetails) 
+            switch ($Recipient.recipienttypedetails)
             {
                 'LinkedMailbox' {$cmdlet = 'Set-Mailbox'}
                 'RemoteRoomMailbox'{$cmdlet = 'Set-RemoteMailbox'}
@@ -125,7 +125,7 @@ function Get-RecipientCmdlet
         }
         'Remove'
         {
-            switch ($Recipient.recipienttypedetails) 
+            switch ($Recipient.recipienttypedetails)
             {
                 'LinkedMailbox' {$cmdlet = 'Remove-Mailbox'}
                 'RemoteRoomMailbox'{$cmdlet = 'Remove-RemoteMailbox'}
@@ -150,7 +150,7 @@ function Get-RecipientCmdlet
         }
         'Disable'
         {
-            switch ($Recipient.recipienttypedetails) 
+            switch ($Recipient.recipienttypedetails)
             {
                 'LinkedMailbox' {$cmdlet = 'Disable-Mailbox'}
                 'RemoteRoomMailbox'{$cmdlet = 'Disable-RemoteMailbox'}
@@ -187,22 +187,22 @@ function Find-PrimarySMTPAddress
             [string[]]$ProxyAddresses
         )
         $PrimaryAddresses = @($ProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | ForEach-Object {($_ -split ':')[1]})
-        switch ($PrimaryAddresses.count) 
+        switch ($PrimaryAddresses.count)
         {
-            1 
+            1
             {
                 $PrimarySMTPAddress = $PrimaryAddresses[0]
                 $PrimarySMTPAddress
             }#1
-            0 
+            0
             {
                 $null
             }#0
-            Default 
+            Default
             {
                 $false
             }#Default
-        }#switch 
+        }#switch
     }
 #end function Find-PrimarySMTPAddress
 function New-TestExchangeAlias
@@ -217,7 +217,7 @@ function New-TestExchangeAlias
         $AllRecipients = Invoke-Command -Session $ExchangeSession -scriptblock {Get-Recipient -ResultSize Unlimited -ErrorAction Stop}
         $RecordCount = $AllRecipients.count
         $cr=0
-        foreach ($r in $AllRecipients) 
+        foreach ($r in $AllRecipients)
         {
             $cr++
             $writeProgressParams = @{
@@ -228,11 +228,11 @@ function New-TestExchangeAlias
             }
             Write-Progress @writeProgressParams
             $alias = $r.alias
-            if ($Script:TestExchangeAlias.ContainsKey($alias)) 
+            if ($Script:TestExchangeAlias.ContainsKey($alias))
             {
                 $Script:TestExchangeAlias.$alias += $r.guid.tostring()
             }
-            else 
+            else
             {
                 $Script:TestExchangeAlias.$alias = @()
                 $Script:TestExchangeAlias.$alias += $r.guid.tostring()
@@ -257,15 +257,15 @@ Function Test-ExchangeAlias
             [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
         )
         #Populate the TestExchangeAlias Hash Table if needed
-        if (Test-Path -Path variable:Script:TestExchangeAlias) 
+        if (Test-Path -Path variable:Script:TestExchangeAlias)
         {
-            if ($RefreshAliasData) 
+            if ($RefreshAliasData)
             {
                 Write-Log -message 'Running New-TestExchangeAlias'
                 New-TestExchangeAlias -ExchangeSession $ExchangeSession
             }
         }
-        else 
+        else
         {
             Write-Log -message 'Running New-TestExchangeAlias'
             New-TestExchangeAlias -ExchangeSession $ExchangeSession
@@ -356,7 +356,8 @@ function New-TestExchangeProxyAddress
 Function Test-ExchangeProxyAddress
     {
         [cmdletbinding()]
-        param(
+        param
+        (
             [string]$ProxyAddress
             ,
             [string[]]$ExemptObjectGUIDs
@@ -382,13 +383,13 @@ Function Test-ExchangeProxyAddress
                     throw('You must include the Exchange Session to use the RefreshProxyAddressData switch')
                 }
                 Write-Log -message 'Running New-TestExchangeProxyAddress'
-                New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
+                New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
             }
         }
         else
         {
             Write-Log -message 'Running New-TestExchangeProxyAddress'
-            New-TestExchangeProxyAddress -ExchangeOrganization $ExchangeOrganization
+            New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
         }
         #Fix the ProxyAddress if needed
         if ($ProxyAddress -notlike "$($proxyaddresstype):*")
@@ -488,7 +489,7 @@ function Test-RecipientObjectForUnwantedSMTPAddresses
                         $RawA = $A.split(':')[1]
                         $ADomain = $RawA.split('@')[1]
                         $IsSupportedDomain = $ADomain -in $WantedDomains
-                        $outputRecord = 
+                        $outputRecord =
                             [pscustomobject]@{
                                 DistinguishedName = $R.DistinguishedName
                                 Identity = $R.Identity
@@ -512,7 +513,7 @@ function Test-RecipientObjectForUnwantedSMTPAddresses
                 {
                     if ($TestedAddresses.IsSupportedDomain -contains $false -or $TestedAddresses.IsValidSMTPAddress -contains $false)
                     {$false}
-                    else 
+                    else
                     {$true}
                 }
                 'ReportUnwanted'
@@ -605,7 +606,7 @@ function Get-ExchangeRecipient
         }
         begin
         {
-            #Test the ExchangeSession(s)   
+            #Test the ExchangeSession(s)
         }
         process
         {
