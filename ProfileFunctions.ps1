@@ -35,7 +35,7 @@ function GetPotentialAdminUserProfiles
             {
                 Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue
             }
-        )    
+        )
         $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
         Write-Output -InputObject $PotentialAdminUserProfiles
     }
@@ -368,7 +368,7 @@ function GetSelectProfile
             Select-Profile -Profiles $PotentialProfiles -Operation $Operation
         }
         else
-        {   
+        {
             $Profile = $(
                 switch ($ProfileType)
                 {
@@ -453,7 +453,7 @@ Function Get-OrgProfile
             [parameter(ParameterSetName = 'Identity')]
             [parameter(ParameterSetName = 'GetDefault')]
             $OrgProfileType = 'OneShellOrgProfile'
-            , 
+            ,
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
         )
@@ -653,7 +653,7 @@ Function Use-OrgProfile
         param
         (
             [parameter(ParameterSetName = 'Object')]
-            $profile 
+            $profile
             ,
             [parameter(ParameterSetName = 'Identity')]
             [ValidateScript({Test-DirectoryPath -path $_})]
@@ -666,7 +666,7 @@ Function Use-OrgProfile
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
             Write-Output -InputObject $dictionary
-        }  
+        }
         end
         {
             Set-DynamicParameterVariable -dictionary $dictionary
@@ -701,7 +701,7 @@ Function Use-OrgProfile
             {
                 $script:CurrentOrgProfile = $profile
                 Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name)." -EntryType Notification -Verbose
-            }    
+            }
         }
     }
 #end function Use-OrgProfile
@@ -717,7 +717,7 @@ function New-OrgProfileSystem
             [string]$Description
             ,
             [parameter(Mandatory,ValueFromPipelineByPropertyName)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')] 
+            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
             [parameter(ValueFromPipelineByPropertyName)]
@@ -1415,7 +1415,7 @@ function Get-OrgProfileSystemEndpoint
                         {$System.endpoints | Where-Object  -FilterScript {$_.Identity -eq $identity -or $_.Address -eq $Identity}}
                         else
                         {throw("Invalid Endpoint Identity $Identity was provided.  No such endpoint exists for System $($system.identity).")}
-                        
+
                     }
                 }
             )
@@ -1439,7 +1439,7 @@ Function Get-AdminUserProfile
             ,
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
-            [ValidateScript({Test-DirectoryPath -Path $_})]        
+            [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath
             ,
             [parameter(ParameterSetName = 'GetCurrent')]
@@ -1579,7 +1579,7 @@ Function Export-AdminUserProfile
             $path = "$($Env:USERPROFILE)\OneShell\"
         )
         if ($profile.Identity -is 'GUID')
-        {$name = $($profile.Identity.Guid) + '.JSON'} 
+        {$name = $($profile.Identity.Guid) + '.JSON'}
         else
         {$name = $($profile.Identity) + '.JSON'}
         $fullpath = Join-Path -Path $path -ChildPath $name
@@ -1590,7 +1590,7 @@ Function Export-AdminUserProfile
         }
         try
         {
-            ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force 
+            ConvertTo-Json @ConvertToJsonParams | Out-File -FilePath $fullpath -Encoding ascii -ErrorAction Stop -Force
         }#try
         catch
         {
@@ -1616,7 +1616,7 @@ Function Use-AdminUserProfile
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
             ,
             [switch]$NoAutoConnect
-            , 
+            ,
             [switch]$NoAutoImport
         )
         DynamicParam
@@ -1674,7 +1674,7 @@ Function Use-AdminUserProfile
             $JoinedSystems = join-object -Left $OrgSystems -Right $AdminSystems -LeftJoinProperty Identity -RightJoinProperty Identity
             #Write-Verbose -Message $("Members of Joined Systems: " + $($JoinedSystems | get-member -MemberType Properties | Select-Object -ExpandProperty Name) -join ',')
             #Write-Verbose -Message $("Members of Joined Systems Credentials: " + $($JoinedSystems.credentials | get-member -MemberType Properties | Select-Object -ExpandProperty Name) -join ',')
-            $Script:CurrentSystems = 
+            $Script:CurrentSystems =
             @(
                 foreach ($js in $JoinedSystems)
                 {
@@ -1737,7 +1737,7 @@ Function Use-AdminUserProfile
             if ($NoAutoConnect -ne $true)
             {
                 $AutoConnectSystems = Get-OneShellAvailableSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true}
-                
+
                 if ($NoAutoImport -eq $true)
                 {
                     $ConnectOneShellSystemParams = @{
@@ -1917,28 +1917,28 @@ Function Set-AdminUserProfileSystem
         [cmdletbinding()]
         param
         (
-            [parameter(Position = 1,ValueFromPipelineByPropertyName)]
+            [parameter(Position = 1,ValueFromPipelineByPropertyName,ValueFromPipeline)]
             [string]$Identity
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [bool]$AutoConnect
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [bool]$AutoImport
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [ValidateScript({($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
             [string]$PreferredPrefix
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [allowNull()]
             [string]$PreferredEndpoint
-            ,        
-            [parameter(ValueFromPipelineByPropertyName)]
+            ,
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
         )#end param
@@ -2284,7 +2284,7 @@ function New-AdminUserProfileCredential
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1 
+            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
         }
         End
@@ -2442,7 +2442,7 @@ function Set-AdminUserProfileCredential
                     }
                     'Username'
                     {
-                        $AdminProfile.Credentials | Where-Object -FilterScript {$_.Username -eq $UserName} 
+                        $AdminProfile.Credentials | Where-Object -FilterScript {$_.Username -eq $UserName}
                     }
                 }
             )
@@ -2665,4 +2665,3 @@ function Select-Profile
 #################################################
 #? Remove functions for OrgProfile, AdminProfile
 #code to warn user of adding endpoints to Systems that use Well Known Endpoints
-
