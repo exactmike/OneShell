@@ -448,7 +448,7 @@ Function Connect-OneShellSystem
         [switch]$NoAutoImport
         ,
         [parameter(ParameterSetName = 'Reconnect')]
-        [swtich]$Reconnect
+        [switch]$Reconnect
     )
     DynamicParam
     {
