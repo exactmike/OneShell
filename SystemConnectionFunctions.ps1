@@ -461,7 +461,7 @@ Function Connect-OneShellSystem
             $AvailableOneShellSystems = @(Get-OneShellAvailableSystem)
         }
         $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name;$AvailableOneShellSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true -ParameterSetName
+        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
         Write-Output -InputObject $dictionary
     }#DynamicParam
     begin
