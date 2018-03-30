@@ -316,7 +316,7 @@ function Test-OneShellSystemConnection
                                 )
                                 $TestCommandParams.$($p.name) = $value
                             }
-    
+
                         }
                         Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
                         $message = "Run $testCommand in $($serviceSession.name) PSSession"
@@ -446,6 +446,9 @@ Function Connect-OneShellSystem
         ,
         [parameter()]
         [switch]$NoAutoImport
+        ,
+        [parameter(ParameterSetName = 'Reconnect')]
+        [swtich]$Reconnect
     )
     DynamicParam
     {
@@ -468,7 +471,11 @@ Function Connect-OneShellSystem
     process
     {
         Set-DynamicParameterVariable -dictionary $Dictionary
-        foreach ($id in $identity)
+        if ($PSCmdlet.ParameterSetName -eq 'Reconnect')
+        {
+            $Identity = @(Get-Pssession | Where-Object {$_.State -eq 'Broken'} | ForEach-Object {$_.name.split('%')[0]} | Where-Object {$_ -in $AvailableOneShellSystemNamesAndIdentities})
+        }
+        foreach ($id in $Identity)
         {
             $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $id -or $_.Identity -eq $id}
             Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
@@ -497,6 +504,8 @@ Function Connect-OneShellSystem
                             {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
                             'EndPointGroup'
                             {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
+                            Default
+                            {}
                         }
                         Find-EndPointToUse @FindEndPointToUseParams
                     }
@@ -561,7 +570,7 @@ Function Connect-OneShellSystem
                                 Write-Log -Message $myerror.tostring() -EntryType -ErrorLog
                                 throw ($myerror)
                             }
-                        }#end if 
+                        }#end if
                         Write-Log -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
                         #create and test the new session
                         $ConnectionReady = $false #we switch this to true when a session is connected and initialized with required modules and settings
@@ -616,7 +625,7 @@ Function Connect-OneShellSystem
                                     }
                                     else
                                     {
-                                        $false    
+                                        $false
                                     }
                                 )
                                 $Phase2InitializationCompleted = $(
@@ -637,7 +646,7 @@ Function Connect-OneShellSystem
                                             $false
                                         }
                                     }
-                                    else 
+                                    else
                                     {
                                         $false
                                     }
@@ -672,7 +681,7 @@ Function Connect-OneShellSystem
                                     Write-Log -Message $message -EntryType Succeeded
                                     $ConnectionReady = $true
                                 }
-                                else 
+                                else
                                 {
                                     Write-Log -Message $message -EntryType Failed -ErrorLog
                                     if ($null -ne $ServiceSession)
@@ -705,13 +714,13 @@ Function Connect-OneShellSystem
                                 }
                             }
                         }
-                    } 
+                    }
                 }#end $true
                 default
                 {
                     Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"
                 }#end $false
-            }#end Switch    
+            }#end Switch
         }#end foreach i in Identity
     }#end Process
 }#function Connect-OneShellSystem
@@ -729,7 +738,7 @@ function Import-ModuleInOneShellSystemPSSession
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
         $ModuleImportResults = @(
-            if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1) 
+            if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1)
             {
                 foreach ($m in $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport)
                 {
@@ -768,7 +777,7 @@ function Import-ModuleInOneShellSystemPSSession
                 }
             }#end if
         )
-        switch ($ModuleImportResults) 
+        switch ($ModuleImportResults)
         {
             {$_.count -eq 0}
             {Write-Output -InputObject $null}
@@ -939,7 +948,7 @@ function Add-FunctionToPSSession
                 Get-Command -ErrorAction Stop -Name $FN -CommandType Function
             }
         )
-        #build functions text to initialize in PsSession 
+        #build functions text to initialize in PsSession
         $FunctionsText = ''
         foreach ($Function in $Functions) {
             $FunctionText = 'function ' + $Function.Name + "`r`n {`r`n" + $Function.Definition + "`r`n}`r`n"
@@ -964,12 +973,12 @@ Function Update-SessionManagementGroups
         {
             $SessionGroup = $MG + '_PSSessions'
             #Check if the Session Group already exists
-            if (Test-Path -Path "variable:\$SessionGroup") 
+            if (Test-Path -Path "variable:\$SessionGroup")
             {
                 #since the session group already exists, add the session to it if it is not already present
                 $ExistingSessions = Get-Variable -Name $SessionGroup -Scope Global -ValueOnly
                 $ExistingSessionNames = $existingSessions | Select-Object -ExpandProperty Name
-                if ($ServiceSession.name -in $ExistingSessionNames) 
+                if ($ServiceSession.name -in $ExistingSessionNames)
                 {
                     $NewValue = @($ExistingSessions | Where-Object -FilterScript {$_.Name -ne $ServiceSession.Name})
                     $NewValue += $ServiceSession
