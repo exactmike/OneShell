@@ -28,7 +28,7 @@
 - [ ] Does $PSSenderInfo have any use cases for OneShell
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
 - [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
-- [ ] spin off parameter functions to a separate module
+- [ ] spin off parameter functions to a separate module and add multiple parameter set support to Dynamic Parameters (so that a parameter can be mandatory in one and not in another)
 - [ ] need to add disconnect-oneshellsystem function to clean up modules/sessions when not needed
 - [ ] AD LDS support needs to be completed and tested (mostly ServiceTypes.json updated with the right values)
 
@@ -38,7 +38,7 @@
 - [ ] add function to export connectors, disconnectors, etc. from connector spaces for validation of new AAD Connect instances (In Progress)
 
 ## Exchange Function Improvements
-- [ ] Implement Proxy Functions to add an ExchangeOrganization Parameter . . . 
+- [ ] Implement Proxy Functions to add an ExchangeOrganization Parameter . . .
 - [ ] Implement multi-ExchangeOrganization Test-ProxyAddress and Test-Alias
 
 ## Bugs/Known Issues

@@ -447,7 +447,7 @@ Function Connect-OneShellSystem
         [parameter()]
         [switch]$NoAutoImport
         ,
-        [parameter(ParameterSetName = 'Reconnect')]
+        [parameter(Mandatory,ParameterSetName = 'Reconnect')]
         [switch]$Reconnect
     )
     DynamicParam
@@ -461,7 +461,7 @@ Function Connect-OneShellSystem
             $AvailableOneShellSystems = @(Get-OneShellAvailableSystem)
         }
         $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name;$AvailableOneShellSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
+        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true -ParameterSetName
         Write-Output -InputObject $dictionary
     }#DynamicParam
     begin
