@@ -2059,7 +2059,7 @@ Function Set-AdminUserProfileSystemCredential
         [cmdletbinding()]
         param
         (
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter(ValueFromPipelineByPropertyName,ValueFromPipeline)]
             [string[]]$SystemIdentity
             ,
             [parameter(ValueFromPipelineByPropertyName)]
@@ -2069,11 +2069,11 @@ Function Set-AdminUserProfileSystemCredential
             [ValidateSet('All','PSSession','Service')]
             $Purpose = 'All'
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$Path = "$env:UserProfile\OneShell\"
             ,
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
         )#end param
