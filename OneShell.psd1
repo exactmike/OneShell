@@ -12,7 +12,7 @@
 RootModule = 'OneShell.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.6'
+ModuleVersion = '2.0'
 
 # ID used to uniquely identify this module
 GUID = 'bd4390dc-a8ad-4bce-8d69-f53ccf8e4163'
@@ -24,7 +24,7 @@ Author = 'Mike Campbell'
 CompanyName = 'Exact Solutions'
 
 # Copyright statement for this module
-Copyright = '(c) 2016 . All rights reserved.'
+Copyright = '(c) 2017. All rights reserved.'
 
 # Description of the functionality provided by this module
 # Description = ''
@@ -66,8 +66,8 @@ PowerShellVersion = '3.0'
 #NestedModules = @('PSMenu.psm1')
 
 # Functions to export from this module
-#FunctionsToExport = '*'
-FunctionsToExport = '*-*'
+FunctionsToExport = '*'
+#FunctionsToExport = '*-*'
 
 # Cmdlets to export from this module
 #CmdletsToExport = '*'
