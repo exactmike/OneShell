@@ -1,10 +1,12 @@
 # To Do Items
 
 - [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
+- [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
 - [ ] Write GUI/Wizard Functions for Org and Admin Profile Creation
-- [ ] Admin Profile Editing/Creation GUI improvements (compared to the old one that is deprecated): List view for per system configuration like: system, credential (in drop down?), autoconnect check box, autoimport check box
-- [ ] Add a DynamicParameter capability for ValueFromPipeline options (<https://stackoverflow.com/questions/28604116/how-to-get-value-from-pipeline-for-a-dynamicparam-in-powershell>),(<https://beatcracker.wordpress.com/2014/12/18/psboundparameters-pipeline-and-the-valuefrompipelinebypropertyname-parameter-attribute/>)
-- [ ] Add/Enable Identity parameter for get-oneshellavailablesystem,get-oneshellsystempssession,import-oneshellsystem, etc.
+- [ ] Add Non-PSRemoting Service Attribute and Connection support
+- [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the module's onremove capability: <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
+- [x] Add a DynamicParameter capability for ValueFromPipeline options (<https://stackoverflow.com/questions/28604116/how-to-get-value-from-pipeline-for-a-dynamicparam-in-powershell>),(<https://beatcracker.wordpress.com/2014/12/18/psboundparameters-pipeline-and-the-valuefrompipelinebypropertyname-parameter-attribute/>)
+- [x] Add/Enable Identity parameter for get-oneshellavailablesystem,get-oneshellsystempssession,import-oneshellsystem, etc.
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
 - [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
 - [ ] Finish SQL ServiceType support (initialization)
@@ -12,18 +14,14 @@
 - [ ] Add Exchange 2007 ServiceType support
 - [ ] Add MigrationWiz/BitTitan ServiceType Support
 - [ ] Add Azure AD RMS ServiceType Support <https://docs.microsoft.com/en-us/information-protection/deploy-use/install-powershell>
-- [ ] Add Non-PSRemoting Service Attribute and Connection support
+- [ ] modify test-directorysynchronization to use Azure AD test as an option and to use non-recipient exchange objects
 - [x] Add auto-connect of AutoConnect Service types with Use-AdminUserProfile unless suppressed by -NoAutoConnect
 - [x] Add suppression of auto Import with -NoAutoImport on Connect-OneShellSystem and Use-AdminUserProfile
-- [ ] modify test-directorysynchronization to use Azure AD test as an option and to use non-recipient exchange objects
 - [ ] create a Write-Progress helper function for showing progress every nth record, showing time to completion, making the experience more consistent across functions, etc.
 - [ ] Follow <http://semver.org/> for Versioning
-- [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
-- [ ] Remove imported modules from session when re-connecting to a System
-- [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the module's onremove capability: <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
+- [x] Remove imported modules from session when re-connecting to a System
 - [x] Improve CommandPrefix configurations with profiles - allow NULL or blank
 - [ ] Add sophisticated CommandPrefix validation for org and admin profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
-- [ ] Make parameters which ask for a computer consistently named ComputerName?
 - [ ] Convert Write-Log to use System.IO.FileStream . . . and allow concurrent/asynch writing.
 - [ ] Does $PSSenderInfo have any use cases for OneShell
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
