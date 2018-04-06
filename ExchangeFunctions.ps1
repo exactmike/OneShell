@@ -257,23 +257,43 @@ Function Test-ExchangeAlias
             [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
         )
         #Populate the TestExchangeAlias Hash Table if needed
-        if (Test-Path -Path variable:Script:TestExchangeAlias)
-        {
-            if ($RefreshAliasData)
+        <#
+            if (Test-Path -Path variable:Script:TestExchangeAlias)
+            {
+                if ($RefreshAliasData)
+                {
+                    Write-Log -message 'Running New-TestExchangeAlias'
+                    New-TestExchangeAlias -ExchangeSession $ExchangeSession
+                }
+            }
+            else
             {
                 Write-Log -message 'Running New-TestExchangeAlias'
                 New-TestExchangeAlias -ExchangeSession $ExchangeSession
             }
-        }
-        else
-        {
-            Write-Log -message 'Running New-TestExchangeAlias'
-            New-TestExchangeAlias -ExchangeSession $ExchangeSession
-        }
+        #>
         #Test the Alias
-        if ($Script:TestExchangeAlias.ContainsKey($Alias))
+        $ReturnedObjects = @(
+            try
+            {
+                invoke-command -Session $ExchangeSession -ScriptBlock {Get-Recipient -identity $using:Alias -ErrorAction Stop} -ErrorAction Stop
+                Write-Verbose -Message "Existing object(s) Found for Alias $Alias"
+            }
+            catch
+            {
+                if ($_.categoryinfo -like '*ManagementObjectNotFoundException*')
+                {
+                    Write-Verbose -Message "No existing object(s) Found for Alias $Alias"
+                }
+                else
+                {
+                    throw($_)
+                }
+            }
+        )
+        if ($ReturnedObjects.Count -ge 1)
         {
-            $ConflictingGUIDs = @($Script:TestExchangeAlias.$Alias | Where-Object {$_ -notin $ExemptObjectGUIDs})
+            $ConflictingGUIDs = @($ReturnedObjects | ForEach-Object {$_.guid.guid} | Where-Object {$_ -notin $ExemptObjectGUIDs})
             if ($ConflictingGUIDs.count -gt 0)
             {
                 if ($ReturnConflicts)
@@ -374,37 +394,57 @@ Function Test-ExchangeProxyAddress
             [string]$ProxyAddressType = 'SMTP'
         )
         #Populate the Global TestExchangeProxyAddress Hash Table if needed
-        if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
-        {
-            if ($RefreshProxyAddressData)
+        <# if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
             {
-                if ($null -eq $ExchangeSession)
+                if ($RefreshProxyAddressData)
                 {
-                    throw('You must include the Exchange Session to use the RefreshProxyAddressData switch')
+                    if ($null -eq $ExchangeSession)
+                    {
+                        throw('You must include the Exchange Session to use the RefreshProxyAddressData switch')
+                    }
+                    Write-Log -message 'Running New-TestExchangeProxyAddress'
+                    New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
                 }
+            }
+            else
+            {
                 Write-Log -message 'Running New-TestExchangeProxyAddress'
                 New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
             }
-        }
-        else
-        {
-            Write-Log -message 'Running New-TestExchangeProxyAddress'
-            New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
-        }
+        #>
+
         #Fix the ProxyAddress if needed
-        if ($ProxyAddress -notlike "$($proxyaddresstype):*")
+        if ($ProxyAddress -like "$($proxyaddresstype):*")
         {
-            $ProxyAddress = "$($proxyaddresstype):$ProxyAddress"
+            $ProxyAddress = $ProxyAddress.Split(':')[1]
         }
         #Test the ProxyAddress
-        if ($Script:TestExchangeProxyAddress.ContainsKey($ProxyAddress))
+        $ReturnedObjects = @(
+            try
+            {
+                invoke-command -Session $ExchangeSession -ScriptBlock {Get-Recipient -identity $using:ProxyAddress -ErrorAction Stop} -ErrorAction Stop
+                Write-Verbose -Message "Existing object(s) Found for Alias $ProxyAddress"
+            }
+            catch
+            {
+                if ($_.categoryinfo -like '*ManagementObjectNotFoundException*')
+                {
+                    Write-Verbose -Message "No existing object(s) Found for Alias $ProxyAddress"
+                }
+                else
+                {
+                    throw($_)
+                }
+            }
+        )
+        if ($ReturnedObjects.Count -ge 1)
         {
-            $ConflictingGUIDs = @($Script:TestExchangeProxyAddress.$ProxyAddress | Where-Object {$_ -notin $ExemptObjectGUIDs})
+            $ConflictingGUIDs = @($ReturnedObjects | ForEach-Object {$_.guid.guid} | Where-Object {$_ -notin $ExemptObjectGUIDs})
             if ($ConflictingGUIDs.count -gt 0)
             {
                 if ($ReturnConflicts)
                 {
-                    $ConflictingGUIDs
+                    Return $ConflictingGUIDs
                 }
                 else
                 {
