@@ -523,7 +523,7 @@ function New-OrgProfile
             ,
             [parameter(Mandatory)]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string]$Path
+            [string]$Path = $script:OneShellOrgProfilePath
         )
         $GenericOrgProfileObject = NewGenericOrgProfileObject
         $GenericOrgProfileObject.Name = $Name
