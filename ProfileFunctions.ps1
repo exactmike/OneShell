@@ -18,7 +18,11 @@ function GetPotentialOrgProfiles
                 (Get-ChildItem -Path $loc -Filter *.json)
             }
         )
-        $PotentialOrgProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+        Write-Verbose -Message "Found $($jsonProfiles.count) JSON Files"
+        $PotentialOrgProfiles = @(
+            foreach ($file in $JSONProfiles)
+            {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Where-Object -FilterScript {Test-Member -Name Identity -InputObject $_} | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
+        )
         Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
         Write-Output -InputObject $PotentialOrgProfiles
     }
@@ -447,7 +451,7 @@ Function Get-OrgProfile
             [parameter(ParameterSetName = 'Identity')]
             [parameter(ParameterSetName = 'GetDefault')]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
             ,
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
@@ -459,7 +463,7 @@ Function Get-OrgProfile
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'Identity'
@@ -517,9 +521,9 @@ function New-OrgProfile
             [parameter()]
             [string[]]$OrganizationSpecificModules
             ,
-            [parameter()]
+            [parameter(Mandatory)]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string]$Path
         )
         $GenericOrgProfileObject = NewGenericOrgProfileObject
         $GenericOrgProfileObject.Name = $Name
@@ -546,11 +550,11 @@ function Set-OrgProfile
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
@@ -596,7 +600,7 @@ function Set-OrgProfile
                         $op.$($p.key) = $p.value
                     }
                 }
-                Export-OrgProfile -profile $op -Path $Path -ErrorAction 'Stop'
+                Export-OrgProfile -profile $op -Path $op.DirectoryPath -ErrorAction 'Stop'
             }
         }
     }
@@ -625,6 +629,7 @@ Function Export-OrgProfile
             $FilePath = Join-Path $Path $name
         }
         Write-Verbose -Message "Profile File Export Path is $FilePath"
+        $profile | Remove-Member -Member DirectoryPath
         $JSONparams=@{
             InputObject = $profile
             ErrorAction = 'Stop'
@@ -657,11 +662,11 @@ Function Use-OrgProfile
             ,
             [parameter(ParameterSetName = 'Identity')]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
@@ -743,11 +748,11 @@ function New-OrgProfileSystem
             ,
             [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles.Name;$PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
@@ -796,7 +801,7 @@ function New-OrgProfileSystem
             $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject @addServiceTypeAttributesParams
             $OrgProfile.Systems += $GenericSystemObject
             $global:TestOrgProfile = $OrgProfile
-            Export-OrgProfile -profile $OrgProfile -Path $Path
+            Export-OrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath
         }
     }
 #end function New-OrgSystemObject
@@ -842,11 +847,11 @@ function Set-OrgProfileSystem
             ,
             [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
@@ -881,7 +886,7 @@ function Set-OrgProfileSystem
                 }
                 #update the system entry in the org profile
                 $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-                Export-OrgProfile -profile $OrgProfile -Path $Path
+                Export-OrgProfile -profile $OrgProfile -Path $OrgProfile.FilePath
             }
         }
     }
@@ -901,7 +906,7 @@ function Set-OrgProfileSystemServiceTypeAttributes
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
@@ -941,7 +946,7 @@ function Set-OrgProfileSystemServiceTypeAttributes
                 }
                 #update the system entry in the org profile
                 $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-                Export-OrgProfile -profile $OrgProfile -Path $Path
+                Export-OrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath
             }
         }
     }
@@ -958,14 +963,14 @@ Function Get-OrgProfileSystem
             [parameter(ParameterSetName = 'ProfileIdentity')]
             [parameter(ParameterSetName = 'All')]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
             ,
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
@@ -1022,11 +1027,11 @@ Function Remove-OrgProfileSystem
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = @("$env:ALLUSERSPROFILE\OneShell")
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'ProfileIdentity'
@@ -1046,7 +1051,7 @@ Function Remove-OrgProfileSystem
                 $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $i -Operation Remove
                 #Remove the system from the Org Profile
                 $OrgProfile = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-                Export-OrgProfile -profile $OrgProfile -Path $path -ErrorAction Stop
+                Export-OrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath -ErrorAction Stop
             }
         }
     }
@@ -1112,11 +1117,11 @@ function New-OrgProfileSystemEndpoint
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+            [string]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
@@ -1189,7 +1194,7 @@ function New-OrgProfileSystemEndpoint
             $system.endpoints += $GenericEndpointObject
             #update the system on the profile object
             $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName 'Systems' -IdentityAttributeName 'Identity'
-            Export-OrgProfile -profile $OrgProfile -Path $Path -ErrorAction Stop
+            Export-OrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath -ErrorAction Stop
         }
     }
 #end function New-OrgProfileSystemEndpoint
@@ -1208,11 +1213,11 @@ function Remove-OrgProfileSystemEndpoint
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+            [string]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
@@ -1243,7 +1248,7 @@ function Remove-OrgProfileSystemEndpoint
             if ($null -eq $endPoint) {throw("No valid endpoint was selected.")}
             $System = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $endPoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
             $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-            Export-OrgProfile -Path $Path -profile $OrgProfile -ErrorAction Stop
+            Export-OrgProfile -Path $OrgProfile.DirectoryPath -profile $OrgProfile -ErrorAction Stop
         }
     }
 #end function Remove-OrgProfileSystemEndpoint
@@ -1308,11 +1313,11 @@ function Set-OrgProfileSystemEndpoint
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+            [string]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $Dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
@@ -1364,7 +1369,7 @@ function Set-OrgProfileSystemEndpoint
             }
             $System = update-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $endPoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
             $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-            Export-OrgProfile -Path $Path -profile $OrgProfile -ErrorAction Stop
+            Export-OrgProfile -Path $OrgProfile.DirectoryPath -profile $OrgProfile -ErrorAction Stop
         }#end End
     }
 #end function Set-OrgProfileSystemEndpoint
@@ -1385,11 +1390,11 @@ function Get-OrgProfileSystemEndpoint
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = "$env:ALLUSERSPROFILE\OneShell\"
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
@@ -1449,7 +1454,7 @@ Function Get-AdminUserProfile
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 2
@@ -1517,15 +1522,15 @@ function New-AdminUserProfile
             ,
             [Parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+            [string]$OrgProfilePath = $Script:OneShellOrgProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string]$Path = "$env:UserProfile\OneShell\"
         )
         DynamicParam
         {
-            if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"}
+            if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1
@@ -1613,7 +1618,7 @@ Function Use-AdminUserProfile
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
             ,
             [switch]$NoAutoConnect
             ,
@@ -1778,7 +1783,7 @@ function Set-AdminUserProfile
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
@@ -1851,7 +1856,7 @@ Function Get-AdminUserProfileSystem
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
             ,
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
@@ -1940,7 +1945,7 @@ Function Set-AdminUserProfileSystem
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
         )#end param
         DynamicParam
         {
@@ -2011,7 +2016,7 @@ Function Set-AdminUserProfileSystemPreferredEndpoint
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
         )#end param
         DynamicParam
         {
@@ -2075,7 +2080,7 @@ Function Set-AdminUserProfileSystemCredential
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
         )#end param
         DynamicParam
         {
@@ -2200,7 +2205,7 @@ function Update-AdminUserProfileSystem
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$OrgProfilePath = "$env:ALLUSERSPROFILE\OneShell\"
+            [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
         )
         DynamicParam
         {
@@ -2659,7 +2664,116 @@ function Select-Profile
 #################################################
 # Need to update
 #################################################
+function Set-OneShellOrgProfileDirectory
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter()]
+            [string]$Path #If not specified the Path will default to the DefaultPath of $env:ALLUSERSPROFILE\OneShell for OrgProfileDirectoryScope System and to $env:LocalAppData\OneShell for OrgProfileDirectoryScope User
+            ,
+            [parameter(Mandatory)]
+            [validateSet('System','User')]
+            [string]$OrgProfileDirectoryScope
+            ,
+            [parameter()]
+            [switch]$DoNotPersist #By Default, this function tries to persist the OrgProfileDirectory to the DefaultPath by writing a JSON file with the setting to that location.  This switch overrides that behavior.
+        )
+        switch ($OrgProfileDirectoryScope)
+        {
+            'System'
+            {
+                $DefaultPath = $("$env:ALLUSERSPROFILE\OneShell")
+                if ($Path -ne $DefaultPath)
+                {
+                    $message = "The recommended/default location for System wide OneShell Org Profile storage is $DefaultPath."
+                    Write-Verbose -Message $message -Verbose
+                }
+                if (-not $PSBoundParameters.ContainsKey('Path'))
+                {
+                    $Path = $DefaultPath
+                }
+            }
+            'User'
+            {
+                $DefaultPath = $("$env:LocalAppData\OneShell")
+                if ($Path -ne $DefaultPath)
+                {
+                    $message = "The recommended/default location for User specific OneShell Org Profile storage is $DefaultPath."
+                    Write-Verbose -Message $message -Verbose
+                }
+                if (-not $PSBoundParameters.ContainsKey('Path'))
+                {
+                    $Path = $DefaultPath
+                }
+            }
+        }
+        if (-not (Test-Path -Path $Path -PathType Container))
+        {
+            Write-Verbose -Message "Create Directory $Path"
+            try
+            {
+                New-Item -Path $Path -ItemType Directory -ErrorAction Stop | Out-Null
+            }
+            catch
+            {
+                throw($_)
+            }
+        }
+        if (-not (Test-IsWriteableDirectory -path $path))
+        {
+            $message = "The specified path exists but does not appear to be writeable. Without elevating or using a different credential this user may be able to use existing OneShell Org Profiles in this location but may not be able to edit them."
+            Write-Warning -Message $message
+        }
+        $Script:OneShellOrgProfilePath = @($Path)
 
+        if (-not $PSBoundParameters.ContainsKey('DoNotPersist'))
+        {
+            $PersistObject = [PSCustomObject]@{
+                OrgProfilePath = $Path
+            }
+            $PersistFileName = 'PersistedOneShellOrgProfileDirectory.json'
+            $PersistFilePath = Join-Path -Path $DefaultPath -ChildPath $PersistFileName
+            if ((Test-IsWriteableDirectory -path $DefaultPath))
+            {
+
+                $PersistObject | ConvertTo-Json | Out-File -Encoding utf8 -FilePath $PersistFilePath
+            }
+            else
+            {
+                $message = "Unable to write file $PersistFilePath. You may have to use Set-OneShellOrgProfileDirectory with subsequent uses of the OneShell module."
+                Write-Warning -Message $message
+            }
+        }
+    }
+#end function Set-OneShellOrgProfileDirectory
+function GetOneShellOrgProfileDirectory
+{
+    [CmdletBinding()]
+    param
+    ()
+    $UserDirectory = $("$env:LocalAppData\OneShell")
+    $SystemDirectory = $("$env:ALLUSERSPROFILE\OneShell")
+    $PersistFileName = 'PersistedOneShellOrgProfileDirectory.json'
+    $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
+    $SystemFilePath = Join-Path -Path $SystemDirectory -ChildPath $PersistFileName
+    if (Test-Path -Path $UserFilePath -PathType Leaf)
+    {
+        $Script:OneShellOrgProfilePath = $(Import-JSON -Path $UserFilePath).OrgProfilePath
+    }
+    else
+    {
+        if (Test-Path -Path $SystemFilePath -PathType Leaf)
+        {
+            $Script:OneShellOrgProfilePath = $(Import-JSON -Path $SystemFilePath).OrgProfilePath
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($Script:OneShellOrgProfilePath))
+    {
+        $message = 'You must run Set-OneShellOrgProfileDirectory. No persisted OneShell Org Profile directories found.'
+        Write-Warning -Message $message
+    }
+}
 #################################################
 # Need to add
 #################################################

@@ -36,7 +36,7 @@ function Get-TimeStamp
 #Error Handling Functions and used by other OneShell Functions
 function Get-AvailableExceptionsList
     {
-        <#  
+        <#
             .Synopsis      Retrieves all available Exceptions to construct ErrorRecord objects.
             .Description      Retrieves all available Exceptions in the current session to construct ErrorRecord objects.
             .Example      $availableExceptions = Get-AvailableExceptionsList      Description      ===========      Stores all available Exception objects in the variable 'availableExceptions'.
@@ -45,7 +45,7 @@ function Get-AvailableExceptionsList
             .Outputs     System.String
             .Link      New-ErrorRecord
             .Notes Name:  Get-AvailableExceptionsList  Original Author: Robert Robelo  ModifiedBy: Mike Campbell
-        #>    
+        #>
         [CmdletBinding()]
         param()
         $irregulars = 'Dispose|OperationAborted|Unhandled|ThreadAbort|ThreadStart|TypeInitialization'
@@ -57,7 +57,7 @@ function Get-AvailableExceptionsList
     }
 function New-ErrorRecord
     {
-    <#  
+    <#
         .Synopsis      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
         .Description      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
         .Parameter Exception      The Exception that will be associated with the ErrorRecord.
@@ -70,7 +70,7 @@ function New-ErrorRecord
         # advanced functions for testing
         function Test-1
         {
-        [CmdletBinding()] 
+        [CmdletBinding()]
         param
         (
         [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
@@ -86,9 +86,9 @@ function New-ErrorRecord
             $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmpty InvalidOperation $_path -Message "File '$_path' is empty."
             $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
-        }  
         }
-        } 
+        }
+        }
         function Test-2
         {
         [CmdletBinding()]
@@ -108,14 +108,14 @@ function New-ErrorRecord
             }
         }
         }
-        } 
-        # code to test the custom terminating error reports 
-        Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose 
-        Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green 
-        $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green 
-        $Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green 
-        $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green 
-        $Error[0].Exception | Format-List * -Force 
+        }
+        # code to test the custom terminating error reports
+        Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose
+        Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green
+        $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green
+        $Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green
+        $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green
+        $Error[0].Exception | Format-List * -Force
         Remove-Item .\MyEmptyFile.bak -Verbose
         Description
         ===========
@@ -148,7 +148,7 @@ function New-ErrorRecord
         OriginalAuthor:    Robert Robelo
         ModifiedBy: Mike Campbell
     #>
-    [cmdletbinding()]    
+    [cmdletbinding()]
     param
     (
         [Parameter(Mandatory, Position = 0)]
@@ -332,7 +332,7 @@ function Get-CallerPreference
                     ($PSCmdlet.ParameterSetName -eq 'AllVariables' -or $filterHash.ContainsKey($entry.Name)))
                 {
                     $variable = $Cmdlet.SessionState.PSVariable.Get($entry.Key)
-                    
+
                     if ($null -ne $variable)
                     {
                         if ($SessionState -eq $ExecutionContext.SessionState)
@@ -353,7 +353,7 @@ function Get-CallerPreference
                     if (-not $vars.ContainsKey($varName))
                     {
                         $variable = $Cmdlet.SessionState.PSVariable.Get($varName)
-                    
+
                         if ($null -ne $variable)
                         {
                             if ($SessionState -eq $ExecutionContext.SessionState)
@@ -376,14 +376,14 @@ function New-GUID {[GUID]::NewGuid()}
 #Conversion and Testing Functions
 function New-SplitArrayRange
     {
-        <#  
-        .SYNOPSIS 
+        <#
+        .SYNOPSIS
         Provides Start and End Ranges to Split an array into a specified number of parts (new arrays) or parts (new arrays) with a specified number (size) of elements
         .PARAMETER inArray
         A one dimensional array you want to split
-        .EXAMPLE  
+        .EXAMPLE
         Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -parts 3
-        .EXAMPLE  
+        .EXAMPLE
         Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -size 3
         .NOTE
         Derived from https://gallery.technet.microsoft.com/scriptcenter/Split-an-array-into-parts-4357dcc1#content
@@ -493,30 +493,30 @@ Function Convert-ObjectToHashTable
             .Example
             PS C:\> get-process -id $pid | select name,id,handles,workingset | ConvertTo-HashTable
 
-            Name                           Value                                                      
-            ----                           -----                                                      
-            WorkingSet                     418377728                                                  
-            Name                           powershell_ise                                             
-            Id                             3456                                                       
-            Handles                        958                                                 
+            Name                           Value
+            ----                           -----
+            WorkingSet                     418377728
+            Name                           powershell_ise
+            Id                             3456
+            Handles                        958
             .Example
             PS C:\> $hash = get-service spooler | ConvertTo-Hashtable -Exclude CanStop,CanPauseandContinue -NoEmpty
             PS C:\> $hash
 
-            Name                           Value                                                      
-            ----                           -----                                                      
-            ServiceType                    Win32OwnProcess, InteractiveProcess                        
-            ServiceName                    spooler                                                    
-            ServiceHandle                  SafeServiceHandle                                          
-            DependentServices              {Fax}                                                      
-            ServicesDependedOn             {RPCSS, http}                                              
-            Name                           spooler                                                    
-            Status                         Running                                                    
-            MachineName                    .                                                          
-            RequiredServices               {RPCSS, http}                                              
-            DisplayName                    Print Spooler                                              
+            Name                           Value
+            ----                           -----
+            ServiceType                    Win32OwnProcess, InteractiveProcess
+            ServiceName                    spooler
+            ServiceHandle                  SafeServiceHandle
+            DependentServices              {Fax}
+            ServicesDependedOn             {RPCSS, http}
+            Name                           spooler
+            Status                         Running
+            MachineName                    .
+            RequiredServices               {RPCSS, http}
+            DisplayName                    Print Spooler
 
-            This created a hashtable from the Spooler service object, skipping empty 
+            This created a hashtable from the Spooler service object, skipping empty
             properties and excluding CanStop and CanPauseAndContinue.
             .Notes
             Version:  2.0
@@ -558,14 +558,14 @@ Function Convert-ObjectToHashTable
 
             $TypeName = [type]::GetTypeArray($InputObject).name
             Write-Verbose -Message "Converting an object of type $TypeName"
-        
+
             #get property names using Get-Member
-            $names = $InputObject | Get-Member -MemberType properties | 
-            Select-Object -ExpandProperty name 
+            $names = $InputObject | Get-Member -MemberType properties |
+            Select-Object -ExpandProperty name
 
             #define an empty hash table
             $hash = @{}
-        
+
             #go through the list of names and add each property and value to the hash table
             $names | ForEach-Object {
                 #only add properties that haven't been excluded
@@ -592,7 +592,7 @@ function Convert-SecureStringToString
     {
         <#
             .SYNOPSIS
-            Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user. 
+            Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user.
             .DESCRIPTION
             Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user.
             .PARAMETER SecureString
@@ -615,7 +615,7 @@ function Convert-SecureStringToString
             [parameter(ValueFromPipeline=$True)]
             [securestring[]]$SecureString
         )
-        
+
         BEGIN {}
         PROCESS {
             foreach ($ss in $SecureString)
@@ -653,7 +653,7 @@ function Get-GUIDFromImmutableID
         (
             $ImmutableID
         )
-        [GUID][convert]::frombase64string($ImmutableID) 
+        [GUID][convert]::frombase64string($ImmutableID)
     }
 #end function Get-GUIDFromImmutableID
 function Get-ByteArrayFromGUID
@@ -735,8 +735,8 @@ function Out-FileUtf8NoBom {
           file one by one.
 
       .NOTES
-      The raison d'être for this advanced function is that, as of PowerShell v5, 
-      Out-File still lacks the ability to write UTF-8 files without a BOM: 
+      The raison d'être for this advanced function is that, as of PowerShell v5,
+      Out-File still lacks the ability to write UTF-8 files without a BOM:
       using -Encoding UTF8 invariably prepends a BOM.
       http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
   #>
@@ -752,7 +752,7 @@ function Out-FileUtf8NoBom {
     ,
     [AllowNull()] [int] $Width
     ,
-    [Parameter(ValueFromPipeline)] 
+    [Parameter(ValueFromPipeline)]
     $InputObject
   )
   # Make sure that the .NET framework sees the same working dir. as PS
@@ -761,7 +761,7 @@ function Out-FileUtf8NoBom {
   $LiteralPath = [IO.Path]::GetFullPath($LiteralPath)
   # If -NoClobber was specified, throw an exception if the target file already
   # exists.
-  if ($NoClobber -and (Test-Path $LiteralPath)) { 
+  if ($NoClobber -and (Test-Path $LiteralPath)) {
     Throw [IO.IOException] "The file '$LiteralPath' already exists."
   }
   # Create a StreamWriter object.
@@ -947,7 +947,7 @@ Function Remove-AgedFiles
         $filestodelete = $files | Where-Object {$_.CreationTime -lt $daysAgo -and $_.LastWriteTime -lt $daysAgo}
         $filestodelete | Remove-Item
     }
-} 
+}
 Function Send-OneShellMailMessage
 {
   [cmdletbinding(DefaultParameterSetName = 'Normal')]
@@ -1023,8 +1023,8 @@ function New-Timer {
       .Synopsis
       Creates a new countdown timer which can show progress and/or issue voice reports of remaining time.
       .Description
-      Creates a new PowerShell Countdown Timer which can show progress using a progress bar and can issue voice reports of progress according to the Units and Frequency specified.  
-      Additionally, as the timer counts down, alternative voice report units and frequency may be specified using the altReport parameter.  
+      Creates a new PowerShell Countdown Timer which can show progress using a progress bar and can issue voice reports of progress according to the Units and Frequency specified.
+      Additionally, as the timer counts down, alternative voice report units and frequency may be specified using the altReport parameter.
       .Parameter Units
       Specify the countdown timer length units.  Valid values are Seconds, Minuts, Hours, or Days.
       .Parameter Length
@@ -1051,7 +1051,7 @@ function New-Timer {
     ,
     [switch]$showprogress
     ,
-    [double]$Frequency = 1 
+    [double]$Frequency = 1
     ,
     [hashtable[]]$altReport #Units,Frequency,CountdownPoint
     ,
@@ -1066,7 +1066,7 @@ function New-Timer {
   }
 
   if ($voice) {
-    Add-Type -AssemblyName System.speech                                                                                                                                                               
+    Add-Type -AssemblyName System.speech
     $speak = New-Object -TypeName System.Speech.Synthesis.SpeechSynthesizer
     $speak.Rate = 3
     $speak.Volume = 100
@@ -1082,7 +1082,7 @@ function New-Timer {
                 $vrt.seconds = $vr.frequency
                 $vrt.frequency = $vr.frequency
                 $vrt.units = $vr.Units
-                $vrt.countdownpoint = $vr.countdownpoint 
+                $vrt.countdownpoint = $vr.countdownpoint
             }
             'Minutes' {
                 #convert frequency units to seconds
@@ -1117,7 +1117,7 @@ function New-Timer {
 
   if ($showprogress) {
         $writeprogressparams = @{
-            Activity = "Starting Timer for $length $units" 
+            Activity = "Starting Timer for $length $units"
             Status = 'Running'
             PercentComplete = 0
             CurrentOperation = 'Starting'
@@ -1138,7 +1138,7 @@ function New-Timer {
         $writeprogressparams.CurrentOperation = 'Countdown'
         $writeprogressparams.SecondsRemaining = $secondsremaining
         $writeprogressparams.PercentComplete = ($secondsremaining/$timespan.TotalSeconds)*100
-        $writeprogressparams.Activity = "Running Timer for $length $units" 
+        $writeprogressparams.Activity = "Running Timer for $length $units"
         Write-Progress @writeprogressparams
     }
 
@@ -1211,7 +1211,7 @@ function New-Timer {
                             }
                         }
                     }
-                        
+
                 }
             }
         }
@@ -1227,13 +1227,13 @@ function New-Timer {
   until ($secondsremaining -eq 0)
   if ($showprogress) {
     $writeprogressparams.completed = $true
-    $writeprogressparams.Activity = "Completed Timer for $length $units" 
+    $writeprogressparams.Activity = "Completed Timer for $length $units"
     Write-Progress @writeprogressparams
   }
 }
 #User Input Functions
 function Read-InputBoxDialog
-{ # Show input box popup and return the value entered by the user. 
+{ # Show input box popup and return the value entered by the user.
   param(
     [string]$Message
     ,
@@ -1337,7 +1337,7 @@ function Read-InputBoxDialog
   {
     $Script:UserInput
   }
-} 
+}
 function Read-OpenFileDialog
 {
   [cmdletbinding()]
@@ -1357,7 +1357,7 @@ function Read-OpenFileDialog
     $openFileDialog.Filter = $Filter
     if ($AllowMultiSelect) { $openFileDialog.MultiSelect = $true }
     $openFileDialog.ShowHelp = $true
-    # Without this line the ShowDialog() function may hang depending on system configuration and running from console vs. ISE.     
+    # Without this line the ShowDialog() function may hang depending on system configuration and running from console vs. ISE.
     $result = $openFileDialog.ShowDialog()
     switch ($Result)
     {
@@ -1369,7 +1369,7 @@ function Read-OpenFileDialog
             } else
             {
                 Write-Output -InputObject $openFileDialog.Filename
-            } 
+            }
         }
         'Cancel'
         {
@@ -1586,7 +1586,7 @@ function Read-Choice
         $Enumerator = $_.Enumerator
         $Choice = $_.Choice
         $Description = if (-not [string]::IsNullOrWhiteSpace($_.Description)) {$_.Description} else {$_.Choice}
-        $ChoiceWithEnumerator = 
+        $ChoiceWithEnumerator =
             if ($Numbered)
             {
                 "_$Enumerator $($Choice)"
@@ -1729,14 +1729,14 @@ function Read-Choice
   $window.Content = $Grid
   #EndRegion BuildWPFWindow
   # Show the window
-    
+
   if ($window.ShowDialog())
   {
     if ($ReturnChoice)
     {
         $cindex = Get-ArrayIndexForValue -array $possiblechoices -value $Script:UserChoice -property ChoiceWithEnumerator
         $possiblechoices[$cindex].ChoiceText
-    } 
+    }
     else
     {
         Get-ArrayIndexForValue -array $possiblechoices -value $Script:UserChoice -property ChoiceWithEnumerator
@@ -1744,7 +1744,7 @@ function Read-Choice
   }
 }#Read-Choice
 function Read-FolderBrowserDialog
-{# Show an Open Folder Dialog and return the directory selected by the user. 
+{# Show an Open Folder Dialog and return the directory selected by the user.
   [cmdletbinding()]
     Param(
         [string]$Description
@@ -1809,10 +1809,10 @@ function Get-MsolUserLicenseDetail {
             'UserPrincipalName' {
                 foreach ($UPN in $UserPrincipalName) {
                     try {
-                        Write-Log -Message "Attempting: Get-MsolUser for UserPrincipalName $UPN" 
+                        Write-Log -Message "Attempting: Get-MsolUser for UserPrincipalName $UPN"
                         $user = Get-MsolUser -UserPrincipalName $UPN -ErrorAction Stop
-                        Write-Log -Message "Succeeded: Get-MsolUser for UserPrincipalName $UPN" 
-                        getresult -user $user 
+                        Write-Log -Message "Succeeded: Get-MsolUser for UserPrincipalName $UPN"
+                        getresult -user $user
                     }#try
                     catch{
                         Write-Log -message "Unable to locate MSOL User with UserPrincipalName $UPN" -ErrorLog
@@ -1823,7 +1823,7 @@ function Get-MsolUserLicenseDetail {
             }#UserPrincipalName
             'MSOLUserObject' {
                 foreach ($user in $msoluser) {
-                    getresult -user $user 
+                    getresult -user $user
                 }#foreach
             }#MSOLUserObject
         }#switch
@@ -1912,7 +1912,7 @@ function Set-OneShellVariable
 function New-OneShellVariable
     {
         [cmdletbinding()]
-        param 
+        param
         (
             [string]$Name
             ,
@@ -1937,15 +1937,15 @@ function Remove-OneShellVariable
         }
     }
 #end function Remove-OneShellVariable
-function Set-OneShellVariables
+function SetOneShellVariables
     {
         [cmdletbinding()]
         Param()
         #Write-Log -message 'Setting OneShell Module Variables'
         $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
-        $script:OneShellOrgProfilePath = @(Join-Path $env:ProgramData OneShell)
-        <#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL' 
-        [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK' 
+        GetOneShellOrgProfileDirectory
+        <#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL'
+        [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK'
         [string]$Script:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
         [string]$Script:E1_SkuPartNumber = 'STANDARDPACK'
         [string]$Script:K1_SkuPartNumber = 'DESKLESSPACK' #>
@@ -2032,7 +2032,7 @@ function Set-OneShellVariables
         $Script:ADContactAttributes = @('CanonicalName','CN','Created','createTimeStamp','Deleted','Description','DisplayName','DistinguishedName','givenName','instanceType','internetEncoding','isDeleted','LastKnownParent','legacyExchangeDN','mail','mailNickname','mAPIRecipient','memberOf','Modified','modifyTimeStamp','msExchADCGlobalNames','msExchALObjectVersion','msExchPoliciesExcluded','Name','ObjectCategory','ObjectClass','ObjectGUID','ProtectedFromAccidentalDeletion','proxyAddresses','showInAddressBook','sn','targetAddress','textEncodedORAddress','uSNChanged','uSNCreated','whenChanged','whenCreated')
         $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
         $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName','country','homeMDB','homeMTA','msExchHomeServerName')}
-        $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members' 
+        $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members'
         $Script:Stamp = Get-TimeStamp
     }
 #end function Set-OneShellVariables
@@ -2056,6 +2056,4 @@ $Script:ServiceTypes = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypes.j
 ##########################################################################################################
 #Initialization
 ##########################################################################################################
-Set-OneShellVariables
-#Do one of the following in your profile or run script:
-#Initialize-AdminEnvironment -showmenu or Initialize-AdminEnvironment -OrgProfileIdentity <value> -AdminUserProfileIdentity <value>
+SetOneShellVariables
