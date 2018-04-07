@@ -521,7 +521,7 @@ function New-OrgProfile
             [parameter()]
             [string[]]$OrganizationSpecificModules
             ,
-            [parameter(Mandatory)]
+            [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string]$Path = $script:OneShellOrgProfilePath
         )
