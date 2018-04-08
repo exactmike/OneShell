@@ -1,5 +1,7 @@
 # To Do Items
 
+- [ ] add prompting anytime a user doesn't specify identity with the set-*profile* commands
+- [ ] call update-adminuserprofilesystem in every set-adminuserprofile* cmdlet to catch recently added orgprofilesystems
 - [ ] add parameters to Set-AdminUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [ ] fix Set-AdminUserProfile* functions so that path is preserved for admin profiles when editing in a non-default location
 - [ ] replace code in New-OrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
