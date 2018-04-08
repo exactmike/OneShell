@@ -9,8 +9,14 @@ function GetPotentialOrgProfiles
         [cmdletbinding()]
         param
         (
+            [parameter()]
+            [AllowNull()]
             [string[]]$path
         )
+        if ($null -eq $path)
+        {
+            throw('You must specify the Path parameter or run Set-OneShellOrgProfilePath')
+        }
         $JSONProfiles = @(
             foreach ($loc in $Path)
             {
@@ -24,7 +30,14 @@ function GetPotentialOrgProfiles
             {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Where-Object -FilterScript {Test-Member -Name Identity -InputObject $_} | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
         )
         Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
-        Write-Output -InputObject $PotentialOrgProfiles
+        if ($PotentialOrgProfiles.Count -lt 1)
+        {
+            throw('You must specify a folder path which contains OneShell Org Profiles with the Path parameter and/or you must create at least one Org Profile using New-OrgProfile.')
+        }
+        else
+        {
+            $PotentialOrgProfiles
+        }
     }
 #end funciton GetPotentialOrgProfiles
 function GetPotentialAdminUserProfiles
@@ -32,8 +45,14 @@ function GetPotentialAdminUserProfiles
         [cmdletbinding()]
         param
         (
+            [parameter()]
+            [AllowNull()]
             [string[]]$path
         )
+        if ($null -eq $path)
+        {
+            throw('You must specify the Path parameter or run Set-OneShellAdminUserProfilePath')
+        }
         $JSONProfiles =@(
             foreach ($loc in $Path)
             {
@@ -41,7 +60,15 @@ function GetPotentialAdminUserProfiles
             }
         )
         $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
-        Write-Output -InputObject $PotentialAdminUserProfiles
+        if ($PotentialAdminUserProfiles.Count -lt 1)
+        {
+            throw('You must specify a folder path which contains OneShell Admin User Profiles with the Path parameter and/or you must create at least one Admin User Profile using New-AdminUserProfile.')
+        }
+        else
+        {
+            $PotentialOrgProfiles
+        }
+        $PotentialAdminUserProfiles
     }
 #End function GetPotentialAdminUserProfiles
 function GetOrgProfileSystemServiceTypes
@@ -1436,7 +1463,7 @@ Function Get-AdminUserProfile
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
@@ -1452,7 +1479,7 @@ Function Get-AdminUserProfile
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
@@ -1526,7 +1553,7 @@ function New-AdminUserProfile
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string]$Path = "$env:UserProfile\OneShell\"
+            [string]$Path = $Script:OneShellAdminUserProfilePath
         )
         DynamicParam
         {
@@ -1614,7 +1641,7 @@ Function Use-AdminUserProfile
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -1626,7 +1653,7 @@ Function Use-AdminUserProfile
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -ParameterSetName 'Identity' -Position 1
             Write-Output -InputObject $dictionary
@@ -1779,7 +1806,7 @@ function Set-AdminUserProfile
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -1787,7 +1814,7 @@ function Set-AdminUserProfile
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet $AdminProfileIdentities -Mandatory $true -ValueFromPipelineByPropertyName $true
             Write-Output -InputObject $dictionary
@@ -1852,7 +1879,7 @@ Function Get-AdminUserProfileSystem
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -1863,7 +1890,7 @@ Function Get-AdminUserProfileSystem
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(GetOrgProfileSystemServiceTypes) -DPDictionary $dictionary -Mandatory $false -Position 3
@@ -1941,7 +1968,7 @@ Function Set-AdminUserProfileSystem
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -1949,7 +1976,7 @@ Function Set-AdminUserProfileSystem
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             Write-Output -inputobject $dictionary
@@ -2012,7 +2039,7 @@ Function Set-AdminUserProfileSystemPreferredEndpoint
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -2020,7 +2047,7 @@ Function Set-AdminUserProfileSystemPreferredEndpoint
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             Write-Output -inputobject $dictionary
@@ -2076,7 +2103,7 @@ Function Set-AdminUserProfileSystemCredential
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -2084,7 +2111,7 @@ Function Set-AdminUserProfileSystemCredential
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             Write-Output -inputobject $dictionary
@@ -2152,7 +2179,7 @@ function Update-AdminUserProfileTypeVersion
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $true -Position 1
             Write-Output -inputobject $dictionary
@@ -2201,7 +2228,7 @@ function Update-AdminUserProfileSystem
             ,
             [parameter(ParameterSetName = 'Identity')]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -2209,7 +2236,7 @@ function Update-AdminUserProfileSystem
         )
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -ParameterSetName 'Identity' -Mandatory $true
             Write-Output -InputObject $dictionary
@@ -2283,11 +2310,11 @@ function New-AdminUserProfileCredential
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
@@ -2347,11 +2374,11 @@ function Remove-AdminUserProfileCredential
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
@@ -2419,11 +2446,11 @@ function Set-AdminUserProfileCredential
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
@@ -2504,11 +2531,11 @@ function Get-AdminUserProfileCredential
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
-            [string[]]$Path = "$env:UserProfile\OneShell\"
+            [string[]]$Path = $Script:OneShellAdminUserProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = "$env:UserProfile\OneShell\"}
+            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
@@ -2748,34 +2775,115 @@ function Set-OneShellOrgProfileDirectory
     }
 #end function Set-OneShellOrgProfileDirectory
 function GetOneShellOrgProfileDirectory
+    {
+        [CmdletBinding()]
+        param
+        ()
+        $UserDirectory = $("$env:LocalAppData\OneShell")
+        $SystemDirectory = $("$env:ALLUSERSPROFILE\OneShell")
+        $PersistFileName = 'PersistedOneShellOrgProfileDirectory.json'
+        $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
+        $SystemFilePath = Join-Path -Path $SystemDirectory -ChildPath $PersistFileName
+        if (Test-Path -Path $UserFilePath -PathType Leaf)
+        {
+            $Script:OneShellOrgProfilePath = $(Import-JSON -Path $UserFilePath).OrgProfilePath
+        }
+        else
+        {
+            if (Test-Path -Path $SystemFilePath -PathType Leaf)
+            {
+                $Script:OneShellOrgProfilePath = $(Import-JSON -Path $SystemFilePath).OrgProfilePath
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($Script:OneShellOrgProfilePath))
+        {
+            $message = 'You must run Set-OneShellOrgProfileDirectory. No persisted OneShell Org Profile directories found.'
+            Write-Warning -Message $message
+        }
+    }
+#end function GetOneShellOrgProfileDirectory
+function Set-OneShellAdminUserProfileDirectory
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter()]
+            [string]$Path #If not specified the Path will default to the DefaultPath of $env:LocalAppData\OneShell
+            ,
+            [parameter()]
+            [switch]$DoNotPersist #By Default, this function tries to persist the AdminUserProfileDirectory to the DefaultPath by writing a JSON file with the setting to that location.  This switch overrides that behavior.
+        )
+            $DefaultPath = $("$env:LocalAppData\OneShell")
+            if ($Path -ne $DefaultPath)
+            {
+                $message = "The recommended/default location for User specific OneShell Admin User Profile storage is $DefaultPath."
+                Write-Verbose -Message $message -Verbose
+            }
+            if (-not $PSBoundParameters.ContainsKey('Path'))
+            {
+                $Path = $DefaultPath
+            }
+
+        if (-not (Test-Path -Path $Path -PathType Container))
+        {
+            Write-Verbose -Message "Create Directory $Path"
+            try
+            {
+                New-Item -Path $Path -ItemType Directory -ErrorAction Stop | Out-Null
+            }
+            catch
+            {
+                throw($_)
+            }
+        }
+        if (-not (Test-IsWriteableDirectory -path $path))
+        {
+            $message = "The specified path exists but does not appear to be writeable. Without elevating or using a different credential this user may be able to use existing OneShell Admin User Profiles in this location but may not be able to edit them."
+            Write-Warning -Message $message
+        }
+        $Script:OneShellAdminUserProfilePath = @($Path)
+
+        if (-not $PSBoundParameters.ContainsKey('DoNotPersist'))
+        {
+            $PersistObject = [PSCustomObject]@{
+                AdminUserProfilePath = $Path
+            }
+            $PersistFileName = 'PersistedOneShellAdminUserProfileDirectory.json'
+            $PersistFilePath = Join-Path -Path $DefaultPath -ChildPath $PersistFileName
+            if ((Test-IsWriteableDirectory -path $DefaultPath))
+            {
+
+                $PersistObject | ConvertTo-Json | Out-File -Encoding utf8 -FilePath $PersistFilePath
+            }
+            else
+            {
+                $message = "Unable to write file $PersistFilePath. You may have to use Set-OneShellAdminUserProfileDirectory with subsequent uses of the OneShell module."
+                Write-Warning -Message $message
+            }
+        }
+    }
+#end function Set-OneShellAdminUserProfileDirectory
+function GetOneShellAdminUserProfileDirectory
 {
     [CmdletBinding()]
     param
     ()
     $UserDirectory = $("$env:LocalAppData\OneShell")
-    $SystemDirectory = $("$env:ALLUSERSPROFILE\OneShell")
-    $PersistFileName = 'PersistedOneShellOrgProfileDirectory.json'
+    $PersistFileName = 'PersistedOneShellAdminUserProfileDirectory.json'
     $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
-    $SystemFilePath = Join-Path -Path $SystemDirectory -ChildPath $PersistFileName
     if (Test-Path -Path $UserFilePath -PathType Leaf)
     {
         $Script:OneShellOrgProfilePath = $(Import-JSON -Path $UserFilePath).OrgProfilePath
     }
-    else
+    if ([string]::IsNullOrWhiteSpace($Script:OneShellAdminUserProfilePath))
     {
-        if (Test-Path -Path $SystemFilePath -PathType Leaf)
-        {
-            $Script:OneShellOrgProfilePath = $(Import-JSON -Path $SystemFilePath).OrgProfilePath
-        }
-    }
-    if ([string]::IsNullOrWhiteSpace($Script:OneShellOrgProfilePath))
-    {
-        $message = 'You must run Set-OneShellOrgProfileDirectory. No persisted OneShell Org Profile directories found.'
+        $message = 'You must run Set-OneShellAdminUserProfileDirectory. No persisted OneShell Admin User Profile directories found.'
         Write-Warning -Message $message
     }
 }
+#end function GetOneShellOrgProfileDirectory
 #################################################
 # Need to add
 #################################################
 #? Remove functions for OrgProfile, AdminProfile
-#code to warn user of adding endpoints to Systems that use Well Known Endpoints
+#update admin user profile functions with new Path
