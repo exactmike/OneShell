@@ -1944,11 +1944,7 @@ function SetOneShellVariables
         #Write-Log -message 'Setting OneShell Module Variables'
         $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
         GetOneShellOrgProfileDirectory
-        <#    [string]$Script:E4_SkuPartNumber = 'ENTERPRISEWITHSCAL'
-        [string]$Script:E3_SkuPartNumber = 'ENTERPRISEPACK'
-        [string]$Script:E2_SkuPartNumber = 'STANDARDWOFFPACK' #Non-Profit SKU
-        [string]$Script:E1_SkuPartNumber = 'STANDARDPACK'
-        [string]$Script:K1_SkuPartNumber = 'DESKLESSPACK' #>
+        GetOneShellAdminUserProfileDirectory
         $Script:LogPreference = $True
         #AdvancedOneShell needs updated for the following:
         $Script:ScalarADAttributes = @(

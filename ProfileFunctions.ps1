@@ -59,7 +59,7 @@ function GetPotentialAdminUserProfiles
                 Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue
             }
         )
-        $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json})
+        $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Where-Object -FilterScript {Test-Member -Name Identity -InputObject $_}})
         if ($PotentialAdminUserProfiles.Count -lt 1)
         {
             throw('You must specify a folder path which contains OneShell Admin User Profiles with the Path parameter and/or you must create at least one Admin User Profile using New-AdminUserProfile.')
@@ -71,22 +71,12 @@ function GetPotentialAdminUserProfiles
         $PotentialAdminUserProfiles
     }
 #End function GetPotentialAdminUserProfiles
-function GetOrgProfileSystemServiceTypes
+function GetOneShellServiceTypeNames
     {
         $script:ServiceTypes.Name
     }
-#end function GetOrgProfileSystemServiceTypes
-function GetServiceTypeDefinition
-    {
-        [cmdletbinding()]
-        param
-        (
-            [parameter(Mandatory)]
-            [string]$ServiceType
-        )
-        $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
-    }
-#end function GetServiceTypeDefinition
+#end function GetOneShellServiceTypeNames
+
 function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
@@ -145,7 +135,7 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
         {
             Set-DynamicParameterVariable -dictionary $dictionary
         }
-        $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+        $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
         Write-Verbose -Message "Using ServiceTypeDefinition $($ServiceTypeDefinition.name)"
         if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
         {
@@ -470,6 +460,17 @@ function GetSelectProfileSystem
 #################################################
 # Public Functions
 #################################################
+function Get-ServiceTypeDefinition
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [string]$ServiceType
+    )
+    $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
+}
+#end function Get-ServiceTypeDefinition
 Function Get-OrgProfile
     {
         [cmdletbinding(DefaultParameterSetName = 'All')]
@@ -749,7 +750,6 @@ function New-OrgProfileSystem
             [string]$Description
             ,
             [parameter(Mandatory,ValueFromPipelineByPropertyName)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
             [parameter(ValueFromPipelineByPropertyName)]
@@ -784,7 +784,7 @@ function New-OrgProfileSystem
             $OrgProfileIdentities = @($PotentialOrgProfiles.Name;$PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
             #build any service type specific parameters that may be needed
-            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
                 foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
@@ -842,7 +842,6 @@ function Set-OrgProfileSystem
             [string[]]$Identity #System Identity or Name
             ,
             [parameter(ValueFromPipelineByPropertyName)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
             [parameter(ValueFromPipelineByPropertyName)]
@@ -928,7 +927,6 @@ function Set-OrgProfileSystemServiceTypeAttributes
             [string[]]$Identity #System Identity or Name
             ,
             [parameter(Mandatory)]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
         )#end param
         DynamicParam
@@ -938,7 +936,7 @@ function Set-OrgProfileSystemServiceTypeAttributes
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
             #build service type specific parameters that may be needed
-            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
                 foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
@@ -961,7 +959,7 @@ function Set-OrgProfileSystemServiceTypeAttributes
                 #Edit the selected System
                 $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
                 #Set the ServiceType Specific System Attributes
-                $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+                $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
                 if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
                 {
                     $ServiceTypeAttributeNames = @($ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
@@ -1001,7 +999,7 @@ Function Get-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(GetOrgProfileSystemServiceTypes) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(GetOneShellServiceTypeNames) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
             Write-Output -InputObject $dictionary
         }
         End
@@ -1093,7 +1091,6 @@ function New-OrgProfileSystemEndpoint
             [string]$SystemIdentity
             ,
             [parameter()]
-            [ValidateSet('PowerShell','SQLDatabase','ExchangeOnPremises','ExchangeOnline','ExchangeComplianceCenter','AADSyncServer','AzureAD','AzureADPreview','MSOnline','ActiveDirectoryDomain','ActiveDirectoryGlobalCatalog','ActiveDirectoryLDS','SMTPMailRelay','SkypeForBusinessOnline','SkypeForBusinessOnPremises')]
             [string]$ServiceType
             ,
             [Parameter(Mandatory)]
@@ -1157,7 +1154,7 @@ function New-OrgProfileSystemEndpoint
             {
                 '*'
                 {
-                    $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+                    $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
                     if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
                     {
                         foreach ($a in $ServiceTypeDefinition.EndpointServiceTypeAttributes)
@@ -1200,7 +1197,7 @@ function New-OrgProfileSystemEndpoint
             }
             #Add any servicetype specific attributes that were specified
             ###########################################################
-            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
             {
                 $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
@@ -1382,7 +1379,7 @@ function Set-OrgProfileSystemEndpoint
                 {$endpoint.$($vp.name) = $($vp.value)}
             }
             #Set any servicetype specific attributes that were specified
-            $ServiceTypeDefinition = GetServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
             {
                 $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
@@ -1893,7 +1890,7 @@ Function Get-AdminUserProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(GetOrgProfileSystemServiceTypes) -DPDictionary $dictionary -Mandatory $false -Position 3
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(GetOneShellServiceTypeNames) -DPDictionary $dictionary -Mandatory $false -Position 3
             Write-Output -InputObject $dictionary
         }
         End
@@ -2737,7 +2734,7 @@ function Set-OneShellOrgProfileDirectory
         }
         if (-not (Test-Path -Path $Path -PathType Container))
         {
-            Write-Verbose -Message "Create Directory $Path"
+            Write-Verbose -Message "Creating Directory $Path" -Verbose
             try
             {
                 New-Item -Path $Path -ItemType Directory -ErrorAction Stop | Out-Null
@@ -2826,7 +2823,7 @@ function Set-OneShellAdminUserProfileDirectory
 
         if (-not (Test-Path -Path $Path -PathType Container))
         {
-            Write-Verbose -Message "Create Directory $Path"
+            Write-Verbose -Message "Creating Directory $Path" -Verbose
             try
             {
                 New-Item -Path $Path -ItemType Directory -ErrorAction Stop | Out-Null
@@ -2873,7 +2870,7 @@ function GetOneShellAdminUserProfileDirectory
     $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
     if (Test-Path -Path $UserFilePath -PathType Leaf)
     {
-        $Script:OneShellOrgProfilePath = $(Import-JSON -Path $UserFilePath).OrgProfilePath
+        $Script:OneShellAdminUserProfilePath = $(Import-JSON -Path $UserFilePath).AdminUserProfilePath
     }
     if ([string]::IsNullOrWhiteSpace($Script:OneShellAdminUserProfilePath))
     {
@@ -2885,5 +2882,12 @@ function GetOneShellAdminUserProfileDirectory
 #################################################
 # Need to add
 #################################################
+Register-ArgumentCompleter -CommandName 'New-OrgProfileSystem', 'Get-ServiceTypeDefinition', 'Set-OrgProfileSystem', 'Set-OrgProfileSystemServiceTypeAttributes', 'New-OrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+    GetOneShellServiceTypeNames | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
+    ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+    }
+}
 #? Remove functions for OrgProfile, AdminProfile
 #update admin user profile functions with new Path
