@@ -465,15 +465,15 @@ function GetSelectProfileSystem
 # Public Functions
 #################################################
 function Get-ServiceTypeDefinition
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        [string]$ServiceType
-    )
-    $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
-}
+    {
+        [cmdletbinding()]
+        param
+        (
+            [parameter(Mandatory)]
+            [string]$ServiceType
+        )
+        $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
+    }
 #end function Get-ServiceTypeDefinition
 Function Get-OrgProfile
     {
@@ -497,9 +497,9 @@ Function Get-OrgProfile
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $OrgProfileIdentities = @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'Identity'
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -525,12 +525,12 @@ Function Get-OrgProfile
                             {
                                 Write-Verbose -Message "Identity is set to $($identity -join ',')"
                                 $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Name -eq $Identity})
-                                Write-Output -inputobject $OrgProfiles
+                                $OrgProfiles
                             }#Identity
                             'All'
                             {
                                 $OrgProfiles = @($FoundOrgProfiles)
-                                Write-Output -inputobject $OrgProfiles
+                                $OrgProfiles
                             }#All
                         }#switch
                     }#if
@@ -538,7 +538,7 @@ Function Get-OrgProfile
                 }#switch
             )
             #output the profiles
-            write-output -InputObject $outputprofiles
+            $outputprofiles
         }#end End
     }
 #end Function Get-OrgProfile
@@ -700,7 +700,7 @@ Function Use-OrgProfile
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
+            $OrgProfileIdentities = @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
             Write-Output -InputObject $dictionary
         }
