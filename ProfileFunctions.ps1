@@ -18,16 +18,16 @@ function GetPotentialOrgProfiles
             throw('You must specify the Path parameter or run Set-OneShellOrgProfilePath')
         }
         $JSONProfiles = @(
-            foreach ($loc in $Path)
+            foreach ($p in $Path)
             {
-                Write-Verbose -Message "Getting JSON Files From $loc"
-                (Get-ChildItem -Path $loc -Filter *.json)
+                Write-Verbose -Message "Getting JSON Files From $p"
+                (Get-ChildItem -Path "$p\*" -Include '*.json' -Exclude 'OneShellSystemSettings.json')
             }
         )
-        Write-Verbose -Message "Found $($jsonProfiles.count) JSON Files"
+        Write-Verbose -Message "Found $($jsonProfiles.count) json Files"
         $PotentialOrgProfiles = @(
             foreach ($file in $JSONProfiles)
-            {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Where-Object -FilterScript {Test-Member -Name Identity -InputObject $_} | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
+            {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
         )
         Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
         if ($PotentialOrgProfiles.Count -lt 1)
@@ -54,21 +54,25 @@ function GetPotentialAdminUserProfiles
             throw('You must specify the Path parameter or run Set-OneShellAdminUserProfilePath')
         }
         $JSONProfiles =@(
-            foreach ($loc in $Path)
+            foreach ($p in $Path)
             {
-                Get-ChildItem -Path $Loc -Filter *.JSON -ErrorAction Continue
+                Get-ChildItem -Path "$p\*" -Include '*.json' -Exclude 'OneShellUserSettings.json'
             }
         )
-        $PotentialAdminUserProfiles = @(foreach ($file in $JSONProfiles) {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Where-Object -FilterScript {Test-Member -Name Identity -InputObject $_}})
+        $PotentialAdminUserProfiles = @(
+            foreach ($file in $JSONProfiles)
+            {
+                Get-Content -Path $file.fullname -Raw | ConvertFrom-Json
+            }
+        )
         if ($PotentialAdminUserProfiles.Count -lt 1)
         {
             throw('You must specify a folder path which contains OneShell Admin User Profiles with the Path parameter and/or you must create at least one Admin User Profile using New-AdminUserProfile.')
         }
         else
         {
-            $PotentialOrgProfiles
+            $PotentialAdminUserProfiles
         }
-        $PotentialAdminUserProfiles
     }
 #End function GetPotentialAdminUserProfiles
 function GetOneShellServiceTypeNames
@@ -2312,7 +2316,8 @@ function New-AdminUserProfileCredential
         DynamicParam
         {
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
-            $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
+            $paProfiles = GetPotentialAdminUserProfiles -path $Path
+            $AdminProfileIdentities = @($paProfiles.name; $paProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
             Write-Output -InputObject $dictionary
         }
@@ -2756,7 +2761,7 @@ function Set-OneShellOrgProfileDirectory
             $PersistObject = [PSCustomObject]@{
                 OrgProfilePath = $Path
             }
-            $PersistFileName = 'PersistedOneShellOrgProfileDirectory.json'
+            $PersistFileName = 'OneShellSystemSettings.json'
             $PersistFilePath = Join-Path -Path $DefaultPath -ChildPath $PersistFileName
             if ((Test-IsWriteableDirectory -path $DefaultPath))
             {
@@ -2778,7 +2783,7 @@ function GetOneShellOrgProfileDirectory
         ()
         $UserDirectory = $("$env:LocalAppData\OneShell")
         $SystemDirectory = $("$env:ALLUSERSPROFILE\OneShell")
-        $PersistFileName = 'PersistedOneShellOrgProfileDirectory.json'
+        $PersistFileName = 'OneShellSystemSettings.json'
         $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
         $SystemFilePath = Join-Path -Path $SystemDirectory -ChildPath $PersistFileName
         if (Test-Path -Path $UserFilePath -PathType Leaf)
@@ -2845,7 +2850,7 @@ function Set-OneShellAdminUserProfileDirectory
             $PersistObject = [PSCustomObject]@{
                 AdminUserProfilePath = $Path
             }
-            $PersistFileName = 'PersistedOneShellAdminUserProfileDirectory.json'
+            $PersistFileName = 'OneShellUserSettings.json'
             $PersistFilePath = Join-Path -Path $DefaultPath -ChildPath $PersistFileName
             if ((Test-IsWriteableDirectory -path $DefaultPath))
             {
@@ -2866,7 +2871,7 @@ function GetOneShellAdminUserProfileDirectory
     param
     ()
     $UserDirectory = $("$env:LocalAppData\OneShell")
-    $PersistFileName = 'PersistedOneShellAdminUserProfileDirectory.json'
+    $PersistFileName = 'OneShellUserSettings.json'
     $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
     if (Test-Path -Path $UserFilePath -PathType Leaf)
     {
