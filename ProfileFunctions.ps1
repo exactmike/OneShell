@@ -2838,7 +2838,7 @@ function Set-OneShellAdminUserProfileDirectory
             $message = "The specified path exists but does not appear to be writeable. Without elevating or using a different credential this user may be able to use existing OneShell Admin User Profiles in this location but may not be able to edit them."
             Write-Warning -Message $message
         }
-        $Script:OneShellAdminUserProfilePath = @($Path)
+        $Script:OneShellAdminUserProfilePath = $Path
 
         if (-not $PSBoundParameters.ContainsKey('DoNotPersist'))
         {
