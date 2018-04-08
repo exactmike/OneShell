@@ -1,5 +1,7 @@
 # To Do Items
 
+- [ ] replace code in New-OrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
+- [ ] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
 - [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
 - [ ] Clean up PSSessions when switching Admin or Org Profiles with Use-*Profile functions
 - [ ] Write GUI/Wizard Functions for Org and Admin Profile Creation
@@ -19,7 +21,6 @@
 - [ ] Convert Write-Log to use System.IO.FileStream . . . and allow concurrent/asynch writing.
 - [ ] Does $PSSenderInfo have any use cases for OneShell
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
-- [ ] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
 - [ ] spin off parameter functions to a separate module and add multiple parameter set support to Dynamic Parameters (so that a parameter can be mandatory in one and not in another)
 - [ ] need to add disconnect-oneshellsystem function to clean up modules/sessions when not needed
 - [ ] AD LDS support needs to be completed and tested (mostly ServiceTypes.json updated with the right values)
@@ -51,6 +52,7 @@
 
 ## Completed Items
 
+- [x] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
 - [x] Write Org Profile Creation/Editing Functions
 - [x] Write Admin Profile Creation/Editing Functions
 - [x] AD Properties/Schema info into AD systems in Org Profiles
