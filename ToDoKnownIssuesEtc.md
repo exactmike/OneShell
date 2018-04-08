@@ -1,5 +1,8 @@
 # To Do Items
 
+- [ ] add parameters to Set-AdminUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
+- [ ] fix Set-AdminUserProfile* functions so that path is preserved for admin profiles when editing in a non-default location
+- [ ] fix user provided admin user profile folder path if they include a trailing \
 - [ ] replace code in New-OrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
 - [ ] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
 - [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
