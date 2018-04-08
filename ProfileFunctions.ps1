@@ -2127,6 +2127,12 @@ Function Set-AdminUserProfileSystemCredential
         }
         Process
         {
+            if ($SystemIdentity.count -eq 0)
+            {
+                $SystemIdentity = @(
+                    $(GetSelectProfileSystem -PotentialSystems $Systems -Operation Edit).Identity
+                )
+            }
             foreach ($i in $SystemIdentity)
             {
                 $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $i -Operation Edit
