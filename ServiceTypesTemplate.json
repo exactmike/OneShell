@@ -1,13 +1,12 @@
 {
-    "ServiceTypes":[
+    "ServiceTypes": [
         {
             "Name": "ExampleSystem",
             "SessionTestCmdlet": "Set-ADServerSettings",
-            "SessionTestCmdletParameters":
-            {
-                    "ViewEntireForest": true,
-                    "ErrorAction": "Stop",
-                    "WarningAction": "SilentlyContinue"
+            "SessionTestCmdletParameters": {
+                "ViewEntireForest": true,
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
             },
             "OrgSystemServiceTypeAttributes": [
                 {
@@ -17,76 +16,75 @@
                     "value": []
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [
                 {
-                    "Name":"PreferredDomainControllers",
-                    "type":"string[]",
-                    "Mandatory":false,
-                    "Value":[]
+                    "Name": "PreferredDomainControllers",
+                    "type": "string[]",
+                    "Mandatory": false,
+                    "Value": []
                 }
             ],
-            "PSSessionConnectRequiredModule":[
+            "PSSessionConnectRequiredModule": [
                 {
-                    "name":"SkypeOnlineConnector"
+                    "name": "SkypeOnlineConnector"
                 }
             ],
-            "PSSessionCmdlet":"New-ExampleSystemPSSession",
-            "PSSessionConstrained":true,
-            "PSSessionParameters":[
+            "PSSessionCmdlet": "New-ExampleSystemPSSession",
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [
                 {
-                    "name":"ConnectionURI",
-                    "ValueType":"ScriptBlock",
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
                     "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Exchange"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
                 },
                 {
-                    "name":"Authentication",
-                    "ValueType":"Static",
-                    "Value":"Kerberos"
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Kerberos"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1-PreModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [
                         {
-                            "conditions":[
+                            "conditions": [
                                 {
-                                    "type":"local|InPSSession",
-                                    "test":"5 -gt 4"
+                                    "type": "local|InPSSession",
+                                    "test": "5 -gt 4"
                                 }
                             ],
-                            "Command":"$Env:ADPS_LoadDefaultDrive = 0",
-                            "parameters":[]
+                            "Command": "$Env:ADPS_LoadDefaultDrive = 0",
+                            "parameters": []
                         }
                     ],
-                    "Phase2-ModuleImport":[
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"POSH_ADO_SQLServer",
-                            "type":"module"
+                            "name": "POSH_ADO_SQLServer",
+                            "type": "module"
                         },
                         {
-                            "name":"Microsoft.Exchange.Management.PowerShell.Admin",
-                            "type":"PSSnapIn"
+                            "name": "Microsoft.Exchange.Management.PowerShell.Admin",
+                            "type": "PSSnapIn"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "command":"New-PSDrive",
-                            "parameters":
-                                [
-                                    {
-                                        "name":"ConnectionURI",
-                                        "ValueType":"ScriptBlock",
-                                        "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
-                                    }
-                                ]
+                            "command": "New-PSDrive",
+                            "parameters": [
+                                {
+                                    "name": "ConnectionURI",
+                                    "ValueType": "ScriptBlock",
+                                    "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
+                                }
+                            ]
                         }
                     ]
                 }

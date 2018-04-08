@@ -191,8 +191,8 @@
             ],
             "PSSessionSettings": {
                 "Initialization": {
-                    "Phase1-PreModuleImport": [],
-                    "Phase2-ModuleImport": [
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [
                         {
                             "name": "Microsoft.Exchange.Management.PowerShell.Admin",
                             "type": "PSSnapIn"
