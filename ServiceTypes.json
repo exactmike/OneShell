@@ -1,70 +1,70 @@
 {
-    "ServiceTypes":[
+    "ServiceTypes": [
         {
             "Name": "ExchangeOnPremises",
             "SessionTestCmdlet": "Get-OrganizationConfig",
-            "SessionTestCmdletParameters":[],
+            "SessionTestCmdletParameters": [],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [
                 {
-                    "Name":"PreferredDomainControllers",
-                    "type":"string[]",
-                    "Mandatory":false,
-                    "Value":[]
+                    "Name": "PreferredDomainControllers",
+                    "type": "string[]",
+                    "Mandatory": false,
+                    "Value": []
                 }
             ],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":true,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [
                 {
-                    "name":"ConnectionURI",
-                    "ValueType":"ScriptBlock",
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
                     "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Exchange"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
                 },
                 {
-                    "name":"Authentication",
-                    "ValueType":"Static",
-                    "Value":"Kerberos"
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Kerberos"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": [
                         {
-                            "conditions":[
+                            "conditions": [
                                 {
-                                    "type":"local",
-                                    "test":"($endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1)"
+                                    "type": "local",
+                                    "test": "($endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1)"
                                 }
                             ],
-                            "command":"Set-ADServerSettings",
-                            "parameters":[
+                            "command": "Set-ADServerSettings",
+                            "parameters": [
                                 {
-                                    "name":"SetPreferredDomainControllers",
-                                    "ValueType":"ScriptBlock",
-                                    "Value":"$endpoint.ServiceTypeAttributesPreferredDomainControllers"
+                                    "name": "SetPreferredDomainControllers",
+                                    "ValueType": "ScriptBlock",
+                                    "Value": "$endpoint.ServiceTypeAttributesPreferredDomainControllers"
                                 }
                             ]
                         },
                         {
-                            "conditions":[],
-                            "command":"Set-ADServerSettings",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "Set-ADServerSettings",
+                            "parameters": [
                                 {
-                                    "name":"ViewEntireForest",
-                                    "ValueType":"Static",
-                                    "Value":true
+                                    "name": "ViewEntireForest",
+                                    "ValueType": "Static",
+                                    "Value": true
                                 }
                             ]
                         }
@@ -75,102 +75,140 @@
         {
             "Name": "ExchangeOnline",
             "SessionTestCmdlet": "Get-OrganizationConfig",
-            "SessionTestCmdletParameters":[],
+            "SessionTestCmdletParameters": [],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":true,
-            "WellKnownEndPointURI":"https://outlook.office365.com/powershell-liveid/",
+            "DefaultsToWellKnownEndPoint": true,
+            "WellKnownEndPointURI": "https://outlook.office365.com/powershell-liveid/",
             "WellKnownEndPointAuthMethod": "Basic",
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":true,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [
                 {
-                    "name":"ConnectionURI",
-                    "ValueType":"ScriptBlock",
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Exchange"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
                 },
                 {
-                    "name":"Authentication",
-                    "ValueType":"Static",
-                    "Value":"Basic"
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Basic"
                 },
                 {
-                    "name":"AllowRedirection",
-                    "ValueType":"Static",
-                    "Value":true
+                    "name": "AllowRedirection",
+                    "ValueType": "Static",
+                    "Value": true
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[]
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "ExchangeComplianceCenter",
             "SessionTestCmdlet": "Get-User",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Identity",
-                    "ValueType":"ScriptBlock",
+                    "Name": "Identity",
+                    "ValueType": "ScriptBlock",
                     "Value": "$ServiceObject.Credentials.Service.Username"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":true,
-            "WellKnownEndPointURI":"https://ps.compliance.protection.outlook.com/powershell-liveid/",
+            "DefaultsToWellKnownEndPoint": true,
+            "WellKnownEndPointURI": "https://ps.compliance.protection.outlook.com/powershell-liveid/",
             "WellKnownEndPointAuthMethod": "Basic",
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":true,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [
                 {
-                    "name":"ConnectionURI",
-                    "ValueType":"ScriptBlock",
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Exchange"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
                 },
                 {
-                    "name":"Authentication",
-                    "ValueType":"Static",
-                    "Value":"Basic"
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Basic"
                 },
                 {
-                    "name":"AllowRedirection",
-                    "ValueType":"Static",
-                    "Value":true
+                    "name": "AllowRedirection",
+                    "ValueType": "Static",
+                    "Value": true
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[]
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": []
+                }
+            }
+        },
+        {
+            "Name": "Exchange2007",
+            "SessionTestCmdlet": "Get-OrganizationConfig",
+            "SessionTestCmdletParameters": {
+                "ErrorAction": "Stop",
+                "WarningAction": "SilentlyContinue"
+            },
+            "OrgSystemServiceTypeAttributes": [],
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
+            "WellKnownEndPointAuthMethod": null,
+            "EndPointServiceTypeAttributes": [],
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [
+                {
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
+                }
+            ],
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1-PreModuleImport": [],
+                    "Phase2-ModuleImport": [
+                        {
+                            "name": "Microsoft.Exchange.Management.PowerShell.Admin",
+                            "type": "PSSnapIn"
+                        }
+                    ],
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "PowerShell",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
@@ -182,41 +220,40 @@
                     "value": []
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[]
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "PowerShell32",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
@@ -228,41 +265,40 @@
                     "value": []
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell32"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell32"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[]
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "SQLDatabase",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
@@ -274,88 +310,86 @@
                     "value": ""
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"POSH_ADO_SQLServer"
+                            "name": "POSH_ADO_SQLServer"
                         }
                     ],
-                    "Phase3":[]
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "AADSyncServer",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"ADSync"
+                            "name": "ADSync"
                         }
                     ],
-                    "Phase3":[]
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "AzureADPreview",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
@@ -367,40 +401,40 @@
                     "value": ""
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"AzureADPreview",
-                            "type":"module"
+                            "name": "AzureADPreview",
+                            "type": "module"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "command":"Connect-AzureAD",
-                            "parameters":{
-                                "Name":"Credential",
-                                "ValueType":"ScriptBlock",
+                            "command": "Connect-AzureAD",
+                            "parameters": {
+                                "Name": "Credential",
+                                "ValueType": "ScriptBlock",
                                 "Value": "$ServiceObject.Credentials.Service"
                             }
                         }
@@ -411,11 +445,10 @@
         {
             "Name": "AzureAD",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
@@ -427,39 +460,39 @@
                     "value": ""
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"AzureAD"
+                            "name": "AzureAD"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "command":"Connect-AzureAD",
-                            "parameters":{
-                                "Name":"Credential",
-                                "ValueType":"ScriptBlock",
+                            "command": "Connect-AzureAD",
+                            "parameters": {
+                                "Name": "Credential",
+                                "ValueType": "ScriptBlock",
                                 "Value": "$ServiceObject.Credentials.Service"
                             }
                         }
@@ -470,11 +503,10 @@
         {
             "Name": "MSOnline",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
@@ -486,40 +518,40 @@
                     "value": ""
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"MSOnline"
+                            "name": "MSOnline"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "command":"Connect-MsolService",
-                            "parameters":[
+                            "command": "Connect-MsolService",
+                            "parameters": [
                                 {
-                                    "Name":"Credential",
-                                    "ValueType":"ScriptBlock",
+                                    "Name": "Credential",
+                                    "ValueType": "ScriptBlock",
                                     "Value": "$ServiceObject.Credentials.Service"
                                 }
                             ]
@@ -531,7 +563,7 @@
         {
             "Name": "ActiveDirectoryDomain",
             "SessionTestCmdlet": "Get-ADRootDSE",
-            "SessionTestCmdletParameters":[],
+            "SessionTestCmdletParameters": [],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -546,116 +578,116 @@
                     "value": []
                 },
                 {
-                    "Name":"ADContactAttributes",
+                    "Name": "ADContactAttributes",
                     "type": "string[]",
                     "mandatory": false,
-                    "value":[]
+                    "value": []
                 },
                 {
-                    "Name":"ADDomainFQDN",
+                    "Name": "ADDomainFQDN",
                     "type": "string",
                     "mandatory": true,
-                    "value":""
+                    "value": ""
                 },
                 {
-                    "Name":"PSDriveName",
+                    "Name": "PSDriveName",
                     "type": "string",
                     "mandatory": true,
-                    "value":""
+                    "value": ""
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [
                         {
-                            "Command":"New-Item",
-                            "parameters":[
+                            "Command": "New-Item",
+                            "parameters": [
                                 {
-                                    "Name":"Path",
-                                    "ValueType":"Static",
-                                    "Value":"Env:\\"
+                                    "Name": "Path",
+                                    "ValueType": "Static",
+                                    "Value": "Env:\\"
                                 },
                                 {
-                                    "Name":"Name",
-                                    "ValueType":"Static",
-                                    "Value":"ADPS_LoadDefaultDrive"
+                                    "Name": "Name",
+                                    "ValueType": "Static",
+                                    "Value": "ADPS_LoadDefaultDrive"
                                 },
                                 {
-                                    "Name":"Value",
-                                    "ValueType":"Static",
+                                    "Name": "Value",
+                                    "ValueType": "Static",
                                     "Value": 0
                                 }
                             ]
                         }
                     ],
-                    "Phase2_ModuleImport":[
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"ActiveDirectory"
+                            "name": "ActiveDirectory"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "conditions":[],
-                            "command":"New-PSDrive",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "New-PSDrive",
+                            "parameters": [
                                 {
-                                    "Name":"Name",
-                                    "ValueType":"scriptblock",
+                                    "Name": "Name",
+                                    "ValueType": "scriptblock",
                                     "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName"
                                 },
                                 {
-                                    "Name":"Server",
-                                    "ValueType":"ScriptBlock",
-                                    "Value":"$ServiceObject.ServiceTypeAttributes.ADDomainFQDN"
+                                    "Name": "Server",
+                                    "ValueType": "ScriptBlock",
+                                    "Value": "$ServiceObject.ServiceTypeAttributes.ADDomainFQDN"
                                 },
                                 {
-                                    "Name":"Root",
-                                    "ValueType":"Static",
-                                    "Value":"//RootDSE/"
+                                    "Name": "Root",
+                                    "ValueType": "Static",
+                                    "Value": "//RootDSE/"
                                 },
                                 {
-                                    "Name":"Scope",
-                                    "ValueType":"Static",
-                                    "Value":"Global"
+                                    "Name": "Scope",
+                                    "ValueType": "Static",
+                                    "Value": "Global"
                                 },
                                 {
-                                    "Name":"PSProvider",
-                                    "ValueType":"Static",
-                                    "Value":"ActiveDirectory"
+                                    "Name": "PSProvider",
+                                    "ValueType": "Static",
+                                    "Value": "ActiveDirectory"
                                 },
                                 {
-                                    "Name":"Credential",
-                                    "ValueType":"ScriptBlock",
+                                    "Name": "Credential",
+                                    "ValueType": "ScriptBlock",
                                     "Value": "$ServiceObject.Credentials.Service"
                                 }
                             ]
                         },
                         {
-                            "conditions":[],
-                            "command":"Set-Location",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "Set-Location",
+                            "parameters": [
                                 {
-                                    "Name":"Path",
-                                    "ValueType":"scriptblock",
+                                    "Name": "Path",
+                                    "ValueType": "scriptblock",
                                     "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName + ':\\'"
                                 }
                             ]
@@ -667,7 +699,7 @@
         {
             "Name": "ActiveDirectoryGlobalCatalog",
             "SessionTestCmdlet": "Get-ADRootDSE",
-            "SessionTestCmdletParameters":[],
+            "SessionTestCmdletParameters": [],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -682,116 +714,116 @@
                     "value": []
                 },
                 {
-                    "Name":"ADContactAttributes",
+                    "Name": "ADContactAttributes",
                     "type": "string[]",
                     "mandatory": false,
-                    "value":[]
+                    "value": []
                 },
                 {
-                    "Name":"ADForestFQDN",
+                    "Name": "ADForestFQDN",
                     "type": "string",
                     "mandatory": true,
-                    "value":""
+                    "value": ""
                 },
                 {
-                    "Name":"PSDriveName",
+                    "Name": "PSDriveName",
                     "type": "string",
                     "mandatory": true,
-                    "value":""
+                    "value": ""
                 }
             ],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [
                         {
-                            "Command":"New-Item",
-                            "parameters":[
+                            "Command": "New-Item",
+                            "parameters": [
                                 {
-                                    "Name":"Path",
-                                    "ValueType":"Static",
-                                    "Value":"Env:\\"
+                                    "Name": "Path",
+                                    "ValueType": "Static",
+                                    "Value": "Env:\\"
                                 },
                                 {
-                                    "Name":"Name",
-                                    "ValueType":"Static",
-                                    "Value":"ADPS_LoadDefaultDrive"
+                                    "Name": "Name",
+                                    "ValueType": "Static",
+                                    "Value": "ADPS_LoadDefaultDrive"
                                 },
                                 {
-                                    "Name":"Value",
-                                    "ValueType":"Static",
+                                    "Name": "Value",
+                                    "ValueType": "Static",
                                     "Value": 0
                                 }
                             ]
                         }
                     ],
-                    "Phase2_ModuleImport":[
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"ActiveDirectory"
+                            "name": "ActiveDirectory"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "conditions":[],
-                            "command":"New-PSDrive",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "New-PSDrive",
+                            "parameters": [
                                 {
-                                    "Name":"Name",
-                                    "ValueType":"scriptblock",
+                                    "Name": "Name",
+                                    "ValueType": "scriptblock",
                                     "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName"
                                 },
                                 {
-                                    "Name":"Server",
-                                    "ValueType":"ScriptBlock",
-                                    "Value":"$($ServiceObject.ServiceTypeAttributes.ADForestFQDN + ':3268')"
+                                    "Name": "Server",
+                                    "ValueType": "ScriptBlock",
+                                    "Value": "$($ServiceObject.ServiceTypeAttributes.ADForestFQDN + ':3268')"
                                 },
                                 {
-                                    "Name":"Root",
-                                    "ValueType":"Static",
-                                    "Value":"//RootDSE/"
+                                    "Name": "Root",
+                                    "ValueType": "Static",
+                                    "Value": "//RootDSE/"
                                 },
                                 {
-                                    "Name":"Scope",
-                                    "ValueType":"Static",
-                                    "Value":"Global"
+                                    "Name": "Scope",
+                                    "ValueType": "Static",
+                                    "Value": "Global"
                                 },
                                 {
-                                    "Name":"PSProvider",
-                                    "ValueType":"Static",
-                                    "Value":"ActiveDirectory"
+                                    "Name": "PSProvider",
+                                    "ValueType": "Static",
+                                    "Value": "ActiveDirectory"
                                 },
                                 {
-                                    "Name":"Credential",
-                                    "ValueType":"ScriptBlock",
+                                    "Name": "Credential",
+                                    "ValueType": "ScriptBlock",
                                     "Value": "$ServiceObject.Credentials.Service"
                                 }
                             ]
                         },
                         {
-                            "conditions":[],
-                            "command":"Set-Location",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "Set-Location",
+                            "parameters": [
                                 {
-                                    "Name":"Path",
-                                    "ValueType":"scriptblock",
+                                    "Name": "Path",
+                                    "ValueType": "scriptblock",
                                     "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName + ':\\'"
                                 }
                             ]
@@ -803,7 +835,7 @@
         {
             "Name": "ActiveDirectoryLDS",
             "SessionTestCmdlet": "Get-ADRootDSE",
-            "SessionTestCmdletParameters":[],
+            "SessionTestCmdletParameters": [],
             "OrgSystemServiceTypeAttributes": [
                 {
                     "Name": "ADUserAttributes",
@@ -818,110 +850,110 @@
                     "value": []
                 },
                 {
-                    "Name":"ADContactAttributes",
+                    "Name": "ADContactAttributes",
                     "type": "string[]",
                     "mandatory": false,
-                    "value":[]
+                    "value": []
                 },
                 {
-                    "Name":"PSDriveName",
+                    "Name": "PSDriveName",
                     "type": "string",
                     "mandatory": true,
-                    "value":""
+                    "value": ""
                 }
-            ],            
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            ],
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [
                         {
-                            "Command":"New-Item",
-                            "parameters":[
+                            "Command": "New-Item",
+                            "parameters": [
                                 {
-                                    "Name":"Path",
-                                    "ValueType":"Static",
-                                    "Value":"Env:\\"
+                                    "Name": "Path",
+                                    "ValueType": "Static",
+                                    "Value": "Env:\\"
                                 },
                                 {
-                                    "Name":"Name",
-                                    "ValueType":"Static",
-                                    "Value":"ADPS_LoadDefaultDrive"
+                                    "Name": "Name",
+                                    "ValueType": "Static",
+                                    "Value": "ADPS_LoadDefaultDrive"
                                 },
                                 {
-                                    "Name":"Value",
-                                    "ValueType":"Static",
+                                    "Name": "Value",
+                                    "ValueType": "Static",
                                     "Value": 0
                                 }
                             ]
                         }
                     ],
-                    "Phase2_ModuleImport":[
+                    "Phase2_ModuleImport": [
                         {
-                            "name":"ActiveDirectory"
+                            "name": "ActiveDirectory"
                         }
                     ],
-                    "Phase3":[
+                    "Phase3": [
                         {
-                            "conditions":[],
-                            "command":"New-PSDrive",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "New-PSDrive",
+                            "parameters": [
                                 {
-                                    "Name":"Name",
-                                    "ValueType":"scriptblock",
+                                    "Name": "Name",
+                                    "ValueType": "scriptblock",
                                     "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName"
                                 },
                                 {
-                                    "Name":"Server",
-                                    "ValueType":"ScriptBlock",
-                                    "Value":"$endpoint.Address"
+                                    "Name": "Server",
+                                    "ValueType": "ScriptBlock",
+                                    "Value": "$endpoint.Address"
                                 },
                                 {
-                                    "Name":"Root",
-                                    "ValueType":"Static",
-                                    "Value":"//RootDSE/"
+                                    "Name": "Root",
+                                    "ValueType": "Static",
+                                    "Value": "//RootDSE/"
                                 },
                                 {
-                                    "Name":"Scope",
-                                    "ValueType":"Static",
-                                    "Value":"Global"
+                                    "Name": "Scope",
+                                    "ValueType": "Static",
+                                    "Value": "Global"
                                 },
                                 {
-                                    "Name":"PSProvider",
-                                    "ValueType":"Static",
-                                    "Value":"ActiveDirectory"
+                                    "Name": "PSProvider",
+                                    "ValueType": "Static",
+                                    "Value": "ActiveDirectory"
                                 },
                                 {
-                                    "Name":"Credential",
-                                    "ValueType":"ScriptBlock",
+                                    "Name": "Credential",
+                                    "ValueType": "ScriptBlock",
                                     "Value": "$ServiceObject.Credentials.Service"
                                 }
                             ]
                         },
                         {
-                            "conditions":[],
-                            "command":"Set-Location",
-                            "parameters":[
+                            "conditions": [],
+                            "command": "Set-Location",
+                            "parameters": [
                                 {
-                                    "Name":"Path",
-                                    "ValueType":"scriptblock",
+                                    "Name": "Path",
+                                    "ValueType": "scriptblock",
                                     "Value": "$ServiceObject.ServiceTypeAttributes.PSDriveName + ':\\'"
                                 }
                             ]
@@ -933,37 +965,35 @@
         {
             "Name": "SMTPMailRelay",
             "SessionTestCmdlet": "Send-MailMessage",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":false,
-            "PSSessionParameters":[
-            ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": false,
+            "PSSessionParameters": [],
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [
                         {
-                            "Command":"",
-                            "parameters":{}
+                            "Command": "",
+                            "parameters": {}
                         }
                     ],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[
+                    "Phase2_ModuleImport": [],
+                    "Phase3": [
                         {
-                            "command":"",
-                            "parameters":{}
+                            "command": "",
+                            "parameters": {}
                         }
                     ]
                 }
@@ -972,72 +1002,69 @@
         {
             "Name": "SkypeForBusinessOnline",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":true,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": true,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[
+            "PSSessionConnectRequiredModule": [
                 {
-                    "name":"SkypeOnlineConnector"
+                    "name": "SkypeOnlineConnector"
                 }
             ],
-            "PSSessionCmdlet":"New-SkypeOnlinePSSession",
-            "PSSessionConstrained":true,
-            "PSSessionParameters":[
-            ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[]
+            "PSSessionCmdlet": "New-SkypeOnlinePSSession",
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [],
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": []
                 }
             }
         },
         {
             "Name": "SkypeForBusinessOnPremises",
             "SessionTestCmdlet": "Get-Command",
-            "SessionTestCmdletParameters":
-            [
+            "SessionTestCmdletParameters": [
                 {
-                    "Name":"Name",
-                    "ValueType":"Static",
+                    "Name": "Name",
+                    "ValueType": "Static",
                     "Value": "Get-Command"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [],
-            "DefaultsToWellKnownEndPoint":false,
-            "WellKnownEndPointURI":null,
+            "DefaultsToWellKnownEndPoint": false,
+            "WellKnownEndPointURI": null,
             "WellKnownEndPointAuthMethod": null,
             "EndPointServiceTypeAttributes": [],
-            "PSSessionConnectRequiredModule":[],
-            "PSSessionCmdlet":null,
-            "PSSessionConstrained":true,
-            "PSSessionParameters":[
+            "PSSessionConnectRequiredModule": [],
+            "PSSessionCmdlet": null,
+            "PSSessionConstrained": true,
+            "PSSessionParameters": [
                 {
-                    "name":"ComputerName",
-                    "ValueType":"ScriptBlock",
+                    "name": "ComputerName",
+                    "ValueType": "ScriptBlock",
                     "Value": "$Endpoint.Address"
                 },
                 {
-                    "name":"ConfigurationName",
-                    "ValueType":"Static",
-                    "Value":"Microsoft.Powershell"
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
                 }
             ],
-            "PSSessionSettings":{
-                "Initialization":{
-                    "Phase1_PreModuleImport":[],
-                    "Phase2_ModuleImport":[],
-                    "Phase3":[]
+            "PSSessionSettings": {
+                "Initialization": {
+                    "Phase1_PreModuleImport": [],
+                    "Phase2_ModuleImport": [],
+                    "Phase3": []
                 }
             }
         }
