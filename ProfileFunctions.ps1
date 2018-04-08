@@ -1383,7 +1383,7 @@ function Set-OrgProfileSystemEndpoint
                 {$endpoint.$($vp.name) = $($vp.value)}
             }
             #Set any servicetype specific attributes that were specified
-            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $endpoint.ServiceType
             if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
             {
                 $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
@@ -1535,8 +1535,7 @@ function New-AdminUserProfile
         [cmdletbinding()]
         param
         (
-            [Parameter(Mandatory)]
-            [ValidateScript({Test-IsWriteableDirectory -path $_})]
+            [Parameter()]
             [string]$ProfileFolder #The folder to use for logs, exports, etc.
             ,
             [Parameter(Mandatory)]
@@ -1598,6 +1597,11 @@ function New-AdminUserProfile
                     {
                         if ($p.value -like '*\' -or $p.value -like '*/')
                         {$p.value = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
+                        if (-not (Test-Path -PathType Container -Path $p.value))
+                        {
+                            Write-Warning -Message "The specified ProfileFolder $($p.value) does not exist.  Attempting to Create it."
+                            New-Item -Path $p.value -ItemType Directory | Out-Null
+                        }
                     }
                     $AdminUserProfile.$($p.key) = $p.value
                 }
@@ -1753,7 +1757,7 @@ Function Use-AdminUserProfile
             }
             if (-not (Test-path -PathType Container -Path $Script:LogFolderPath))
             {
-                New-Item -Path $Script:LogFolderPath -ItemType Directory | Out-Null
+                New-Item -Path $Script:LogFolderPath -ItemType Directory -ErrorAction Stop | Out-Null
             }
             $Script:LogPath = "$Script:LogFolderPath\$Script:Stamp" + '-AdminOperations.log'
             $Script:ErrorLogPath = "$Script:LogFolderPath\$Script:Stamp" +  '-AdminOperations-Errors.log'
@@ -1768,7 +1772,7 @@ Function Use-AdminUserProfile
             }
             if (-not (Test-path -PathType Container -Path $Script:InputFilesPath))
             {
-                New-Item -Path $Script:InputFilesPath -ItemType Directory | Out-Null
+                New-Item -Path $Script:InputFilesPath -ItemType Directory -ErrorAction Stop | Out-Null
             }
             #Export Data Path
             if ([string]::IsNullOrEmpty($script:CurrentAdminUserProfile.ExportDataFolder))
@@ -1781,7 +1785,7 @@ Function Use-AdminUserProfile
             }
             if (-not (Test-path -PathType Container -Path $Script:ExportDataPath))
             {
-                New-Item -Path $Script:ExportDataPath -ItemType Directory | Out-Null
+                New-Item -Path $Script:ExportDataPath -ItemType Directory -ErrorAction Stop | Out-Null
             }
         }#begin
         end
@@ -1887,6 +1891,11 @@ function Set-AdminUserProfile
                         {
                             if ($p.value -like '*\' -or $p.value -like '*/')
                             {$p.value = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
+                            if (-not (Test-Path -PathType Container -Path $p.value))
+                            {
+                                Write-Warning -Message "The specified ProfileFolder $($p.value) does not exist.  Attempting to Create it."
+                                New-Item -Path $p.value -ItemType Directory | Out-Null
+                            }
                         }
                         $AdminUserProfile.$($p.key) = $p.value
                     }
@@ -2786,7 +2795,7 @@ function Set-OneShellOrgProfileDirectory
             $message = "The specified path exists but does not appear to be writeable. Without elevating or using a different credential this user may be able to use existing OneShell Org Profiles in this location but may not be able to edit them."
             Write-Warning -Message $message
         }
-        $Script:OneShellOrgProfilePath = @($Path)
+        $Script:OneShellOrgProfilePath = $Path
 
         if (-not $PSBoundParameters.ContainsKey('DoNotPersist'))
         {
