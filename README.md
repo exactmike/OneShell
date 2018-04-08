@@ -38,11 +38,11 @@ We hope to soon add support for SSH endpoints for heterogenous environments
 
 - Extensible ServiceType configuration.  You can add additional systems usually without any modifications to OneShell code by adding a ServiceType json file.
 - Profiles
-  - Store General Organizaiton System Information which can be shared among multiple administrators
+  - Stores General Organization System Information which can be shared among multiple administrators
   - Defines administrative endpoints and preferences
   - Stores Administrative Credentials (specific to each administrator)
-  - Maps Credentials to administratiave endpoints along with per administrator connectivity preferences
+  - Maps Credentials to administrative endpoints along with per administrator connectivity preferences
   - Stores some additional administrative preferences and configurations
 - Automated Connectivity to administrative endpoints
-  - with one command connects an administrator to all desired administrative endpoints and re-connects on demand as well when sessions break
-  - connectivity functions are suitable to embed in your own automation scripts to ensure connectivity during long running operations
+  - With one command connects an administrator to all desired administrative endpoints and re-connects on demand as well when sessions break
+  - Connectivity functions are suitable to embed in your own automation scripts to ensure connectivity during long running operations
