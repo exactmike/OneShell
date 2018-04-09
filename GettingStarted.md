@@ -83,14 +83,3 @@ Invoke-Command -Session (Get-OneShellSystemPSSession -Identity DemoOrgExchangeOn
 ```PowerShell
 Get-OLMailbox -ResultSize 5
 ```
-- Connect-OneShellSystem will check for an existing connection and test for a functional connection before establishing a connection. As such, it can be used as a test to confirm a connection has not timed out for unattended operations. Below, we use Connect-OneShellSystem as a test (it returns true when it's able to establish an effective connection) and also force a reconnection with the Reconnect switch if a failed connection is not automatically repaired.
-```PowerShell
-$Statistics = @(
- Foreach ($Mailbox in (Get-OLMailbox -ResultSize Unlimited) {
-    If (-Not (Connect-OneShellSystem -identity DemoOrgExchangeOnline)) {
-      Connect-OneShellSystem -identity DemoOrgExchangeOnline -Reconnect
-     }
-    Get-OLMailboxStatistics -Identity $Mailbox.DistinguishedName 
-    }
-)
-```
