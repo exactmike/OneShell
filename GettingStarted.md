@@ -4,7 +4,7 @@
 - [Setting Up The Module](#SettingUp)
 - [Importing And Using Your Connections](#ImportingAndUsing)
 ## <a name="SettingUp"></a>Setting Up The Module
-######[Back to Table of Contents](#TOC)
+###### [Back to Table of Contents](#TOC)
 In order to use OneShell effectively, you'll need to have the module files stored in a place where you can import them easily. If you're already familiar with administering PowerShell Modules, you can ignore this paragraph. If you're not, perhaps the best place to put them is in %UserProfile%\Documents\WindowsPowerShell\Modules. On a vanilla Windows installation, this will be c:\users\<username>\Documents\WindowsPowerShell\Modules. The WindowsPowerShell and Modules folders will not exist. You can create them.
 
 Once you've decided where to store the module, you can either download it by clicking the Download button or clone the repo using git. Either way, you should end up with a folder named OneShell underneath the Modules folder, and you'll be ready to go!
