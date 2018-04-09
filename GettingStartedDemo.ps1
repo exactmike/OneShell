@@ -1,5 +1,9 @@
 #This file will show how to configure a new organization and admin user profile from the command line
 Import-Module -Name OneShell
+#Tell OneShell Where it should store orgnization profiles. This will be $env:\programdata\OneShell by default. You can add a -Path parameter to the below cmdlet if you want to store them somewhere else. By default, $env:\programdata\OneShell will still be created and will be used to tell OneShell where to find your org profiles. If you don't have Admin rights on the workstation you're installing on, you can specify -Scope User to store them in $env:localappdata\OneShell. If you do not want to persist this storage location at all, you can specify -DoNotPersist.
+Set-OneShellOrgProfileDirectory
+#Tell OneShell Where it should store admin user profiles. This will be $env:\localappdata\OneShell by default. You can add a -Path parameter to the below cmdlet if you want to store them somewhere else. By default, $env:\localappdata\OneShell will still be created and will be used to tell OneShell where to find your admin user profiles. If you do not want to persist this storage location at all, you can specify -DoNotPersist.
+Set-OneShellAdminUserProfileDirectory
 New-OrgProfile -Name DemoOrg
 #if you want to verify that this did something
 Get-OrgProfile -Identity DemoOrg
