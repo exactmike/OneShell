@@ -1,10 +1,12 @@
 # Getting Started With OneShell
 
+## <a name="toc"></a>Table Of Contents
+[Importing And Using Your Connections](#ImportingAndUsing)
 ## Setting Up The Module
 In order to use OneShell effectively, you'll need to have the module files stored in a place where you can import them easily. If you're already familiar with administering PowerShell Modules, you can ignore this paragraph. If you're not, perhaps the best place to put them is in %UserProfile%\Documents\WindowsPowerShell\Modules. On a vanilla Windows installation, this will be c:\users\<username>\Documents\WindowsPowerShell\Modules. The WindowsPowerShell and Modules folders will not exist. You can create them.
 
 Once you've decided where to store the module, you can either download it by clicking the Download button or clone the repo using git. Either way, you should end up with a folder named OneShell underneath the Modules folder, and you'll be ready to go!
-## Creating And Populating The Org Profile
+
 - To get started, open PowerShell.
 - Import the module by issuing this cmdlet. If you get warnings about script signing or execution, follow the instructions provided or search the internet for the required instructions to get your computer ready to run downloaded PowerShell code. I won't re-invent the wheel by documenting those steps here.
 ```PowerShell
@@ -18,6 +20,8 @@ Set-OneShellOrgProfileDirectory
 ```PowerShell
 Set-OneShellAdminUserProfileDirectory
 ```
+## Creating And Populating The Org Profile
+
 - Create an empty Organization Profile. The Org Profile is where all of your systems to be administered will be configured. The Org profile can be shared by multiple admin user profiles in one or more user accounts, so you don't have to define the same systems to be administered multiple times. 
 ```PowerShell
 New-OrgProfile -Name DemoOrg
@@ -28,4 +32,5 @@ Get-OrgProfile -Identity DemoOrg
 ```
 ##Creating And Populating the AdminUser Profile
 
-##Importing And Using Your Connections
+## <a name="ImportingAndUsing"></a>Importing And Using Your Connections
+[Back to Table of Contents](#TOC)
