@@ -34,7 +34,61 @@ New-OrgProfile -Name DemoOrg
 ```PowerShell
 Get-OrgProfile -Identity DemoOrg
 ```
+- Add systems that you want to administer to the Org Profile. Here are examples using a few common ServiceTypes.
+```PowerShell
+New-OrgProfileSystem -Name DemoOrgExchangeOnline -Description "DemoOrg's Exchange Online Tenant" -ServiceType ExchangeOnline -CommandPrefix OL -ProfileIdentity DemoOrg
+New-OrgProfileSystem -Name DemoOrgExchangeOnPremises -ServiceType ExchangeOnPremises -CommandPrefix OP -ProfileIdentity DemoOrg
+New-OrgProfileSystem -Name DemoOrgAzureAD -ServiceType AzureAD -ProfileIdentity DemoOrg -TenantSubDomain DemoOrg
+New-OrgProfileSystem -Name MyAppServer -ServiceType PowerShell -SessionManagementGroups AppServers -ProfileIdentity DemoOrg
+```
+- Now add system endpoints where that is needed (it's not needed for the Exchange Online connection but for all the others in the examples above it is needed). System endpoints define the endpoint against which connections to this system should be initiated. Multiple endpoints can be defined against a single system which can be helpful for fault tolerance or for specific tasks (e.g. set mailbox settings for an APAC user against an APAC Exchange server endpoint to avoid having to wait for domain controller replication). 
+```PowerShell
+New-OrgProfileSystemEndpoint -SystemIdentity MyAppServer -ServiceType PowerShell -AddressType FQDN -Address appserver.contoso.com -ProfileIdentity DemoOrg
+New-OrgProfileSystemEndpoint -SystemIdentity DemoOrgExchangeOnPremises -ServiceType ExchangeOnPremises -ProfileIdentity DemoOrg -AddressType FQDN -Address usgvlve1401.contoso.com
+New-OrgProfileSystemEndpoint -SystemIdentity DemoOrgAzureAD -ServiceType AzureAD -AddressType FQDN -Address localhost -ProfileIdentity DemoOrg
+```
 ## <a name="CreatingAdminUserProfile"></a>Creating And Populating the AdminUser Profile
 ###### [Back to Table of Contents](#TOC)
+- Next, create an admin user profile which is associated with the org profile above. The ProfileFolder is where the logs, exports, and import files will be stored. If this folder doesn't exist, you'll need to create it manually. OneShell will create subfolders underneath it. Remember, the admin user profile is user specific and stores the credentials, preferred endpoints, and other settings used to connect to the systems defined in the (potentially) shared org profile. The MailFromSMTPAddress is used if you use any of the built-in email sending functions of OneShell. OrgProfileIdentity will offer auto-complete values.
+```PowerShell
+New-AdminUserProfile -ProfileFolder C:\Users\demouser\OneShell -MailFromSMTPAddress demouser@contoso.com -orgprofileidentity DemoOrg
+```
+- Repeat the below for each credential you want to add. The ProfileIdentity will offer auto-complete values. 
+```PowerShell
+New-AdminUserProfileCredential -Username demouser@contoso.com -ProfileIdentity DemoOrg-demouser-USGVLW10DESKDU
+```
+- Repeat the below for each system with which you want to associate a credential. The ProfileIdentity will offer auto-complete values. Select the system and credential you wish to link. You'll need to perform this step multiple times in order to link each system to which you want to connect with a credential you've defined. 
+```PowerShell
+Set-AdminUserProfileSystemCredential -ProfileIdentity DemoOrg-demouser-USGVLW10DESKDU
+```
+- Set one or more of your systems to import the PS Session automatically when connected. _The automatic importing will import prefixed cmdlets (if you chose a prefix for the system) into your shell. If you don't set this, you'll either have to import the sessions later, or you'll have to use Invoke-Command to pass cmdlets into the session, or you'll have to use Enter-PSSession to enter the sessions one at a time._ Choose the Admin profile, system, and endpoint, if applicable, when prompted.
+```PowerShell
+Set-AdminUserProfileSystem -AutoImport:$true
+```
+- This cmdlet load the admin profile you've been editing into memory for immediate use. The identity parameter should offer auto-complete values.
+```PowerShell
+Use-AdminUserProfile -Identity DemoOrg-demouser-USGVLW10-DESKMC
+```
 ## <a name="ImportingAndUsing"></a>Importing And Using Your Connections
 ###### [Back to Table of Contents](#TOC)
+- Connect to a system. Identity will offer auto-complete values. If you chose, above, to import automatically, the PSSession will be imported automatically.
+```PowerShell
+Connect-OneShellSystem -identity DemoOrgExchangeOnline
+```
+- Issue a command via invoke-command.
+```PowerShell
+Invoke-Command -Session (Get-OneShellSystemPSSession -Identity DemoOrgExchangeOnline) -ScriptBlock {Get-Mailbox -ResultSize 5}
+```
+- Issue a command via imported session with prefixed cmdlet.
+```PowerShell
+Get-OLMailbox -ResultSize 5
+```
+- Connect-OneShellSystem will check for an existing connection and test for a functional connection before establishing a connection. As such, it can be used as a test to confirm a connection has not timed out for unattended operations. Below, we use Connect-OneShellSystem as a test (it returns true when it's able to establish an effective connection) and also force a reconnection with the Reconnect switch if a failed connection is not automatically repaired.
+```PowerShell
+$Statistics = @(
+ Foreach ($Mailbox in (Get-OLMailbox -ResultSize Unlimited) {
+    If (-Not (Connect-OneShellSystem -identity DemoOrgExchangeOnline)) {Connect-OneShellSystem -identity DemoOrgExchangeOnline -Reconnect}
+    Get-OLMailboxStatistics -Identity $Mailbox.DistinguishedName 
+    }
+)
+```
