@@ -21,5 +21,5 @@ function New-SkypeOnlinePSSession
     }
     $Session = New-CsOnlineSession @newCSOnlineSessionParams
     $session.Name = $Name
-    Write-Output -InputObject $Session
+    $Session
 }

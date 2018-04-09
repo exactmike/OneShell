@@ -80,7 +80,6 @@ function GetOneShellServiceTypeNames
         $script:ServiceTypes.Name
     }
 #end function GetOneShellServiceTypeNames
-
 function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
@@ -150,7 +149,7 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
                 $OrgSystemObject.ServiceTypeAttributes | Add-Member -MemberType NoteProperty -Name $a -Value $Value
             }
         }
-        Write-Output -InputObject $OrgSystemObject
+        $OrgSystemObject
     }
 #end function AddServiceTypeAttributesToGenericOrgSystemObject
 function NewGenericSystemEndpointObject
@@ -335,7 +334,7 @@ function UpdateAdminUserProfileObjectVersion
             }#end switch
         }
         Until ($AdminUserProfile.ProfileTypeVersion -eq $DesiredProfileTypeVersion)
-        Write-Output -InputObject $AdminUserProfile
+        $AdminUserProfile
     } #UpdateAdminUserProfileObjectVersion
 function AddAdminUserProfileFolders
     {
@@ -423,7 +422,7 @@ function GetSelectProfile
             }
             else
             {
-                Write-output -inputobject $Profile
+                $Profile
             }
         }
     }
@@ -458,7 +457,7 @@ function GetSelectProfileSystem
         if ($null -eq $system -or $system.count -ge 2 -or $system.count -eq 0)
         {throw("Invalid SystemIdentity $Identity was provided.  No such system exists or ambiguous system exists.")}
         else
-        {Write-Output -inputObject $system}
+        {$system}
     }
 #end function GetSelectProfile
 #################################################
@@ -590,7 +589,7 @@ function Set-OrgProfile
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         Begin
         {
@@ -702,7 +701,7 @@ Function Use-OrgProfile
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         end
         {
@@ -796,7 +795,7 @@ function New-OrgProfileSystem
                     $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.mandatory -DPDictionary $dictionary
                 }
             }
-            Write-Output -InputObject $dictionary
+            $dictionary
         }#End DynamicParam
         Begin
         {
@@ -885,7 +884,7 @@ function Set-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
-            Write-Output -InputObject $dictionary
+            $dictionary
         }#End DynamicParam
         Begin
         {
@@ -948,7 +947,7 @@ function Set-OrgProfileSystemServiceTypeAttributes
                     $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $false -DPDictionary $dictionary -ValueFromPipelineByPropertyName $true
                 }
             }
-            Write-Output -InputObject $dictionary
+            $dictionary
         }#End DynamicParam
         Process
         {
@@ -1004,7 +1003,7 @@ Function Get-OrgProfileSystem
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
             $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(GetOneShellServiceTypeNames) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1041,7 +1040,7 @@ Function Get-OrgProfileSystem
             {
                 $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.Identity -in $Identity -or $_.Name -in $Identity})
             }
-            Write-Output -InputObject $OutputSystems
+            $OutputSystems
         }
     }
 #end function Get-OrgProfileSystem
@@ -1064,7 +1063,7 @@ Function Remove-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'ProfileIdentity'
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         Begin
         {
@@ -1172,7 +1171,7 @@ function New-OrgProfileSystemEndpoint
                 'ExchangeComplianceCenter'
                 {Write-Warning -Message "Exchange Compliance Center systems in OneShell use a dynamic default endpoint. This endpoint will be ignored when connecting to this system."}
             }
-            Write-Output -InputObject $dictionary
+            $dictionary
         }#End DynamicParam
         End
         {
@@ -1249,7 +1248,7 @@ function Remove-OrgProfileSystemEndpoint
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1350,7 +1349,7 @@ function Set-OrgProfileSystemEndpoint
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $Dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
             $Dictionary = New-DynamicParameter -Name 'PreferredDomainControllers' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
-            Write-Output -InputObject $Dictionary
+            $Dictionary
         }
         End
         {
@@ -1426,7 +1425,7 @@ function Get-OrgProfileSystemEndpoint
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1452,7 +1451,7 @@ function Get-OrgProfileSystemEndpoint
                     }
                 }
             )
-            Write-Output -InputObject $EndPoints
+            $EndPoints
         }
     }
 #end function Get-OrgProfileSystemEndpoint
@@ -1487,7 +1486,7 @@ Function Get-AdminUserProfile
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 2
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -ParameterSetName Identity -DPDictionary $dictionary -Mandatory $true -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1526,7 +1525,7 @@ Function Get-AdminUserProfile
                 $outputprofiles = $outputprofiles | Where-Object -FilterScript {$_.organization.identity -eq $OrgProfileIdentity -or $_.organization.Name -eq $OrgProfileIdentity}
             }
             #output the found profiles
-            Write-Output -InputObject $outputprofiles
+            $outputprofiles
         }#end End
     }
 #end function Get-AdminUserProfile
@@ -1561,7 +1560,7 @@ function New-AdminUserProfile
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1668,7 +1667,7 @@ Function Use-AdminUserProfile
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -ParameterSetName 'Identity' -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         begin
         {
@@ -1741,7 +1740,7 @@ Function Use-AdminUserProfile
                         }
                         $js.Credentials.$p = $Credential
                     }
-                    Write-Output -InputObject $js
+                    $js
                 }
             )
             #set folder paths
@@ -1841,7 +1840,7 @@ function Set-AdminUserProfile
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet $AdminProfileIdentities -Mandatory $true -ValueFromPipelineByPropertyName $true
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         Process
         {
@@ -1930,7 +1929,7 @@ Function Get-AdminUserProfileSystem
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
             $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(GetOneShellServiceTypeNames) -DPDictionary $dictionary -Mandatory $false -Position 3
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1976,7 +1975,7 @@ Function Get-AdminUserProfileSystem
             {
                 $outputSystems = $outputSystems | Where-Object -FilterScript {$_.Identity -in $Identity -or $_.Name -in $Identity}
             }
-            Write-Output -InputObject $outputSystems
+            $outputSystems
         }#end End
     }
 #end function Get-AdminUserProfileSystem
@@ -2015,7 +2014,7 @@ Function Set-AdminUserProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
-            Write-Output -inputobject $dictionary
+            $dictionary
         }
         Begin
         {
@@ -2086,7 +2085,7 @@ Function Set-AdminUserProfileSystemPreferredEndpoint
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
-            Write-Output -inputobject $dictionary
+            $dictionary
         }
         End
         {
@@ -2150,7 +2149,7 @@ Function Set-AdminUserProfileSystemCredential
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
-            Write-Output -inputobject $dictionary
+            $dictionary
         }
         Begin
         {
@@ -2224,7 +2223,7 @@ function Update-AdminUserProfileTypeVersion
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $true -Position 1
-            Write-Output -inputobject $dictionary
+            $dictionary
         }
         End
         {
@@ -2281,7 +2280,7 @@ function Update-AdminUserProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $AdminProfileIdentities -ParameterSetName 'Identity' -Mandatory $true
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -2360,7 +2359,7 @@ function New-AdminUserProfileCredential
             $paProfiles = GetPotentialAdminUserProfiles -path $Path
             $AdminProfileIdentities = @($paProfiles.name; $paProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -2424,7 +2423,7 @@ function Remove-AdminUserProfileCredential
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -2496,7 +2495,7 @@ function Set-AdminUserProfileCredential
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -2581,7 +2580,7 @@ function Get-AdminUserProfileCredential
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 1
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -2603,7 +2602,7 @@ function Get-AdminUserProfileCredential
             )
             if (-not [string]::IsNullOrEmpty($Identity))
             {$OutputCredentials = $OutputCredentials | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Username -eq $Identity}}
-            Write-Output -InputObject $OutputCredentials
+            $OutputCredentials
         }
     }
 #end function Get-AdminUserProfileCredential
@@ -2647,7 +2646,7 @@ function Select-ProfileSystem
             #    $true
             #    {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Numbered} #-Title $message
             #}
-        Write-Output -InputObject $systems[$whichone]
+        $systems[$whichone]
     }
 #end function Select-ProfileSystem
 function Select-OrgProfileSystemEndpoint
@@ -2674,7 +2673,7 @@ function Select-OrgProfileSystemEndpoint
         #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
         #    }
         #)
-        Write-Output -InputObject $EndPoints[$whichone]
+        $EndPoints[$whichone]
     }
 #end function Select-OrgProfileSystemEndpoint
 function Select-AdminUserProfileCredential
@@ -2701,7 +2700,7 @@ function Select-AdminUserProfileCredential
         #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
         #    }
         #)
-        Write-Output -InputObject $Credentials[$whichone]
+        $Credentials[$whichone]
     }
 #end function Select-AdminUserProfileCredential
 function Select-Profile
@@ -2728,7 +2727,7 @@ function Select-Profile
         #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
         #    }
         #)
-        Write-Output -InputObject $Profiles[$whichone]
+        $Profiles[$whichone]
     }
 #end function Select-Profile
 #################################################
@@ -2907,23 +2906,23 @@ function Set-OneShellAdminUserProfileDirectory
     }
 #end function Set-OneShellAdminUserProfileDirectory
 function GetOneShellAdminUserProfileDirectory
-{
-    [CmdletBinding()]
-    param
-    ()
-    $UserDirectory = $("$env:LocalAppData\OneShell")
-    $PersistFileName = 'OneShellUserSettings.json'
-    $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
-    if (Test-Path -Path $UserFilePath -PathType Leaf)
     {
-        $Script:OneShellAdminUserProfilePath = $(Import-JSON -Path $UserFilePath).AdminUserProfilePath
+        [CmdletBinding()]
+        param
+        ()
+        $UserDirectory = $("$env:LocalAppData\OneShell")
+        $PersistFileName = 'OneShellUserSettings.json'
+        $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
+        if (Test-Path -Path $UserFilePath -PathType Leaf)
+        {
+            $Script:OneShellAdminUserProfilePath = $(Import-JSON -Path $UserFilePath).AdminUserProfilePath
+        }
+        if ([string]::IsNullOrWhiteSpace($Script:OneShellAdminUserProfilePath))
+        {
+            $message = 'You must run Set-OneShellAdminUserProfileDirectory. No persisted OneShell Admin User Profile directories found.'
+            Write-Warning -Message $message
+        }
     }
-    if ([string]::IsNullOrWhiteSpace($Script:OneShellAdminUserProfilePath))
-    {
-        $message = 'You must run Set-OneShellAdminUserProfileDirectory. No persisted OneShell Admin User Profile directories found.'
-        Write-Warning -Message $message
-    }
-}
 #end function GetOneShellOrgProfileDirectory
 #################################################
 # Need to add

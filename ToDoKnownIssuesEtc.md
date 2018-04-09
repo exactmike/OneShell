@@ -1,5 +1,6 @@
 # To Do Items
 
+- [ ] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
 - [ ] add prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] call update-adminuserprofilesystem in every set-adminuserprofile* cmdlet to catch recently added orgprofilesystems
 - [ ] add parameters to Set-AdminUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder

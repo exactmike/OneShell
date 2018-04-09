@@ -421,7 +421,7 @@ function New-SplitArrayRange
                 Start = $start
                 End = $end
             }
-            Write-Output -InputObject $SplitArrayRange
+            $SplitArrayRange
         }#for
     }
 function Convert-HashtableToObject
@@ -584,7 +584,7 @@ Function Convert-ObjectToHashTable
                 }
             } #foreach
             Write-Verbose -Message 'Writing the result to the pipeline'
-            Write-Output -InputObject $hash
+            $hash
         }#close process
 
     }
@@ -705,8 +705,9 @@ function Get-FirstNonNullEmptyStringVariableValueFromScopeHierarchy
     $scope++
   }
   until (-not [string]::IsNullOrWhiteSpace($value) -or $stopwatch.ElapsedMilliseconds -ge $timeout -or $scope -ge $ScopeLevels)
-  Write-Output -InputObject $value
+  $value
 }
+#end function Get-FirstNonNullEmptyStringVariableValueFromScopeHierarchy
 Function Write-EndFunctionStatus {
     param($CallingFunction)
 Write-Log -Message "$CallingFunction completed." -EntryType Notification}
@@ -888,7 +889,7 @@ Function Export-Data
             Out-File @outFileParams
           }
         }
-        if ($ReturnExportFilePath) {Write-Output -InputObject $ExportFilePath}
+        if ($ReturnExportFilePath) {$ExportFilePath}
         Write-Log -Message $message -EntryType Succeeded
     }#try
     Catch
@@ -917,7 +918,7 @@ function Export-Credential
         UserName = $ExportUserName
         Password = $ExportPassword
     }
-    Write-Output -InputObject $exportCredential
+    $exportCredential
 }
 Function Remove-AgedFiles
 {
@@ -1365,10 +1366,10 @@ function Read-OpenFileDialog
         {
             if ($AllowMultiSelect)
             {
-                Write-Output -InputObject $openFileDialog.Filenames
+                $openFileDialog.Filenames
             } else
             {
-                Write-Output -InputObject $openFileDialog.Filename
+                $openFileDialog.Filename
             }
         }
         'Cancel'
@@ -1767,7 +1768,7 @@ function Read-FolderBrowserDialog
         'OK'
         {
             $folder = $FolderBrowserDialog.SelectedPath
-            Write-Output -InputObject $folder
+            $folder
         }
         'Cancel'
         {
@@ -1801,7 +1802,7 @@ function Get-MsolUserLicenseDetail {
                 UsageLocation = $user.UsageLocation
                 LicenseReconciliationNeeded = $user.LicenseReconciliationNeeded
             }#result
-            Write-Output -InputObject $result
+            $result
         }
     }#begin
     process {
@@ -1843,7 +1844,7 @@ function Get-OneShellVariable
         DynamicParam
         {
             $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $false -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1872,7 +1873,7 @@ function Get-OneShellVariableValue
     DynamicParam
     {
         $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $true -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
-        Write-Output -InputObject $dictionary
+        $dictionary
     }
     End
     {
@@ -1900,7 +1901,7 @@ function Set-OneShellVariable
         DynamicParam
         {
             $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $true -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {
@@ -1928,7 +1929,7 @@ function Remove-OneShellVariable
         DynamicParam
         {
             $dictionary = New-DynamicParameter -Name Name -Type $([string]) -Mandatory $true -Position 1 -ValidateSet @(Get-Variable -Scope Script -ErrorAction Stop | Select-Object -ExpandProperty Name)
-            Write-Output -InputObject $dictionary
+            $dictionary
         }
         End
         {

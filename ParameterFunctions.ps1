@@ -3,7 +3,7 @@ Function New-DynamicParameter
     <#
         .SYNOPSIS
             Helper function to simplify creating dynamic parameters
-        
+
         .DESCRIPTION
             Helper function to simplify creating dynamic parameters
 
@@ -66,7 +66,7 @@ Function New-DynamicParameter
 
         .PARAMETER HelpMessage
             If specified, set the HelpMessage for this dynamic parameter
-        
+
         .PARAMETER DPDictionary
             If specified, add resulting RuntimeDefinedParameter to an existing RuntimeDefinedParameterDictionary (appropriate for multiple dynamic parameters)
             If not specified, create and return a RuntimeDefinedParameterDictionary (appropriate for a single dynamic parameter)
@@ -74,7 +74,7 @@ Function New-DynamicParameter
             See final example for illustration
 
         .EXAMPLE
-            
+
             function Show-Free
             {
                 [CmdletBinding()]
@@ -113,7 +113,7 @@ Function New-DynamicParameter
                 {
                     #Create the RuntimeDefinedParameterDictionary
                     $Dictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
-            
+
                     New-DynamicParam -Name AlwaysParam -ValidateSet @( gwmi win32_volume | %{$_.driveletter} | sort ) -DPDictionary $Dictionary
 
                     #Add dynamic parameters to $dictionary
@@ -129,7 +129,7 @@ Function New-DynamicParameter
                         New-DynamicParam -Name OtherParam2 -DPDictionary $Dictionary
                         New-DynamicParam -Name OtherParam3 -DPDictionary $Dictionary -Type DateTime
                     }
-            
+
                     #return RuntimeDefinedParameterDictionary
                     $Dictionary
                 }
@@ -186,7 +186,7 @@ Function New-DynamicParameter
         [bool]$Mandatory = $true
         ,
         [parameter()]
-        [string]$ParameterSetName="__AllParameterSets"
+        [string]$ParameterSetName = "__AllParameterSets"
         ,
         [parameter()]
         [int]$Position
@@ -209,13 +209,13 @@ Function New-DynamicParameter
     $ParamAttr = New-Object System.Management.Automation.ParameterAttribute
     $ParamAttr.ParameterSetName = $ParameterSetName
     $ParamAttr.Mandatory = $Mandatory
-    if($PSBoundParameters.ContainsKey('Position'))
+    if ($PSBoundParameters.ContainsKey('Position'))
     {
-        $ParamAttr.Position=$Position
+        $ParamAttr.Position = $Position
     }
     $ParamAttr.ValueFromPipelineByPropertyName = $ValueFromPipelineByPropertyName
     $ParamAttr.ValueFromPipeline = $ValueFromPipeline
-    if($PSboundParameters.ContainsKey('HelpMessage'))
+    if ($PSboundParameters.ContainsKey('HelpMessage'))
     {
         $ParamAttr.HelpMessage = $HelpMessage
     }
@@ -223,122 +223,123 @@ Function New-DynamicParameter
     $AttributeCollection = New-Object 'Collections.ObjectModel.Collection[System.Attribute]'
     $AttributeCollection.Add($ParamAttr)
 
-    if($PSBoundParameters.ContainsKey('ValidateSet'))
+    if ($PSBoundParameters.ContainsKey('ValidateSet'))
     {
         $ParamOptions = New-Object System.Management.Automation.ValidateSetAttribute -ArgumentList $ValidateSet
         $AttributeCollection.Add($ParamOptions)
     }
     #Aliases if specified
-        if($Alias.count -gt 0) {
-            $ParamAlias = New-Object System.Management.Automation.AliasAttribute -ArgumentList $Alias
-            $AttributeCollection.Add($ParamAlias)
-        }
+    if ($Alias.count -gt 0)
+    {
+        $ParamAlias = New-Object System.Management.Automation.AliasAttribute -ArgumentList $Alias
+        $AttributeCollection.Add($ParamAlias)
+    }
 
     #Create the dynamic parameter
-        $Parameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList @($Name, $Type, $AttributeCollection)
-    
+    $Parameter = New-Object -TypeName System.Management.Automation.RuntimeDefinedParameter -ArgumentList @($Name, $Type, $AttributeCollection)
+
     #Set the default value #added by MC
-        if (
-            #$PSBoundParameters.ContainsKey($DefaultValue)
-            $null -ne $DefaultValue
-        )
-        {
-            Write-Verbose -Message "adding Default Value to Parameter $($Parameter.Name)"
-            $Parameter.Value = $DefaultValue
-        }
+    if (
+        #$PSBoundParameters.ContainsKey($DefaultValue)
+        $null -ne $DefaultValue
+    )
+    {
+        Write-Verbose -Message "adding Default Value to Parameter $($Parameter.Name)"
+        $Parameter.Value = $DefaultValue
+    }
 
     #Add the dynamic parameter to an existing dynamic parameter dictionary, or create the dictionary and add it
-    if(-not $null -eq $DPDictionary)
+    if (-not $null -eq $DPDictionary)
     {
         Write-Verbose -Message "Using Existing DPDictionary"
         $DPDictionary.Add($Name, $Parameter)
-        Write-Output -InputObject $DPDictionary
+        $DPDictionary
     }
     else
     {
         Write-Verbose -Message "Creating New DPDictionary"
         $Dictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
         $Dictionary.Add($Name, $Parameter)
-        Write-Output -inputobject $Dictionary
+        $Dictionary
     }
 }
 #end function New-DynamicParameter
 function Set-DynamicParameterVariable
+{
+    [cmdletbinding()]
+    param
+    (
+        [parameter(Mandatory)]
+        [System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
+    )
+    foreach ($p in $Dictionary.Keys)
     {
-        [cmdletbinding()]
-        param
-        (
-            [parameter(Mandatory)]
-            [System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
-        )
-        foreach ($p in $Dictionary.Keys)
-        {
-            Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
-            #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
-        }
+        Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
+        #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
     }
+}
 #end function Set-DynamicParameterVariable
 
 Function Get-CommonParameter
-    {
-        [cmdletbinding(SupportsShouldProcess)]
-        param()
-        $MyInvocation.MyCommand.Parameters.Keys
-    }
+{
+    [cmdletbinding(SupportsShouldProcess)]
+    param()
+    $MyInvocation.MyCommand.Parameters.Keys
+}
 #end function Get-CommonParameter
 function Get-AllParameters
+{
+    [cmdletbinding()]
+    param
+    (
+        $BoundParameters #$PSBoundParameters
+        ,
+        $AllParameters #$MyInvocation.MyCommand.Parameters
+        ,
+        [switch]$IncludeCommon
+    )
+    $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
+    $AllKeys = $AllKeys | Sort-Object -Unique
+    if ($IncludeCommon -ne $true)
     {
-        [cmdletbinding()]
-        param
-        (
-            $BoundParameters #$PSBoundParameters
-            ,
-            $AllParameters #$MyInvocation.MyCommand.Parameters
-            ,
-            [switch]$IncludeCommon
-        )
-        $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
-        $AllKeys = $AllKeys | Sort-Object -Unique
-        if ($IncludeCommon -ne $true)
-        {
-            $AllKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
-        }
-        Write-Output -InputObject $AllKeys
+        $AllKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
     }
+    $AllKeys
+}
 #end function Get-AllParameters
 function Get-AllParametersWithAValue
-    {
-        [cmdletbinding()]
-        param
-        (
-            $BoundParameters #$PSBoundParameters
-            ,
-            $AllParameters #$MyInvocation.MyCommand.Parameters
-            ,
-            [switch]$IncludeCommon
-            ,
-            $Scope = 1
-        )
-        $getAllParametersParams = @{
-            BoundParameters = $BoundParameters
-            AllParameters = $AllParameters
-        }
-        if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
-        $AllParameterKeys = Get-AllParameters @getAllParametersParams
-        $AllParametersWithAValue = @(
-            foreach ($k in $AllParameterKeys)
-            {
-                try
-                {
-                    Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
-                }
-                catch
-                {
-                    #don't care if a particular variable is not found
-                    Write-Verbose -Message "$k was not found"
-                }
-            }
-        )
-        Write-Output -InputObject $AllParametersWithAValue
+{
+    [cmdletbinding()]
+    param
+    (
+        $BoundParameters #$PSBoundParameters
+        ,
+        $AllParameters #$MyInvocation.MyCommand.Parameters
+        ,
+        [switch]$IncludeCommon
+        ,
+        $Scope = 1
+    )
+    $getAllParametersParams = @{
+        BoundParameters = $BoundParameters
+        AllParameters   = $AllParameters
     }
+    if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
+    $AllParameterKeys = Get-AllParameters @getAllParametersParams
+    $AllParametersWithAValue = @(
+        foreach ($k in $AllParameterKeys)
+        {
+            try
+            {
+                Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
+            }
+            catch
+            {
+                #don't care if a particular variable is not found
+                Write-Verbose -Message "$k was not found"
+            }
+        }
+    )
+    $AllParametersWithAValue
+}
 #end function Get-AllParametersWithAValue
