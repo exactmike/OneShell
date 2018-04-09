@@ -2,6 +2,8 @@
 
 ## <a name="TOC"></a>Table Of Contents
 - [Setting Up The Module](#SettingUp)
+- [Creating And Populating the Org Profile](#CreatingOrgProfile)
+- [Creating And Populating the AdminUser Profile](#CreatingAdminUserProfile)
 - [Importing And Using Your Connections](#ImportingAndUsing)
 ## <a name="SettingUp"></a>Setting Up The Module
 ###### [Back to Table of Contents](#TOC)
@@ -22,8 +24,8 @@ Set-OneShellOrgProfileDirectory
 ```PowerShell
 Set-OneShellAdminUserProfileDirectory
 ```
-## Creating And Populating The Org Profile
-
+## <a name="CreatingOrgProfile"></a>Creating And Populating The Org Profile
+###### [Back to Table of Contents](#TOC)
 - Create an empty Organization Profile. The Org Profile is where all of your systems to be administered will be configured. The Org profile can be shared by multiple admin user profiles in one or more user accounts, so you don't have to define the same systems to be administered multiple times. 
 ```PowerShell
 New-OrgProfile -Name DemoOrg
@@ -32,7 +34,7 @@ New-OrgProfile -Name DemoOrg
 ```PowerShell
 Get-OrgProfile -Identity DemoOrg
 ```
-##Creating And Populating the AdminUser Profile
-
+## <a name="CreatingAdminUserProfile"></a>Creating And Populating the AdminUser Profile
+###### [Back to Table of Contents](#TOC)
 ## <a name="ImportingAndUsing"></a>Importing And Using Your Connections
-[Back to Table of Contents](#TOC)
+###### [Back to Table of Contents](#TOC)
