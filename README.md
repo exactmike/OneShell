@@ -55,3 +55,7 @@ We hope to soon add support for SSH remoting and endpoints for heterogenous envi
 - Automated Connectivity to administrative endpoints
   - With one command connects an administrator to all Systems/Services and re-connects on demand as well when sessions break
   - Connectivity functions are suitable to embed in your own automation scripts to ensure connectivity during long running operations
+
+## Getting Started
+
+See GettingStarted.md
