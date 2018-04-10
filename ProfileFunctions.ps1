@@ -75,11 +75,11 @@ function GetPotentialAdminUserProfiles
         }
     }
 #End function GetPotentialAdminUserProfiles
-function GetOneShellServiceTypeNames
+function Get-OneShellServiceTypeName
     {
         $script:ServiceTypes.Name
     }
-#end function GetOneShellServiceTypeNames
+#end function Get-OneShellServiceTypeName
 function NewGenericOrgProfileObject
     {
         [cmdletbinding()]
@@ -1002,7 +1002,7 @@ Function Get-OrgProfileSystem
             $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'ProfileIdentity'
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(GetOneShellServiceTypeNames) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet @(Get-OneShellServiceTypeName) -HelpMessage 'Specify one or more system types to include' -Mandatory $false -DPDictionary $dictionary -Position 2
             $dictionary
         }
         End
@@ -1909,7 +1909,7 @@ Function Get-AdminUserProfileSystem
         [cmdletbinding(DefaultParameterSetName='All')]
         param
         (
-            [parameter(ParameterSetName = 'Identity',Position = 1)]
+            [parameter(ParameterSetName = 'Identity',Position = 1,ValueFromPipeline)]
             [string[]]$Identity
             ,
             [parameter()]
@@ -1928,10 +1928,10 @@ Function Get-AdminUserProfileSystem
             if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellAdminUserProfilePath}
             $AdminProfileIdentities = @($paProfiles = GetPotentialAdminUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $AdminProfileIdentities -Mandatory $false -Position 2
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(GetOneShellServiceTypeNames) -DPDictionary $dictionary -Mandatory $false -Position 3
+            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(Get-OneShellServiceTypeName) -DPDictionary $dictionary -Mandatory $false -Position 3
             $dictionary
         }
-        End
+        Process
         {
             Set-DynamicParameterVariable -dictionary $dictionary
             $auprofiles = @(
@@ -2742,7 +2742,7 @@ function Set-OneShellOrgProfileDirectory
             [string]$Path #If not specified the Path will default to the DefaultPath of $env:ALLUSERSPROFILE\OneShell for OrgProfileDirectoryScope System and to $env:LocalAppData\OneShell for OrgProfileDirectoryScope User
             ,
             [parameter(Mandatory)]
-            [validateSet('System','User')]
+            [validateSet('AllUsers','CurrentUser')]
             [string]$OrgProfileDirectoryScope
             ,
             [parameter()]
@@ -2750,12 +2750,12 @@ function Set-OneShellOrgProfileDirectory
         )
         switch ($OrgProfileDirectoryScope)
         {
-            'System'
+            'AllUsers'
             {
                 $DefaultPath = $("$env:ALLUSERSPROFILE\OneShell")
                 if ($Path -ne $DefaultPath)
                 {
-                    $message = "The recommended/default location for System wide OneShell Org Profile storage is $DefaultPath."
+                    $message = "The recommended/default location for AllUsers OneShell Org Profile storage is $DefaultPath."
                     Write-Verbose -Message $message -Verbose
                 }
                 if (-not $PSBoundParameters.ContainsKey('Path'))
@@ -2763,7 +2763,7 @@ function Set-OneShellOrgProfileDirectory
                     $Path = $DefaultPath
                 }
             }
-            'User'
+            'CurrentUser'
             {
                 $DefaultPath = $("$env:LocalAppData\OneShell")
                 if ($Path -ne $DefaultPath)
@@ -2929,7 +2929,7 @@ function GetOneShellAdminUserProfileDirectory
 #################################################
 Register-ArgumentCompleter -CommandName 'New-OrgProfileSystem', 'Get-ServiceTypeDefinition', 'Set-OrgProfileSystem', 'Set-OrgProfileSystemServiceTypeAttributes', 'New-OrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-    GetOneShellServiceTypeNames | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
+    Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
     ForEach-Object {
         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
     }
