@@ -1,4 +1,4 @@
-Function Write-Log
+function Write-Log
 {
     [cmdletbinding()]
     Param(
@@ -85,3 +85,20 @@ Function Write-Log
     Write-Verbose -Message $Message
 }
 #end Function Write-Log
+function Get-TimeStamp
+{
+    [string]$Stamp = Get-Date -Format yyyyMMdd-HHmmss
+    #$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToShortTimeString()) #check if this is faster to use than Get-Date
+    $Stamp
+}
+#End Function Get-TimeStamp
+Function Write-EndFunctionStatus
+{
+    param($CallingFunction)
+    Write-Log -Message "$CallingFunction completed." -EntryType Notification
+}
+Function Write-StartFunctionStatus
+{
+    param($CallingFunction)
+    Write-Log -Message "$CallingFunction starting." -EntryType Notification
+}

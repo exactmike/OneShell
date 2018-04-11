@@ -599,3 +599,1183 @@ function Import-JSON
     }
 }
 #end function Import-JSON
+function Get-ArrayIndexForValue
+{
+    [cmdletbinding()]
+    param(
+        [parameter(mandatory = $true)]
+        $array #The array for which you want to find a value's index
+        ,
+        [parameter(mandatory = $true)]
+        $value #The Value for which you want to find an index
+        ,
+        [parameter()]
+        $property #The property name for the value for which you want to find an index
+    )
+    if ([string]::IsNullOrWhiteSpace($Property))
+    {
+        Write-Verbose -Message 'Using Simple Match for Index'
+        [array]::indexof($array, $value)
+    }#if
+    else
+    {
+        Write-Verbose -Message 'Using Property Match for Index'
+        [array]::indexof($array.$property, $value)
+    }#else
+}
+#End function Get-ArrayIndexForValue
+#Error Handling Functions and used by other OneShell Functions
+function Get-AvailableExceptionsList
+{
+    <#
+            .Synopsis      Retrieves all available Exceptions to construct ErrorRecord objects.
+            .Description      Retrieves all available Exceptions in the current session to construct ErrorRecord objects.
+            .Example      $availableExceptions = Get-AvailableExceptionsList      Description      ===========      Stores all available Exception objects in the variable 'availableExceptions'.
+            .Example      Get-AvailableExceptionsList | Set-Content $env:TEMP\AvailableExceptionsList.txt      Description      ===========      Writes all available Exception objects to the 'AvailableExceptionsList.txt' file in the user's Temp directory.
+            .Inputs     None
+            .Outputs     System.String
+            .Link      New-ErrorRecord
+            .Notes Name:  Get-AvailableExceptionsList  Original Author: Robert Robelo  ModifiedBy: Mike Campbell
+        #>
+    [CmdletBinding()]
+    param()
+    $irregulars = 'Dispose|OperationAborted|Unhandled|ThreadAbort|ThreadStart|TypeInitialization'
+    $appDomains = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {-not $_.IsDynamic}
+    $ExportedTypes = $appDomains | ForEach-Object {$_.GetExportedTypes()}
+    $Exceptions = $ExportedTypes | Where-Object {$_.name -like '*exception*' -and $_.name -notmatch $irregulars}
+    $exceptionsWithGetConstructorsMethod = $Exceptions | Where-Object -FilterScript {'GetConstructors' -in @($_ | Get-Member -MemberType Methods | Select-Object -ExpandProperty Name)}
+    $exceptionsWithGetConstructorsMethod | Select-Object -ExpandProperty FullName
+}
+function New-ErrorRecord
+{
+    <#
+        .Synopsis      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
+        .Description      Creates an custom ErrorRecord that can be used to report a terminating or non-terminating error.
+        .Parameter Exception      The Exception that will be associated with the ErrorRecord.
+        .Parameter ErrorID      A scripter-defined identifier of the error.      This identifier must be a non-localized string for a specific error type.
+        .Parameter ErrorCategory      An ErrorCategory enumeration that defines the category of the error.
+        .Parameter TargetObject      The object that was being processed when the error took place.
+        .Parameter Message      Describes the Exception to the user.
+        .Parameter InnerException      The Exception instance that caused the Exception association with the ErrorRecord.
+        .Example
+        # advanced functions for testing
+        function Test-1
+        {
+        [CmdletBinding()]
+        param
+        (
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [String]$Path
+        )
+        process
+        {
+        foreach ($_path in $Path)
+        {
+        $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue
+        if (-not $content)
+        {
+            $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmpty InvalidOperation $_path -Message "File '$_path' is empty."
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
+        }
+        }
+        }
+        }
+        function Test-2
+        {
+        [CmdletBinding()]
+        param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [String]$Path
+        )
+        process
+        {
+        foreach ($_path in $Path)
+        {
+            $content = Get-Content -LiteralPath $_path -ErrorAction SilentlyContinue
+            if (-not $content)
+            {
+                $errorRecord = New-ErrorRecord InvalidOperationException FileIsEmptyAgain InvalidOperation $_path -Message "File '$_path' is empty again." -InnerException $Error[0].Exception
+                $PSCmdlet.ThrowTerminatingError($errorRecord)
+            }
+        }
+        }
+        }
+        # code to test the custom terminating error reports
+        Clear-Host $null = New-Item -Path .\MyEmptyFile.bak -ItemType File -Force -Verbose
+        Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-1 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green
+        $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green
+        $Error[0].Exception | Format-List * -Force Get-ChildItem *.bak | Where-Object {-not $_.PSIsContainer} | Test-2 Write-Host System.Management.Automation.ErrorRecord -ForegroundColor Green
+        $Error[0] | Format-List * -Force Write-Host Exception -ForegroundColor Green
+        $Error[0].Exception | Format-List * -Force
+        Remove-Item .\MyEmptyFile.bak -Verbose
+        Description
+        ===========
+        Both advanced functions throw a custom terminating error when an empty file is being processed.
+        Function Test-2's custom ErrorRecord includes an inner exception, which is the ErrorRecord reported by function Test-1.
+        The test code demonstrates this by creating an empty file in the curent directory -which is deleted at the end- and passing its path to both test functions.
+        The custom ErrorRecord is reported and execution stops for function Test-1, then the ErrorRecord and its Exception are displayed for quick analysis.
+        Same process with function Test-2; after analyzing the information, compare both ErrorRecord objects and their corresponding Exception objects.
+        -In the ErrorRecord note the different Exception, CategoryInfo and FullyQualifiedErrorId data.
+        -In the Exception note the different Message and InnerException data.
+        .Example
+        $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation
+        $Path -Message "File '$Path' is empty."
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
+        Description
+        ===========
+        A custom terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through $PSCmdlet's ThrowTerminatingError method.
+        The $PSCmdlet object is only available within advanced functions.
+        .Example
+        $errorRecord = New-ErrorRecord System.InvalidOperationException FileIsEmpty InvalidOperation $Path -Message "File '$Path' is empty."
+        Write-Error -ErrorRecord $errorRecord
+        Description
+        ===========
+        A custom non-terminating ErrorRecord is stored in variable 'errorRecord' and then it is reported through the Write-Error Cmdlet's ErrorRecord parameter.
+        .Inputs System.String
+        .Outputs System.Management.Automation.ErrorRecord
+        .Link Write-Error Get-AvailableExceptionsList
+        .Notes
+        Name:      New-ErrorRecord
+        OriginalAuthor:    Robert Robelo
+        ModifiedBy: Mike Campbell
+    #>
+    [cmdletbinding()]
+    param
+    (
+        [Parameter(Mandatory, Position = 0)]
+        [string]
+        $Exception
+        ,
+        [Parameter(Mandatory, Position = 1)]
+        [Alias('ID')]
+        [string]
+        $ErrorId
+        ,
+        [Parameter(Mandatory, Position = 2)]
+        [Alias('Category')]
+        [Management.Automation.ErrorCategory]
+        [ValidateSet('NotSpecified', 'OpenError', 'CloseError', 'DeviceError',
+            'DeadlockDetected', 'InvalidArgument', 'InvalidData', 'InvalidOperation',
+            'InvalidResult', 'InvalidType', 'MetadataError', 'NotImplemented',
+            'NotInstalled', 'ObjectNotFound', 'OperationStopped', 'OperationTimeout',
+            'SyntaxError', 'ParserError', 'PermissionDenied', 'ResourceBusy',
+            'ResourceExists', 'ResourceUnavailable', 'ReadError', 'WriteError',
+            'FromStdErr', 'SecurityError')]
+        $ErrorCategory
+        ,
+        [Parameter(Mandatory, Position = 3)]
+        $TargetObject
+        ,
+        [string]
+        $Message
+        ,
+        [Exception]
+        $InnerException
+    )
+    begin
+    {
+        Add-Type -AssemblyName Microsoft.PowerShell.Commands.Utility
+        if (-not (Test-Path -Path variable:script:AvailableExceptionsList))
+        {$script:AvailableExceptionsList = Get-AvailableExceptionsList}
+        if (-not $Exception -in $script:AvailableExceptionsList)
+        {
+            $message2 = "Exception '$Exception' is not available."
+            $exception2 = New-Object System.InvalidOperationException $message2
+            $errorID2 = 'BadException'
+            $errorCategory2 = 'InvalidOperation'
+            $targetObject2 = 'Get-AvailableExceptionsList'
+            $errorRecord2 = New-Object Management.Automation.ErrorRecord $exception2, $errorID2,
+            $errorCategory2, $targetObject2
+            $PSCmdlet.ThrowTerminatingError($errorRecord2)
+        }
+    }
+    process
+    {
+        # trap for any of the "exceptional" Exception objects that made through the filter
+        trap [Microsoft.PowerShell.Commands.NewObjectCommand]
+        {
+            $PSCmdlet.ThrowTerminatingError($_)
+        }
+        # ...build and save the new Exception depending on present arguments, if it...
+        $newObjectParams1 = @{
+            TypeName = $Exception
+        }
+        if ($PSBoundParameters.ContainsKey('Message'))
+        {
+            $newObjectParams1.ArgumentList = @()
+            $newObjectParams1.ArgumentList += $Message
+            if ($PSBoundParameters.ContainsKey('InnerException'))
+            {
+                $newObjectParams1.ArgumentList += $InnerException
+            }
+        }
+        $ExceptionObject = New-Object @newObjectParams1
+
+        # now build and output the new ErrorRecord
+        New-Object Management.Automation.ErrorRecord $ExceptionObject, $ErrorID, $ErrorCategory, $TargetObject
+    }#Process
+}
+function Get-CallerPreference
+{
+    <#
+        .Synopsis
+        Fetches "Preference" variable values from the caller's scope.
+        .DESCRIPTION
+        Script module functions do not automatically inherit their caller's variables, but they can be
+        obtained through the $PSCmdlet variable in Advanced Functions.  This function is a helper function
+        for any script module Advanced Function; by passing in the values of $ExecutionContext.SessionState
+        and $PSCmdlet, Get-CallerPreference will set the caller's preference variables locally.
+        .PARAMETER Cmdlet
+        The $PSCmdlet object from a script module Advanced Function.
+        .PARAMETER SessionState
+        The $ExecutionContext.SessionState object from a script module Advanced Function.  This is how the
+        Get-CallerPreference function sets variables in its callers' scope, even if that caller is in a different
+        script module.
+        .PARAMETER Name
+        Optional array of parameter names to retrieve from the caller's scope.  Default is to retrieve all
+        Preference variables as defined in the about_Preference_Variables help file (as of PowerShell 4.0)
+        This parameter may also specify names of variables that are not in the about_Preference_Variables
+        help file, and the function will retrieve and set those as well.
+        .EXAMPLE
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+        Imports the default PowerShell preference variables from the caller into the local scope.
+        .EXAMPLE
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState -Name 'ErrorActionPreference','SomeOtherVariable'
+
+        Imports only the ErrorActionPreference and SomeOtherVariable variables into the local scope.
+        .EXAMPLE
+        'ErrorActionPreference','SomeOtherVariable' | Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+
+        Same as Example 2, but sends variable names to the Name parameter via pipeline input.
+        .INPUTS
+        String
+        .OUTPUTS
+        None.  This function does not produce pipeline output.
+        .LINK
+        about_Preference_Variables
+        #>
+    #https://gallery.technet.microsoft.com/scriptcenter/Inherit-Preference-82343b9d
+    [CmdletBinding(DefaultParameterSetName = 'AllVariables')]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateScript( { $_.GetType().FullName -eq 'System.Management.Automation.PSScriptCmdlet' })]
+        $Cmdlet,
+
+        [Parameter(Mandatory)]
+        [Management.Automation.SessionState]
+        $SessionState,
+
+        [Parameter(ParameterSetName = 'Filtered', ValueFromPipeline)]
+        [string[]]
+        $Name
+    )
+    begin
+    {
+        $filterHash = @{}
+    }
+    process
+    {
+        if ($null -ne $Name)
+        {
+            foreach ($string in $Name)
+            {
+                $filterHash[$string] = $true
+            }
+        }
+    }
+    end
+    {
+        # List of preference variables taken from the about_Preference_Variables help file in PowerShell version 4.0
+        $vars = @{
+            'ErrorView'                     = $null
+            'FormatEnumerationLimit'        = $null
+            'LogCommandHealthEvent'         = $null
+            'LogCommandLifecycleEvent'      = $null
+            'LogEngineHealthEvent'          = $null
+            'LogEngineLifecycleEvent'       = $null
+            'LogProviderHealthEvent'        = $null
+            'LogProviderLifecycleEvent'     = $null
+            'MaximumAliasCount'             = $null
+            'MaximumDriveCount'             = $null
+            'MaximumErrorCount'             = $null
+            'MaximumFunctionCount'          = $null
+            'MaximumHistoryCount'           = $null
+            'MaximumVariableCount'          = $null
+            'OFS'                           = $null
+            'OutputEncoding'                = $null
+            'ProgressPreference'            = $null
+            'PSDefaultParameterValues'      = $null
+            'PSEmailServer'                 = $null
+            'PSModuleAutoLoadingPreference' = $null
+            'PSSessionApplicationName'      = $null
+            'PSSessionConfigurationName'    = $null
+            'PSSessionOption'               = $null
+            'ErrorActionPreference'         = 'ErrorAction'
+            'DebugPreference'               = 'Debug'
+            'ConfirmPreference'             = 'Confirm'
+            'WhatIfPreference'              = 'WhatIf'
+            'VerbosePreference'             = 'Verbose'
+            'WarningPreference'             = 'WarningAction'
+        }
+        foreach ($entry in $vars.GetEnumerator())
+        {
+            if (([string]::IsNullOrEmpty($entry.Value) -or -not $Cmdlet.MyInvocation.BoundParameters.ContainsKey($entry.Value)) -and
+                ($PSCmdlet.ParameterSetName -eq 'AllVariables' -or $filterHash.ContainsKey($entry.Name)))
+            {
+                $variable = $Cmdlet.SessionState.PSVariable.Get($entry.Key)
+
+                if ($null -ne $variable)
+                {
+                    if ($SessionState -eq $ExecutionContext.SessionState)
+                    {
+                        Set-Variable -Scope 1 -Name $variable.Name -Value $variable.Value -Force -Confirm:$false -WhatIf:$false
+                    }
+                    else
+                    {
+                        $SessionState.PSVariable.Set($variable.Name, $variable.Value)
+                    }
+                }
+            }
+        }
+        if ($PSCmdlet.ParameterSetName -eq 'Filtered')
+        {
+            foreach ($varName in $filterHash.Keys)
+            {
+                if (-not $vars.ContainsKey($varName))
+                {
+                    $variable = $Cmdlet.SessionState.PSVariable.Get($varName)
+
+                    if ($null -ne $variable)
+                    {
+                        if ($SessionState -eq $ExecutionContext.SessionState)
+                        {
+                            Set-Variable -Scope 1 -Name $variable.Name -Value $variable.Value -Force -Confirm:$false -WhatIf:$false
+                        }
+                        else
+                        {
+                            $SessionState.PSVariable.Set($variable.Name, $variable.Value)
+                        }
+                    }
+                }
+            }
+        }
+    } # end
+} # function Get-CallerPreference
+function New-GUID {[GUID]::NewGuid()}
+function New-SplitArrayRange
+{
+    <#
+        .SYNOPSIS
+        Provides Start and End Ranges to Split an array into a specified number of parts (new arrays) or parts (new arrays) with a specified number (size) of elements
+        .PARAMETER inArray
+        A one dimensional array you want to split
+        .EXAMPLE
+        Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -parts 3
+        .EXAMPLE
+        Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -size 3
+        .NOTE
+        Derived from https://gallery.technet.microsoft.com/scriptcenter/Split-an-array-into-parts-4357dcc1#content
+        #>
+    [cmdletbinding()]
+    param(
+        [parameter(Mandatory)]
+        [array]$inputArray
+        ,
+        [parameter(Mandatory, ParameterSetName = 'Parts')]
+        [int]$parts
+        ,
+        [parameter(Mandatory, ParameterSetName = 'Size')]
+        [int]$size
+    )
+    switch ($PSCmdlet.ParameterSetName)
+    {
+        'Parts'
+        {
+            $PartSize = [Math]::Ceiling($inputArray.count / $parts)
+        }#Parts
+        'Size'
+        {
+            $PartSize = $size
+            $parts = [Math]::Ceiling($inputArray.count / $size)
+        }#Size
+    }#switch
+    for ($i = 1; $i -le $parts; $i++)
+    {
+        $start = (($i - 1) * $PartSize)
+        $end = (($i) * $PartSize) - 1
+        if ($end -ge $inputArray.count) {$end = $inputArray.count}
+        $SplitArrayRange = [pscustomobject]@{
+            Part  = $i
+            Start = $start
+            End   = $end
+        }
+        $SplitArrayRange
+    }#for
+}
+function Convert-HashtableToObject
+{
+    [CmdletBinding()]
+    PARAM
+    (
+        [Parameter(ValueFromPipeline, Mandatory)]
+        [HashTable]$hashtable
+        ,
+        [switch]$Combine
+        ,
+        [switch]$Recurse
+    )
+    BEGIN
+    {
+        $output = @()
+    }
+    PROCESS
+    {
+        if ($recurse)
+        {
+            $keys = $hashtable.Keys | ForEach-Object { $_ }
+            Write-Verbose -Message "Recursing $($Keys.Count) keys"
+            foreach ($key in $keys)
+            {
+                if ($hashtable.$key -is [HashTable])
+                {
+                    $hashtable.$key = Convert-HashtableToObject -hashtable $hashtable.$key -Recurse # -Combine:$combine
+                }
+            }
+        }
+        if ($combine)
+        {
+            $output += @(New-Object -TypeName PSObject -Property $hashtable)
+            Write-Verbose -Message "Combining Output = $($Output.Count) so far"
+        }
+        else
+        {
+            New-Object -TypeName PSObject -Property $hashtable
+        }
+    }
+    END
+    {
+        if ($combine -and $output.Count -gt 1)
+        {
+            Write-Verbose -Message "Combining $($Output.Count) cached outputs"
+            $output | Join-Object
+        }
+        else
+        {
+            $output
+        }
+    }
+}
+Function Convert-ObjectToHashTable
+{
+
+    <#
+            .Synopsis
+            Convert an object into a hashtable.
+            .Description
+            This command will take an object and create a hashtable based on its properties.
+            You can have the hashtable exclude some properties as well as properties that
+            have no value.
+            .Parameter Inputobject
+            A PowerShell object to convert to a hashtable.
+            .Parameter NoEmpty
+            Do not include object properties that have no value.
+            .Parameter Exclude
+            An array of property names to exclude from the hashtable.
+            .Example
+            PS C:\> get-process -id $pid | select name,id,handles,workingset | ConvertTo-HashTable
+
+            Name                           Value
+            ----                           -----
+            WorkingSet                     418377728
+            Name                           powershell_ise
+            Id                             3456
+            Handles                        958
+            .Example
+            PS C:\> $hash = get-service spooler | ConvertTo-Hashtable -Exclude CanStop,CanPauseandContinue -NoEmpty
+            PS C:\> $hash
+
+            Name                           Value
+            ----                           -----
+            ServiceType                    Win32OwnProcess, InteractiveProcess
+            ServiceName                    spooler
+            ServiceHandle                  SafeServiceHandle
+            DependentServices              {Fax}
+            ServicesDependedOn             {RPCSS, http}
+            Name                           spooler
+            Status                         Running
+            MachineName                    .
+            RequiredServices               {RPCSS, http}
+            DisplayName                    Print Spooler
+
+            This created a hashtable from the Spooler service object, skipping empty
+            properties and excluding CanStop and CanPauseAndContinue.
+            .Notes
+            Version:  2.0
+            Updated:  January 17, 2013
+            Author :  Jeffery Hicks (http://jdhitsolutions.com/blog)
+
+            Read PowerShell:
+            Learn Windows PowerShell 3 in a Month of Lunches
+            Learn PowerShell Toolmaking in a Month of Lunches
+            PowerShell in Depth: An Administrator's Guide
+
+            "Those who forget to script are doomed to repeat their work."
+
+            .Link
+            http://jdhitsolutions.com/blog/2013/01/convert-powershell-object-to-hashtable-revised
+            .Link
+            About_Hash_Tables
+            Get-Member
+            .Inputs
+            Object
+            .Outputs
+            hashtable
+        #>
+
+    [cmdletbinding()]
+
+    Param(
+        [Parameter(Position = 0, Mandatory,
+            HelpMessage = 'Please specify an object', ValueFromPipeline)]
+        [ValidateNotNullorEmpty()]
+        $InputObject,
+        [switch]$NoEmpty,
+        [string[]]$Exclude
+    )
+
+    Process
+    {
+        #get type using the [Type] class because deserialized objects won't have
+        #a GetType() method which is what we would normally use.
+
+        $TypeName = [type]::GetTypeArray($InputObject).name
+        Write-Verbose -Message "Converting an object of type $TypeName"
+
+        #get property names using Get-Member
+        $names = $InputObject | Get-Member -MemberType properties |
+            Select-Object -ExpandProperty name
+
+        #define an empty hash table
+        $hash = @{}
+
+        #go through the list of names and add each property and value to the hash table
+        $names | ForEach-Object {
+            #only add properties that haven't been excluded
+            if ($Exclude -notcontains $_)
+            {
+                #only add if -NoEmpty is not called and property has a value
+                if ($NoEmpty -AND -Not ($inputobject.$_))
+                {
+                    Write-Verbose -Message "Skipping $_ as empty"
+                }
+                else
+                {
+                    Write-Verbose -Message "Adding property $_"
+                    $hash.Add($_, $inputobject.$_)
+                }
+            } #if exclude notcontains
+            else
+            {
+                Write-Verbose -Message "Excluding $_"
+            }
+        } #foreach
+        Write-Verbose -Message 'Writing the result to the pipeline'
+        $hash
+    }#close process
+
+}
+function Convert-SecureStringToString
+{
+    <#
+            .SYNOPSIS
+            Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user.
+            .DESCRIPTION
+            Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user.
+            .PARAMETER SecureString
+            Required parameter accepts a System.Security.SecureString object from the pipeline or by direct usage of the parameter.  Accepts multiple inputs.
+            .EXAMPLE
+            Decrypt-SecureString -SecureString $SecureString
+            .EXAMPLE
+            $SecureString1,$SecureString2 | Decrypt-SecureString
+            .LINK
+            This function is based on the code found at the following location:
+            http://blogs.msdn.com/b/timid/archive/2009/09/09/powershell-one-liner-decrypt-securestring.aspx
+            .INPUTS
+            System.Security.SecureString
+            .OUTPUTS
+            System.String
+        #>
+
+    [cmdletbinding()]
+    param (
+        [parameter(ValueFromPipeline = $True)]
+        [securestring[]]$SecureString
+    )
+
+    BEGIN {}
+    PROCESS
+    {
+        foreach ($ss in $SecureString)
+        {
+            if ($ss -is 'SecureString')
+            {[Runtime.InteropServices.marshal]::PtrToStringAuto([Runtime.InteropServices.marshal]::SecureStringToBSTR($ss))}
+        }
+    }
+    END {}
+}
+function Get-GuidFromByteArray
+{
+    [cmdletbinding()]
+    param
+    (
+        [byte[]]$GuidByteArray
+    )
+    New-Object -TypeName guid -ArgumentList (, $GuidByteArray)
+}
+#end function Get-GUIDFromByteArray
+function Get-ImmutableIDFromGUID
+{
+    [cmdletbinding()]
+    param
+    (
+        [guid]$Guid
+    )
+    [Convert]::ToBase64String($Guid.ToByteArray())
+}
+#end function Get-ImmutableIDFromGUID
+function Get-GUIDFromImmutableID
+{
+    [cmdletbinding()]
+    param
+    (
+        $ImmutableID
+    )
+    [GUID][convert]::frombase64string($ImmutableID)
+}
+#end function Get-GUIDFromImmutableID
+function Get-ByteArrayFromGUID
+{
+    [cmdletbinding()]
+    param
+    (
+        [guid]$GUID
+    )
+    $GUID.ToByteArray()
+}
+#end function Get-ByteArrayFromGUID
+function Get-Checksum
+{
+    Param (
+        [parameter(Mandatory = $True)]
+        [ValidateScript( {Test-Path -path $_ -PathType Leaf})]
+        [string]$File
+        ,
+        [ValidateSet('sha1', 'md5')]
+        [string]$Algorithm = 'sha1'
+    )
+    $FileObject = Get-Item -Path $File
+    $fs = new-object System.IO.FileStream $($FileObject.FullName), 'Open'
+    $algo = [type]"System.Security.Cryptography.$Algorithm"
+    $crypto = $algo::Create()
+    $hash = [BitConverter]::ToString($crypto.ComputeHash($fs)).Replace('-', '')
+    $fs.Close()
+    $hash
+}
+function Out-FileUtf8NoBom
+{
+    #requires -version 3
+    <#
+      .SYNOPSIS
+      Outputs to a UTF-8-encoded file *without a BOM* (byte-order mark).
+
+      .DESCRIPTION
+      Mimics the most important aspects of Out-File:
+      * Input objects are sent to Out-String first.
+      * -Append allows you to append to an existing file, -NoClobber prevents
+      overwriting of an existing file.
+      * -Width allows you to specify the line width for the text representations
+      of input objects that aren't strings.
+      However, it is not a complete implementation of all Out-String parameters:
+      * Only a literal output path is supported, and only as a parameter.
+      * -Force is not supported.
+
+      Caveat: *All* pipeline input is buffered before writing output starts,
+          but the string representations are generated and written to the target
+          file one by one.
+
+      .NOTES
+      The raison d'être for this advanced function is that, as of PowerShell v5,
+      Out-File still lacks the ability to write UTF-8 files without a BOM:
+      using -Encoding UTF8 invariably prepends a BOM.
+      http://stackoverflow.com/questions/5596982/using-powershell-to-write-a-file-in-utf-8-without-the-bom
+  #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory, Position = 0)]
+        [string] $LiteralPath
+        ,
+        [switch] $Append
+        ,
+        [switch] $NoClobber
+        ,
+        [AllowNull()] [int] $Width
+        ,
+        [Parameter(ValueFromPipeline)]
+        $InputObject
+    )
+    # Make sure that the .NET framework sees the same working dir. as PS
+    # and resolve the input path to a full path.
+    #[Environment]::CurrentDirectory = $PWD
+    $LiteralPath = [IO.Path]::GetFullPath($LiteralPath)
+    # If -NoClobber was specified, throw an exception if the target file already
+    # exists.
+    if ($NoClobber -and (Test-Path $LiteralPath))
+    {
+        Throw [IO.IOException] "The file '$LiteralPath' already exists."
+    }
+    # Create a StreamWriter object.
+    # Note that we take advantage of the fact that the StreamWriter class by default:
+    # - uses UTF-8 encoding
+    # - without a BOM.
+    $sw = New-Object IO.StreamWriter $LiteralPath, $Append
+    $htOutStringArgs = @{}
+    if ($Width)
+    {
+        $htOutStringArgs += @{ Width = $Width }
+    }
+    # Note: By not using begin / process / end blocks, we're effectively running
+    #       in the end block, which means that all pipeline input has already
+    #       been collected in automatic variable $Input.
+    #       We must use this approach, because using | Out-String individually
+    #       in each iteration of a process block would format each input object
+    #       with an indvidual header.
+    try
+    {
+        $InputObject | Out-String -Stream @htOutStringArgs | ForEach-Object { $sw.WriteLine($_) }
+    }
+    finally
+    {
+        $sw.Dispose()
+    }
+}
+Function Export-Data
+{
+    [cmdletbinding(DefaultParameterSetName = 'delimited')]
+    param(
+        $ExportFolderPath = $script:ExportDataPath
+        ,
+        [string]$DataToExportTitle
+        ,
+        $DataToExport
+        ,
+        [parameter(ParameterSetName = 'xml/json')]
+        [int]$Depth = 2
+        ,
+        [parameter(ParameterSetName = 'delimited')]
+        [parameter(ParameterSetName = 'xml/json')]
+        [ValidateSet('xml', 'csv', 'json')]
+        [string]$DataType
+        ,
+        [parameter(ParameterSetName = 'delimited')]
+        [switch]$Append
+        ,
+        [parameter(ParameterSetName = 'delimited')]
+        [string]$Delimiter = ','
+        ,
+        [switch]$ReturnExportFilePath
+        ,
+        [parameter()]
+        [ValidateSet('Unicode', 'BigEndianUnicode', 'Ascii', 'Default', 'UTF8', 'UTF8NOBOM', 'UTF7', 'UTF32')]
+        [string]$Encoding = 'Ascii'
+    )
+    #Determine Export File Path
+    $stamp = Get-TimeStamp
+    switch ($DataType)
+    {
+        'xml'
+        {
+            $ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp + $DataToExportTitle + '.xml')
+        }#xml
+        'json'
+        {
+            $ExportFilePath = Join-Path -Path $exportFolderPath  -ChildPath $($Stamp + $DataToExportTitle + '.json')
+        }#json
+        'csv'
+        {
+            if ($Append)
+            {
+                $mostrecent = @(get-childitem -Path $ExportFolderPath -Filter "*$DataToExportTitle.csv" | Sort-Object -Property CreationTime -Descending | Select-Object -First 1)
+                if ($mostrecent.count -eq 1)
+                {
+                    $ExportFilePath = $mostrecent[0].fullname
+                }#if
+                else {$ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp + $DataToExportTitle + '.csv')}#else
+            }#if
+            else {$ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp + $DataToExportTitle + '.csv')}#else
+        }#csv
+    }#switch $dataType
+    #Attempt Export of Data to File
+    $message = "Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath"
+    Write-Log -Message $message -EntryType Attempting
+    Try
+    {
+        $formattedData = $(
+            switch ($DataType)
+            {
+                'xml'
+                {
+                    $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation -As String
+                }#xml
+                'json'
+                {
+                    $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
+                }#json
+                'csv'
+                {
+                    $DataToExport | ConvertTo-Csv -ErrorAction Stop -NoTypeInformation -Delimiter $Delimiter
+                }#csv
+            }
+        )
+        $outFileParams = @{
+            ErrorAction = 'Stop'
+            InputObject = $formattedData
+            LiteralPath = $ExportFilePath
+        }
+        switch ($Encoding)
+        {
+            'UTF8NOBOM'
+            {
+                if ($Append)
+                {
+                    $outFileParams.Append = $true
+                }
+                Out-FileUtf8NoBom @outFileParams
+            }
+            Default
+            {
+                $outFileParams.Encoding = $Encoding
+                if ($append)
+                {
+                    $outFileParams.Append = $true
+                }
+                Out-File @outFileParams
+            }
+        }
+        if ($ReturnExportFilePath) {$ExportFilePath}
+        Write-Log -Message $message -EntryType Succeeded
+    }#try
+    Catch
+    {
+        Write-Log -Message "FAILED: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose -ErrorLog
+        Write-Log -Message $_.tostring() -ErrorLog
+    }#catch
+}#Export-Data
+function Export-Credential
+{
+    param(
+        [string]$message
+        ,
+        [string]$username
+    )
+    $GetCredentialParams = @{}
+    if ($message) {$GetCredentialParams.Message = $message}
+    if ($username) {$GetCredentialParams.Username = $username}
+
+    $credential = Get-Credential @GetCredentialParams
+
+    $ExportUserName = $credential.UserName
+    $ExportPassword = ConvertFrom-SecureString -Securestring $credential.Password
+
+    $exportCredential = [pscustomobject]@{
+        UserName = $ExportUserName
+        Password = $ExportPassword
+    }
+    $exportCredential
+}
+Function Remove-AgedFiles
+{
+    [cmdletbinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
+    param(
+        [int]$Days
+        ,
+        [parameter()]
+        [validatescript( {Test-IsWriteableDirectory -Path $_})]
+        [string[]]$Directory
+        ,
+        [switch]$Recurse
+    )
+    $now = Get-Date
+    $daysAgo = $now.AddDays( - $days)
+    $splat = @{
+        File = $true
+    }
+    if ($PSBoundParameters.ContainsKey('Recurse'))
+    {
+        $splat.Recurse = $true
+    }
+    foreach ($d in $Directory)
+    {
+        $splat.path = $d
+        $files = Get-ChildItem @splat
+        $filestodelete = $files | Where-Object {$_.CreationTime -lt $daysAgo -and $_.LastWriteTime -lt $daysAgo}
+        $filestodelete | Remove-Item
+    }
+}
+function New-Timer
+{
+    <#
+      .Synopsis
+      Creates a new countdown timer which can show progress and/or issue voice reports of remaining time.
+      .Description
+      Creates a new PowerShell Countdown Timer which can show progress using a progress bar and can issue voice reports of progress according to the Units and Frequency specified.
+      Additionally, as the timer counts down, alternative voice report units and frequency may be specified using the altReport parameter.
+      .Parameter Units
+      Specify the countdown timer length units.  Valid values are Seconds, Minuts, Hours, or Days.
+      .Parameter Length
+      Specify the length of the countdown timer.  Default units for length are Minutes.  Otherwise length uses the Units specified with the Units Parameter.
+      .Parameter Voice
+      Turns on voice reporting of countdown progress according to the specified units and frequency.
+      .Parameter ShowProgress
+      Shows countdown progress with a progress bar.  The progress bar updates approximately once per second.
+      .Parameter Frequency
+      Specifies the frequency of voice reports of countdown progress in Units
+      .Parameter altReport
+      Allows specification of additional voice report patterns as a countdown timer progresses.  Accepts an array of hashtable objects which must contain Keys for Units, Frequency, and Countdownpoint (in Units specified in the hashtable)
+  #>
+    [cmdletbinding()]
+    param(
+        [parameter()]
+        [validateset('Seconds', 'Minutes', 'Hours', 'Days')]
+        $units = 'Minutes'
+        ,
+        [parameter()]
+        $length
+        ,
+        [switch]$voice
+        ,
+        [switch]$showprogress
+        ,
+        [double]$Frequency = 1
+        ,
+        [hashtable[]]$altReport #Units,Frequency,CountdownPoint
+        ,
+        [int]$delay
+    )
+
+    switch ($units)
+    {
+        'Seconds' {$timespan = [timespan]::FromSeconds($length)}
+        'Minutes' {$timespan = [timespan]::FromMinutes($length)}
+        'Hours' {$timespan = [timespan]::FromHours($length)}
+        'Days' {$timespan = [timespan]::FromDays($length)}
+    }
+
+    if ($voice)
+    {
+        Add-Type -AssemblyName System.speech
+        $speak = New-Object -TypeName System.Speech.Synthesis.SpeechSynthesizer
+        $speak.Rate = 3
+        $speak.Volume = 100
+    }
+
+    if ($altReport.Count -ge 1)
+    {
+        $vrts = @()
+        foreach ($vr in $altReport)
+        {
+            $vrt = @{}
+            switch ($vr.Units)
+            {
+                'Seconds'
+                {
+                    #convert frequency units to seconds
+                    $vrt.seconds = $vr.frequency
+                    $vrt.frequency = $vr.frequency
+                    $vrt.units = $vr.Units
+                    $vrt.countdownpoint = $vr.countdownpoint
+                }
+                'Minutes'
+                {
+                    #convert frequency units to seconds
+                    $vrt.seconds = $vr.frequency * 60
+                    $vrt.frequency = $vrt.seconds * $vr.frequency
+                    $vrt.units = $vr.units
+                    $vrt.countdownpoint = $vr.countdownpoint * 60
+                }
+                'Hours'
+                {
+                    #convert frequency units to seconds
+                    $vrt.seconds = $vr.frequency * 60 * 60
+                    $vrt.frequency = $vrt.seconds * $vr.frequency
+                    $vrt.units = $vr.units
+                    $vrt.countdownpoint = $vr.countdownpoint * 60 * 60
+                }
+                'Days'
+                {
+                    #convert frequency units to seconds
+                    $vrt.seconds = $vr.frequency * 24 * 60 * 60
+                    $vrt.frequency = $vrt.seconds * $vr.frequency
+                    $vrt.units = $vr.units
+                    $vrt.countdownpoint = $vr.countdownpoint * 60 * 60 * 24
+                }
+            }
+            $ovrt = $vrt | Convert-HashTableToObject
+            $vrts += $ovrt
+        }
+        $vrts = @($vrts | sort-object -Property countdownpoint -Descending)
+    }
+    if ($delay) {New-Timer -units Seconds -length $delay -voice -showprogress -Frequency 1}
+    $starttime = Get-Date
+    $endtime = $starttime.AddTicks($timespan.Ticks)
+
+    if ($showprogress)
+    {
+        $writeprogressparams = @{
+            Activity         = "Starting Timer for $length $units"
+            Status           = 'Running'
+            PercentComplete  = 0
+            CurrentOperation = 'Starting'
+            SecondsRemaining = $timespan.TotalSeconds
+        }
+        Write-Progress @writeprogressparams
+    }
+
+    do
+    {
+        if ($nextsecond)
+        {
+            $nextsecond = $nextsecond.AddSeconds(1)
+        }
+        else {$nextsecond = $starttime.AddSeconds(1)}
+        $currenttime = Get-Date
+        [timespan]$remaining = $endtime - $currenttime
+        $secondsremaining = if ($remaining.TotalSeconds -gt 0) {$remaining.TotalSeconds.toUint64($null)} else {0}
+        if ($showprogress)
+        {
+            $writeprogressparams.CurrentOperation = 'Countdown'
+            $writeprogressparams.SecondsRemaining = $secondsremaining
+            $writeprogressparams.PercentComplete = ($secondsremaining / $timespan.TotalSeconds) * 100
+            $writeprogressparams.Activity = "Running Timer for $length $units"
+            Write-Progress @writeprogressparams
+        }
+
+        switch ($Units)
+        {
+            'Seconds'
+            {
+                $seconds = $Frequency
+                if ($voice -and ($secondsremaining % $seconds -eq 0))
+                {
+                    if ($Frequency -lt 3)
+                    {
+                        $speak.Rate = 5
+                        $speak.SpeakAsync("$secondsremaining") > $null
+                    }
+                    else
+                    {
+                        $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
+                    }
+                }
+            }
+            'Minutes'
+            {
+                $seconds = $frequency * 60
+                if ($voice -and ($secondsremaining % $seconds -eq 0))
+                {
+                    $minutesremaining = $remaining.TotalMinutes.tostring("#.##")
+                    if ($minutesremaining -ge 1)
+                    {
+                        $speak.SpeakAsync("$minutesremaining minutes remaining") > $null
+                    }
+                    else
+                    {
+                        if ($secondsremaining -ge 1)
+                        {
+                            $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
+                        }
+                    }
+                }
+            }
+            'Hours'
+            {
+                $seconds = $frequency * 60 * 60
+                if ($voice -and ($secondsremaining % $seconds -eq 0))
+                {
+                    $hoursremaining = $remaining.TotalHours.tostring("#.##")
+                    if ($hoursremaining -ge 1)
+                    {
+                        $speak.SpeakAsync("$hoursremaining hours remaining") > $null
+                    }
+                    else
+                    {
+                        $minutesremaining = $remaining.TotalMinutes.tostring("#.##")
+                        if ($minutesremaining -ge 1)
+                        {
+                            $speak.SpeakAsync("$minutesremaining minutes remaining") > $null
+                        }
+                        else
+                        {
+                            if ($secondsremaining -ge 1)
+                            {
+                                $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
+                            }
+                        }
+                    }
+                }
+            }
+            'Days'
+            {
+                $seconds = $frequency * 24 * 60 * 60
+                if ($voice -and ($secondsremaining % $seconds -eq 0))
+                {
+                    $daysremaining = $remaining.TotalDays.tostring("#.##")
+                    if ($daysremaining -ge 1)
+                    {
+                        $speak.SpeakAsync("$daysremaining days remaining") > $null
+                    }
+                    else
+                    {
+                        $hoursremaining = $remaining.TotalHours.tostring("#.##")
+                        if ($hoursremaining -ge 1)
+                        {
+                            $speak.SpeakAsync("$hoursremaining hours remaining") > $null
+                        }
+                        else
+                        {
+                            $minutesremaining = $remaining.TotalMinutes.tostring("#.##")
+                            if ($minutesremaining -ge 1)
+                            {
+                                $speak.SpeakAsync("$minutesremaining minutes remaining") > $null
+                            }
+                            else
+                            {
+                                if ($secondsremaining -ge 1)
+                                {
+                                    $speak.SpeakAsync("$secondsremaining seconds remaining") > $null
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+        $currentvrt = $vrts | Where-Object -FilterScript {$_.countdownpoint -ge $($secondsremaining - 1)} | Select-Object -First 1
+        if ($currentvrt)
+        {
+            $Frequency = $currentvrt.frequency
+            $Units = $currentvrt.units
+            $vrts = $vrts | Where-Object -FilterScript {$_countdownpoint -ne $currentvrt.countdownpoint}
+        }
+        Start-Sleep -Milliseconds $($nextsecond - (get-date)).TotalMilliseconds
+    }
+    until ($secondsremaining -eq 0)
+    if ($showprogress)
+    {
+        $writeprogressparams.completed = $true
+        $writeprogressparams.Activity = "Completed Timer for $length $units"
+        Write-Progress @writeprogressparams
+    }
+}
