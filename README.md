@@ -41,10 +41,13 @@ We hope to soon add support for SSH remoting and endpoints for heterogenous envi
 
 ## Key Features
 
-- Extensible ServiceType configuration.  You can add additional systems usually without any modifications to OneShell code by adding a ServiceType json file.
+- Extensible ServiceType configuration.
+
+  You can add additional system types/service types usually without any modifications to OneShell code by adding a ServiceType json file. See ServiceTypes.json for the current supported types and ServiceTypesTemplate.json for an example of the available options (ServiceTypesTemplate.json does not represent a working configuration but rather includes examples of the kinds of things you can specify in each attribute).
+
 - Org Profiles
   - Store General 'per organization' System/Service instances which can be shared among multiple administrators
-  - Define administrative endpoints and preferences
+  - Define endpoints and preferences
   - Each System/Service can be configured with multiple endpoints
 - User Profiles
   - Store Administrative Credentials (specific to each administrator)
@@ -59,3 +62,7 @@ We hope to soon add support for SSH remoting and endpoints for heterogenous envi
 ## Getting Started
 
 See GettingStarted.md
+
+## Contributing
+
+TBA . . .
