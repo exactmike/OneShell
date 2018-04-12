@@ -121,7 +121,7 @@ function Find-CommandPrefixToUse
         $ServiceObject
     )
     $CommandPrefix = $(
-        if ($null -ne $ServiceObject.PreferredPrefix) #this allows a blank string to be the PreferredPrefix . . . which is what an admin may want
+        if ($null -ne $ServiceObject.PreferredPrefix) #this allows a blank string to be the PreferredPrefix . . . which is what an user may want
         {
             $ServiceObject.PreferredPrefix
         }
@@ -148,8 +148,8 @@ function Get-OneShellAvailableSystem
     )
     DynamicParam
     {
-        if ($null -eq $script:CurrentAdminUserProfile)
-        {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
+        if ($null -eq $script:CurrentUserProfile)
+        {throw('No OneShell User Profile is active.  Use function Use-OneShellUserProfile to load an User Profile.')}
         $AvailableServiceTypes = @($script:CurrentSystems | Select-object -ExpandProperty ServiceType | Select-Object -Unique)
         $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity)
         $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity
@@ -217,8 +217,8 @@ function Get-OneShellSystemPSSession
     )
     DynamicParam
     {
-        if ($null -eq $script:CurrentAdminUserProfile)
-        {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
+        if ($null -eq $script:CurrentUserProfile)
+        {throw('No OneShell User Profile is active.  Use function Use-OneShellUserProfile to load an User Profile.')}
         $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity)
         $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
         $Dictionary
@@ -323,7 +323,7 @@ function Test-OneShellSystemConnection
                     try
                     {
                         Write-Log -Message $message -EntryType Attempting
-                        invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop | out-null
+                        [void](invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop)
                         Write-Log -Message $message -EntryType Succeeded
                         $true
                     }
@@ -858,7 +858,7 @@ function Initialize-OneShellSystemPSSession
                             }
                             Try
                             {
-                                Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:cmd).command) @using:CmdParams} -ErrorAction Stop | Out-Null
+                                [void](Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:cmd).command) @using:CmdParams} -ErrorAction Stop)
                                 $true
                             }#end Try
                             Catch
@@ -1015,8 +1015,8 @@ Function Import-OneShellSystem
     )
     DynamicParam
     {
-        if ($null -eq $script:CurrentAdminUserProfile)
-        {throw('No OneShell Admin user profile is active.  Use function Use-AdminUserProfile to load an admin user profile.')}
+        if ($null -eq $script:CurrentUserProfile)
+        {throw('No OneShell User Profile is active.  Use function Use-OneShellUserProfile to load an User Profile.')}
         $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity)
         $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity -ValueFromPipeline $true
         $Dictionary

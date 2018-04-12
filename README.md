@@ -6,7 +6,7 @@ A Framework for managing connections (credentials, connection modules, app modul
 
 OneShell to rule them all . . .
 
-The world is messy - endpoints fail; connection methods vary; forests, tenants, and endpoints multiply; sessions go bad; credentials need updating. 
+The world is messy - endpoints fail; connection methods vary; forests, tenants, and endpoints multiply; sessions go bad; credentials need updating.
 
 OneShell provides a framework for uniform and reliable connection and re-connection to varied system types for interactive or automated administration.
 
@@ -42,11 +42,11 @@ We hope to soon add support for SSH remoting and endpoints for heterogenous envi
 ## Key Features
 
 - Extensible ServiceType configuration.  You can add additional systems usually without any modifications to OneShell code by adding a ServiceType json file.
-- Org Profiles 
+- Org Profiles
   - Store General 'per organization' System/Service instances which can be shared among multiple administrators
   - Define administrative endpoints and preferences
   - Each System/Service can be configured with multiple endpoints
-- Admin Profiles
+- User Profiles
   - Store Administrative Credentials (specific to each administrator)
   - Map Credentials to services
   - Store AutoConnect and/or AutoImport settings per System/Service instance

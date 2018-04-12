@@ -9,7 +9,7 @@ function SetOneShellVariables
     #Write-Log -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     GetOneShellOrgProfileDirectory
-    GetOneShellAdminUserProfileDirectory
+    GetOneShellUserProfileDirectory
     $Script:LogPreference = $True
     #AdvancedOneShell needs updated for the following:
     $Script:ScalarADAttributes = @(
@@ -99,7 +99,6 @@ function SetOneShellVariables
     #Import settings from json files
     ##########################################################################################################
     $Script:ServiceTypes = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypes.json) -ErrorAction Stop | Select-Object -ExpandProperty ServiceTypes -ErrorAction Stop
-
 }
 #end function Set-OneShellVariables
 ##########################################################################################################
