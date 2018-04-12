@@ -12,7 +12,7 @@
     RootModule        = 'OneShell.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '2.1.1'
+    ModuleVersion     = '2.1.2'
 
     # ID used to uniquely identify this module
     GUID              = 'bd4390dc-a8ad-4bce-8d69-f53ccf8e4163'
@@ -66,8 +66,8 @@
     #NestedModules = @('PSMenu.psm1')
 
     # Functions to export from this module
-    FunctionsToExport = '*'
-    #FunctionsToExport = '*-*'
+    #FunctionsToExport = '*'
+    FunctionsToExport = '*-*'
 
     # Cmdlets to export from this module
     #CmdletsToExport = '*'

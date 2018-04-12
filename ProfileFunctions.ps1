@@ -260,7 +260,7 @@ function UpdateUserProfileObjectVersion
                     {
                         if (-not (Test-Member -InputObject $Credential -Name Identity))
                         {
-                            $Credential | Add-Member -MemberType NoteProperty -Name Identity -Value $(New-Guid).guid
+                            $Credential | Add-Member -MemberType NoteProperty -Name Identity -Value $(New-OneShellGuid).guid
                         }
                     }
                     #SystemEntries
@@ -731,12 +731,12 @@ Function Use-OneShellOrgProfile
             if ($null -ne $script:CurrentOrgProfile -and $profile.Identity -ne $script:CurrentOrgProfile.Identity)
             {
                 $script:CurrentOrgProfile = $profile
-                Write-Log -message "Org Profile has been changed to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name).  Remove PSSessions and select an user Profile to load." -EntryType Notification -Verbose
+                Write-OneShellLog -message "Org Profile has been changed to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name).  Remove PSSessions and select an user Profile to load." -EntryType Notification -Verbose
             }
             else
             {
                 $script:CurrentOrgProfile = $profile
-                Write-Log -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name)." -EntryType Notification -Verbose
+                Write-OneShellLog -Message "Org Profile has been set to $($script:CurrentOrgProfile.Identity), $($script:CurrentOrgProfile.name)." -EntryType Notification -Verbose
             }
         }
     }
@@ -2616,7 +2616,7 @@ function Convert-CredentialToUserProfileCredential
             [string]$Identity
         )
         if ($null -eq $Identity -or [string]::IsNullOrWhiteSpace($Identity))
-        {$Identity = $(New-Guid).guid}
+        {$Identity = $(New-OneShellGuid).guid}
         $credential | Add-Member -MemberType NoteProperty -Name 'Identity' -Value $Identity
         $credential | Select-Object -Property @{n='Identity';e={$_.Identity}},@{n='UserName';e={$_.UserName}},@{n='Password';e={$_.Password | ConvertFrom-SecureString}}
     }

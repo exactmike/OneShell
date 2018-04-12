@@ -962,7 +962,7 @@ function Get-CallerPreference
         }
     } # end
 } # function Get-CallerPreference
-function New-GUID {[GUID]::NewGuid()}
+function New-OneShellGUID {[GUID]::NewGuid()}
 function New-SplitArrayRange
 {
     <#
@@ -1391,7 +1391,7 @@ Function Export-Data
         [string]$Encoding = 'Ascii'
     )
     #Determine Export File Path
-    $stamp = Get-TimeStamp
+    $stamp = GetTimeStamp
     switch ($DataType)
     {
         'xml'
@@ -1418,7 +1418,7 @@ Function Export-Data
     }#switch $dataType
     #Attempt Export of Data to File
     $message = "Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath"
-    Write-Log -Message $message -EntryType Attempting
+    Write-OneShellLog -Message $message -EntryType Attempting
     Try
     {
         $formattedData = $(
@@ -1464,14 +1464,15 @@ Function Export-Data
             }
         }
         if ($ReturnExportFilePath) {$ExportFilePath}
-        Write-Log -Message $message -EntryType Succeeded
+        Write-OneShellLog -Message $message -EntryType Succeeded
     }#try
     Catch
     {
-        Write-Log -Message "FAILED: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose -ErrorLog
-        Write-Log -Message $_.tostring() -ErrorLog
+        Write-OneShellLog -Message "FAILED: Export of $DataToExportTitle as Data Type $DataType to File $ExportFilePath" -Verbose -ErrorLog
+        Write-OneShellLog -Message $_.tostring() -ErrorLog
     }#catch
-}#Export-Data
+}
+#End Function Export-Data
 function Export-Credential
 {
     param(

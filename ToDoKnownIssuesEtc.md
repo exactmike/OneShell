@@ -24,7 +24,7 @@
 - [ ] create a Write-Progress helper function for showing progress every nth record, showing time to completion, making the experience more consistent across functions, etc.
 - [ ] Follow <http://semver.org/> for Versioning
 - [ ] Add sophisticated CommandPrefix validation for org and user profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
-- [ ] Convert Write-Log to use System.IO.FileStream . . . and allow concurrent/asynch writing.
+- [ ] Convert Write-OneShellLog to use System.IO.FileStream . . . and allow concurrent/asynch writing.
 - [ ] Does $PSSenderInfo have any use cases for OneShell
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
 - [ ] spin off parameter functions to a separate module and add multiple parameter set support to Dynamic Parameters (so that a parameter can be mandatory in one and not in another)

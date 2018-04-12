@@ -194,15 +194,15 @@ function GetOneShellSystemPSSession
     $message = "Run Get-PSSession for name like $SessionNameWildcard"
     try
     {
-        Write-Log -Message $message -EntryType Attempting
+        Write-OneShellLog -Message $message -EntryType Attempting
         $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
-        Write-Log -Message $message -EntryType Succeeded
+        Write-OneShellLog -Message $message -EntryType Succeeded
     }
     catch
     {
         $myerror = $_
-        Write-Log -Message $message -EntryType Failed
-        Write-Log -Message $myerror.tostring() -ErrorLog
+        Write-OneShellLog -Message $message -EntryType Failed
+        Write-OneShellLog -Message $myerror.tostring() -ErrorLog
     }
     $ServiceSession
 }
@@ -269,7 +269,7 @@ function Test-OneShellSystemConnection
         }
         catch
         {
-            Write-Log -Message $_.tostring() -ErrorLog
+            Write-OneShellLog -Message $_.tostring() -ErrorLog
         }
         switch ($ServiceSession.Count)
         {
@@ -277,19 +277,19 @@ function Test-OneShellSystemConnection
             {
                 $ServiceSession = $ServiceSession[0]
                 $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
-                Write-Log -Message $message -EntryType Notification
+                Write-OneShellLog -Message $message -EntryType Notification
                 #Test the Session functionality
                 if ($ServiceSession.state -ne 'Opened')
                 {
-                    Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
+                    Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
                     $false
                     break
                 }
                 else
                 {
-                    Write-Log -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                    Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                 }
-                Write-Log -Message "Getting Service Type Session Test Commands" -EntryType Notification
+                Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
                 $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
                 if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                 {
@@ -318,40 +318,40 @@ function Test-OneShellSystemConnection
                         }
 
                     }
-                    Write-Log -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+                    Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
                     $message = "Run $testCommand in $($serviceSession.name) PSSession"
                     try
                     {
-                        Write-Log -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         [void](invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop)
-                        Write-Log -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                         $true
                     }
                     catch
                     {
                         $myerror = $_
-                        Write-Log -Message $message -EntryType Failed -ErrorLog
-                        Write-Log -message $myerror.tostring() -ErrorLog
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                        Write-OneShellLog -message $myerror.tostring() -ErrorLog
                         $false
                         break
                     }
                 }#end if
                 else
                 {
-                    Write-Log "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
+                    Write-OneShellLog "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
                     $true
                 }
             }
             0
             {
                 $message = "Found No PSSession for service $($serviceObject.Name)."
-                Write-Log -Message $message -EntryType Notification
+                Write-OneShellLog -Message $message -EntryType Notification
                 $false
             }
             Default
             {
                 $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
-                Write-Log -Message $message -EntryType Failed -ErrorLog
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                 $false
             }
         }
@@ -522,7 +522,7 @@ Function Connect-OneShellSystem
                     #check results of the test for an existing session
                     if ($ExistingConnectionIsValid)
                     {
-                        Write-Log -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
+                        Write-OneShellLog -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
                         #nothing further to do since existing connection is valid
                         #add logic for preferred endpoint/specified endpoint checking?
                     }#end if
@@ -538,40 +538,40 @@ Function Connect-OneShellSystem
                                     $message = "Remove Previously Imported Session Module $ImportedSessionModule for System $($ServiceObject.Identity)"
                                     try
                                     {
-                                        Write-Log -Message $message -EntryType Attempting
+                                        Write-OneShellLog -Message $message -EntryType Attempting
                                         Remove-Module -Name $ImportedSessionModule.Name -ErrorAction Stop
-                                        Write-Log -Message $message -EntryType Succeeded
+                                        Write-OneShellLog -Message $message -EntryType Succeeded
                                     }
                                     catch
                                     {
                                         $myerror = $_
-                                        Write-Log -Message $message -EntryType Failed -ErrorLog
-                                        Write-Log -Message $myerror.tostring() -ErrorLog
+                                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                                        Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                     }
                                 }
                                 $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
                                 Try
                                 {
-                                    Write-Log -Message $message -EntryType Attempting
+                                    Write-OneShellLog -Message $message -EntryType Attempting
                                     Remove-PSSession -Session $ExistingSession -ErrorAction Stop
-                                    Write-Log -Message $message -EntryType Succeeded
+                                    Write-OneShellLog -Message $message -EntryType Succeeded
                                 }
                                 Catch
                                 {
                                     $myerror = $_
-                                    Write-Log -Message $message -EntryType Failed -ErrorLog
-                                    Write-Log -Message $myerror.tostring() -ErrorLog
+                                    Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                 }
                             }
                             catch
                             {
                                 $myerror = $_
-                                Write-Log -Message $message -EntryType Failed -ErrorLog
-                                Write-Log -Message $myerror.tostring() -EntryType -ErrorLog
+                                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                                Write-OneShellLog -Message $myerror.tostring() -EntryType -ErrorLog
                                 throw ($myerror)
                             }
                         }#end if
-                        Write-Log -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
+                        Write-OneShellLog -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
                         #create and test the new session
                         $ConnectionReady = $false #we switch this to true when a session is connected and initialized with required modules and settings
                         #Work through the endpoint groups to try connecting in order of precedence
@@ -592,17 +592,17 @@ Function Connect-OneShellSystem
                                         $NewPSSessionCmdlet = $ServiceTypeDefinition.PSSessionCmdlet
                                     }
                                     $message = "Create PsSession using command $NewPSsessionCmdlet with name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
-                                    Write-Log -Message $message -EntryType Attempting
+                                    Write-OneShellLog -Message $message -EntryType Attempting
                                     $ServiceSession = Invoke-Command -ScriptBlock {& $NewPSSessionCmdlet @NewPSSessionParams}
-                                    Write-Log -Message $message -EntryType Succeeded
+                                    Write-OneShellLog -Message $message -EntryType Succeeded
                                     $PSSessionConnected = $true
                                 }#end Try
                                 catch
                                 {
                                     $myerror = $_
                                     $PSSessionConnected = $false
-                                    Write-Log -Message $message -EntryType Failed -ErrorLog
-                                    Write-Log -Message $myerror.tostring() -ErrorLog
+                                    Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                 }#end Catch
                                 #determine if the session needs to be initialized with imported modules, variables, etc. based on ServiceType
                                 $Phase1InitializationCompleted = $(
@@ -611,15 +611,15 @@ Function Connect-OneShellSystem
                                         $message = "Perform Phase 1 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                         try
                                         {
-                                            Write-Log -Message $message -EntryType Attempting
+                                            Write-OneShellLog -Message $message -EntryType Attempting
                                             Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
-                                            Write-Log -Message $message -EntryType Succeeded
+                                            Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
                                         {
                                             $myerror = $_
-                                            Write-Log -Message $message -EntryType Failed
-                                            Write-Log -Message $myerror.tostring() -ErrorLog
+                                            Write-OneShellLog -Message $message -EntryType Failed
+                                            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                             $false
                                         }
                                     }
@@ -634,15 +634,15 @@ Function Connect-OneShellSystem
                                         try
                                         {
                                             $message = "Import Required Module(s) into PSSession $($serviceSession.Name) for $($serviceObject.Name)"
-                                            Write-Log -Message $message -EntryType Attempting
+                                            Write-OneShellLog -Message $message -EntryType Attempting
                                             Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
-                                            Write-Log -Message $message -EntryType Succeeded
+                                            Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
                                         {
                                             $myerror = $_
-                                            Write-Log -Message $message -EntryType Failed
-                                            Write-Log -Message $myerror.tostring() -ErrorLog
+                                            Write-OneShellLog -Message $message -EntryType Failed
+                                            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                             $false
                                         }
                                     }
@@ -657,15 +657,15 @@ Function Connect-OneShellSystem
                                         try
                                         {
                                             $message = "Perform Phase 3 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
-                                            Write-Log -Message $message -EntryType Attempting
+                                            Write-OneShellLog -Message $message -EntryType Attempting
                                             Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
-                                            Write-Log -Message $message -EntryType Succeeded
+                                            Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
                                         {
                                             $myerror = $_
-                                            Write-Log -Message $message -EntryType Failed
-                                            Write-Log -Message $myerror.tostring() -ErrorLog
+                                            Write-OneShellLog -Message $message -EntryType Failed
+                                            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                             $false
                                         }
                                         #determine if the session needs further initialization
@@ -678,12 +678,12 @@ Function Connect-OneShellSystem
                                 $message = "Connection and Initialization of PSSession $($serviceSession.name) for $($serviceobject.name)"
                                 if (@($Phase1InitializationCompleted, $Phase2InitializationCompleted, $Phase3InitializationCompleted) -notcontains $false)
                                 {
-                                    Write-Log -Message $message -EntryType Succeeded
+                                    Write-OneShellLog -Message $message -EntryType Succeeded
                                     $ConnectionReady = $true
                                 }
                                 else
                                 {
-                                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                                    Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                                     if ($null -ne $ServiceSession)
                                     {
                                         Remove-PSSession -Session $ServiceSession -ErrorAction Stop
@@ -695,11 +695,11 @@ Function Connect-OneShellSystem
                         {
                             $false #we couldn't connect after trying all applicable endpoints
                             {
-                                Write-Log -Message "Failed to Connect to $($ServiceObject.Name). Review the errors and resolve them to connect." -ErrorLog -Verbose
+                                Write-OneShellLog -Message "Failed to Connect to $($ServiceObject.Name). Review the errors and resolve them to connect." -ErrorLog -Verbose
                             }
                             $true
                             {
-                                Write-Log -Message "Successfully Connected to $($ServiceObject.Name) with PSSession $($ServiceSession.Name)" -Verbose
+                                Write-OneShellLog -Message "Successfully Connected to $($ServiceObject.Name) with PSSession $($ServiceSession.Name)" -Verbose
                                 $SessionManagementGroups = @(
                                     if ($null -ne $ServiceObject.ServiceTypeAttributes -and $null -ne $ServiceObject.ServiceTypeAttributes.SessionManagementGroups)
                                     {
@@ -762,16 +762,16 @@ function Import-ModuleInOneShellSystemPSSession
                 try
                 {
                     $message = "import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name)."
-                    Write-Log -Message $message -EntryType Attempting
+                    Write-OneShellLog -Message $message -EntryType Attempting
                     Invoke-Command -session $ServiceSession -ScriptBlock {&$using:ImportCommand @using:ImportModuleParams} -ErrorAction Stop
-                    Write-Log -Message $message -EntryType Succeeded
+                    Write-OneShellLog -Message $message -EntryType Succeeded
                     $ModuleImported = $true
                 }
                 catch
                 {
                     $myerror = $_
-                    Write-Log -Message $message -ErrorLog -Verbose -EntryType Failed
-                    Write-Log -Message $myerror.tostring() -ErrorLog
+                    Write-OneShellLog -Message $message -ErrorLog -Verbose -EntryType Failed
+                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                     $ModuleImported = $false
                 }
                 $ModuleImported
@@ -864,8 +864,8 @@ function Initialize-OneShellSystemPSSession
                             Catch
                             {
                                 $myerror = $_
-                                Write-Log -Message "Initialization Phase $Phase failed." -ErrorLog -Verbose -EntryType Failed
-                                Write-Log -Message $myerror.tostring() -ErrorLog
+                                Write-OneShellLog -Message "Initialization Phase $Phase failed." -ErrorLog -Verbose -EntryType Failed
+                                Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                 $false
                             }
                         }
@@ -1118,9 +1118,9 @@ Function ImportOneShellSystemPSSession
     {
         $ImportModuleParams.Prefix = $CommandPrefix
     }
-    Write-Log -Message $message -EntryType Attempting
+    Write-OneShellLog -Message $message -EntryType Attempting
     $ImportedModule = Import-Module @ImportModuleParams
-    Write-Log -Message $message -EntryType Succeeded -Verbose
+    Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
 
     $script:ImportedSessionModules.$($ServiceObject.Identity) = [PSCustomObject]@{Identity = $serviceobject.Identity; CommandPrefix = $CommandPrefix; Name = $ImportedModule.name; ServiceType = $ServiceObject.ServiceType}
 }

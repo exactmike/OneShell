@@ -6,7 +6,7 @@ function SetOneShellVariables
 {
     [cmdletbinding()]
     Param()
-    #Write-Log -message 'Setting OneShell Module Variables'
+    #Write-OneShellLog -message 'Setting OneShell Module Variables'
     $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     GetOneShellOrgProfileDirectory
     GetOneShellUserProfileDirectory
@@ -94,7 +94,7 @@ function SetOneShellVariables
     $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName')}
     $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members'
-    $Script:Stamp = Get-TimeStamp
+    $Script:Stamp = GetTimeStamp
     ##########################################################################################################
     #Import settings from json files
     ##########################################################################################################
