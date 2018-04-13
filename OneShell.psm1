@@ -106,6 +106,7 @@ function SetOneShellVariables
 ##########################################################################################################
 #. $(Join-Path $PSScriptRoot 'ProfileWizardFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'UtilityFunctions.ps1')
+. $(Join-Path $PSScriptRoot 'UserInputFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'SystemConnectionFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'ProfileFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'TestFunctions.ps1')
