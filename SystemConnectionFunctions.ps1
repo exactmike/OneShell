@@ -90,7 +90,7 @@ function Get-WellKnownEndPoint
     (
         $ServiceObject
     )
-    $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     @(
         [PSCustomObject]@{
             Identity               = $ServiceObject.ServiceType + '-WellKnownEndPoint'
@@ -290,7 +290,7 @@ function Test-OneShellSystemConnection
                     Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                 }
                 Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
-                $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
+                $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
                 if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                 {
                     $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
@@ -375,7 +375,7 @@ function Get-OneShellSystemEndpointPSSessionParameter
     }#end begin
     end
     {
-        $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
         $NewPSSessionParams = @{
             ErrorAction = 'Stop'
             Name        = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
@@ -479,7 +479,7 @@ Function Connect-OneShellSystem
         {
             $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $id -or $_.Identity -eq $id}
             Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
-            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
+            $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
             Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
             $EndPointGroups = @(
                 Write-Verbose -Message "Selecting an Endpoint"
@@ -737,7 +737,7 @@ function Import-ModuleInOneShellSystemPSSession
         $ServiceSession
     )
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     $ModuleImportResults = @(
         if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1)
         {
@@ -808,7 +808,7 @@ function Initialize-OneShellSystemPSSession
         $Phase
     )
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     switch ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.$Phase -and ($ServiceTypeDefinition.PSSessionSettings.Initialization.$Phase).count -ge 1)
     {
         $true
@@ -1067,7 +1067,7 @@ Function ImportOneShellSystemPSSession
         WarningAction = 'SilentlyContinue'
         AllowClobber  = $true
     }
-    $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
     {
         $null

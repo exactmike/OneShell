@@ -138,7 +138,7 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
         {
             Set-DynamicParameterVariable -dictionary $dictionary
         }
-        $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
         Write-Verbose -Message "Using ServiceTypeDefinition $($ServiceTypeDefinition.name)"
         if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
         {
@@ -463,17 +463,17 @@ function GetSelectProfileSystem
 #################################################
 # Public Functions
 #################################################
-function Get-ServiceTypeDefinition
+function Get-OneShellServiceTypeDefinition
     {
         [cmdletbinding()]
         param
         (
-            [parameter(Mandatory)]
+            [parameter()]
             [string]$ServiceType
         )
-        $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType}
+        $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType -or $null -eq $ServiceType}
     }
-#end function Get-ServiceTypeDefinition
+#end function Get-OneShellServiceTypeDefinition
 Function Get-OneShellOrgProfile
     {
         [cmdletbinding(DefaultParameterSetName = 'All')]
@@ -787,7 +787,7 @@ function New-OneShellOrgProfileSystem
             $OrgProfileIdentities = @($PotentialOrgProfiles.Name;$PotentialOrgProfiles.Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
             #build any service type specific parameters that may be needed
-            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
                 foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
@@ -938,7 +938,7 @@ function Set-OneShellOrgProfileSystemServiceTypeAttributes
             $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
             $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
             #build service type specific parameters that may be needed
-            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
                 foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
@@ -961,7 +961,7 @@ function Set-OneShellOrgProfileSystemServiceTypeAttributes
                 #Edit the selected System
                 $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
                 #Set the ServiceType Specific System Attributes
-                $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+                $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
                 if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
                 {
                     $ServiceTypeAttributeNames = @($ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
@@ -1156,7 +1156,7 @@ function New-OneShellOrgProfileSystemEndpoint
             {
                 '*'
                 {
-                    $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+                    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
                     if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
                     {
                         foreach ($a in $ServiceTypeDefinition.EndpointServiceTypeAttributes)
@@ -1199,7 +1199,7 @@ function New-OneShellOrgProfileSystemEndpoint
             }
             #Add any servicetype specific attributes that were specified
             ###########################################################
-            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $ServiceType
+            $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
             {
                 $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
@@ -1381,7 +1381,7 @@ function Set-OneShellOrgProfileSystemEndpoint
                 {$endpoint.$($vp.name) = $($vp.value)}
             }
             #Set any servicetype specific attributes that were specified
-            $ServiceTypeDefinition = Get-ServiceTypeDefinition -ServiceType $endpoint.ServiceType
+            $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $endpoint.ServiceType
             if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
             {
                 $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
@@ -2926,7 +2926,7 @@ function GetOneShellUserProfileDirectory
 #################################################
 # Need to add
 #################################################
-Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-ServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttributes', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
+Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-OneShellServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttributes', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
     Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
     ForEach-Object {
