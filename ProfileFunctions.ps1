@@ -830,7 +830,6 @@ function New-OneShellOrgProfileSystem
             {$addServiceTypeAttributesParams.Dictionary = $Dictionary}
             $GenericSystemObject = AddServiceTypeAttributesToGenericOrgSystemObject @addServiceTypeAttributesParams
             $OrgProfile.Systems += $GenericSystemObject
-            $global:TestOrgProfile = $OrgProfile
             Export-OneShellOrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath
         }
     }
@@ -2611,7 +2610,7 @@ function Convert-CredentialToUserProfileCredential
         [cmdletbinding()]
         param
         (
-            $credential
+            [pscredential]$credential
             ,
             [string]$Identity
         )

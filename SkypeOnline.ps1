@@ -4,7 +4,7 @@ function New-SkypeOnlinePSSession
     param
     (
         [parameter(Mandatory)]
-        $Credential
+        [pscredential]$Credential
         ,
         [parameter(Mandatory)]
         $Name

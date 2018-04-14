@@ -463,7 +463,7 @@ function Join-Object
             }
         }
 
-        $AllProps = $AllProps | Select -Unique
+        $AllProps = $AllProps | Select-Object -Unique
 
         Write-Verbose "Combined set of properties: $($AllProps -join ', ')"
 
@@ -480,7 +480,7 @@ function Join-Object
                 {
                     foreach ($leftItem in $leftBucket)
                     {
-                        WriteJoinObjectOutput $leftItem $null $LeftProperties $RightProperties | Select $AllProps
+                        WriteJoinObjectOutput $leftItem $null $LeftProperties $RightProperties | Select-Object $AllProps
                     }
                 }
             }
@@ -490,7 +490,7 @@ function Join-Object
                 {
                     foreach ($rightItem in $rightBucket)
                     {
-                        WriteJoinObjectOutput $leftItem $rightItem $LeftProperties $RightProperties | Select $AllProps
+                        WriteJoinObjectOutput $leftItem $rightItem $LeftProperties $RightProperties | Select-Object $AllProps
                     }
                 }
             }
@@ -509,7 +509,7 @@ function Join-Object
                 {
                     foreach ($rightItem in $rightBucket)
                     {
-                        WriteJoinObjectOutput $null $rightItem $LeftProperties $RightProperties | Select $AllProps
+                        WriteJoinObjectOutput $null $rightItem $LeftProperties $RightProperties | Select-Object $AllProps
                     }
                 }
             }
