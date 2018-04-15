@@ -259,7 +259,8 @@ function Read-PromptForChoice
         }
     )
     $Host.UI.PromptForChoice($Title, $Message, $PossibleChoices, $DefaultChoice)
-}#Read-Choice
+}
+#End Function Read-PromptForChoice
 function Read-Choice
 {
     [cmdletbinding()]

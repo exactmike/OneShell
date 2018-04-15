@@ -343,3 +343,20 @@ function Get-AllParametersWithAValue
     $AllParametersWithAValue
 }
 #end function Get-AllParametersWithAValue
+
+Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-OneShellServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttribute', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
+    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
+    Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
+        ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+    }
+}
+Register-ArgumentCompleter -CommandName 'Remove-OneShellUserProfile' -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $path = if ($null -eq $fakeBoundParameter.Path) {$path = $Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
+    $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
+    foreach ($upi in $UserProfileIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($upi, $upi, 'ParameterValue', $upi)
+    }
+}

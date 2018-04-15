@@ -1,10 +1,12 @@
 # To Do Items
+
+- [ ] Add function AddUserProfileFolder to Use-OneShellUserProfile
+- [ ] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [ ] Remove-* functions for OrgProfile, UserProfile
 - [ ] NeededCode:  Remove references to the removed credential from user profile Systems?
 - [ ] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
 - [ ] add prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] call update-OneShellUserProfilesystem in every set-OneShellUserProfile* cmdlet to catch recently added orgprofilesystems
-- [ ] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [ ] fix Set-OneShellUserProfile* functions so that path is preserved for user profiles when editing in a non-default location
 - [ ] replace code in New-OneShellOrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
 - [ ] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .

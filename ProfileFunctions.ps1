@@ -336,7 +336,7 @@ function UpdateUserProfileObjectVersion
         Until ($UserProfile.ProfileTypeVersion -eq $DesiredProfileTypeVersion)
         $UserProfile
     } #UpdateUserProfileObjectVersion
-function AddUserProfileFolders
+function AddUserProfileFolder
     {
         [cmdletbinding()]
         param
@@ -359,6 +359,7 @@ function AddUserProfileFolders
             }
         }
     }
+#end function AddUserProfileFolder
 function GetUserProfileSystemPropertySet
     {
         "Identity","AutoConnect","AutoImport","Credentials","PreferredEndpoint","PreferredPrefix"
@@ -1903,6 +1904,59 @@ function Set-OneShellUserProfile
         }#End Process
     }
 #end function Set-OneShellUserProfile
+function Remove-OneShellUserProfile
+{
+    [cmdletbinding(DefaultParameterSetName = "Identity")]
+    param
+    (
+        [parameter()]
+        [string[]]$Identity
+        ,
+        [parameter()]
+        [ValidateScript( {Test-DirectoryPath -Path $_})]
+        [string[]]$Path = $Script:OneShellUserProfilePath
+        ,
+        [parameter()]
+        [ValidateScript( {Test-DirectoryPath -Path $_})]
+        [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
+    )
+    Begin
+    {
+        $paProfiles = GetPotentialUserProfiles -path $Path
+    }
+    Process
+    {
+        foreach ($i in $Identity)
+        {
+            $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $i -Operation Edit
+            $GetOrgProfileParams = @{
+                ErrorAction = 'Stop'
+                Path        = $orgProfilePath
+                Identity    = $UserProfile.organization.identity
+            }
+            $targetOrgProfile = @(Get-OneShellOrgProfile @GetOrgProfileParams)
+            #Check the Org Identity for validity (exists, not ambiguous)
+            switch ($targetOrgProfile.Count)
+            {
+                1
+                {}
+                0
+                {
+                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $UserProfile.organization.identity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+                Default
+                {
+                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $UserProfile.organization.identity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+            }
+            #Remove the profile
+            Write-Warning -Message "this is where we remove the profile $i"
+        }#end foreach
+    }#End Process
+}
+#end function Remove-OneShellUserProfile
 Function Get-OneShellUserProfileSystem
     {
         [cmdletbinding(DefaultParameterSetName='All')]
@@ -2637,14 +2691,8 @@ function Select-ProfileSystem
         )
         $message = "Select system to $Operation"
         $CredChoices = @(foreach ($s in $Systems){"$($s.servicetype):$($s.name):$($s.Identity)"})
-        $whichone = Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered -Vertical
-            #switch ($host.Name -like 'Console*')
-            #{
-            #    $false
-            #    {Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered}
-            #    $true
-            #    {Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Numbered} #-Title $message
-            #}
+        #$whichone = Read-Choice -Message $message -Choices $CredChoices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        $whichone = Read-PromptForChoice -Message $message -Choices $CredChoices -DefaultChoice 0 -Numbered
         $systems[$whichone]
     }
 #end function Select-ProfileSystem
@@ -2662,16 +2710,8 @@ function Select-OneShellOrgProfileSystemEndpoint
         )
         $message = "Select endpoint to $Operation"
         $Choices = @(foreach ($i in $EndPoints){"$($i.ServiceType):$($i.address):$($i.Identity)"})
-        $whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
-        #$(
-        #    switch ($host.Name -like 'Console*')
-        #    {
-        #        $false
-        #        {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-        #        $true
-        #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
-        #    }
-        #)
+        #$whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        $whichone = Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered
         $EndPoints[$whichone]
     }
 #end function Select-OneShellOrgProfileSystemEndpoint
@@ -2689,16 +2729,8 @@ function Select-OneShellUserProfileCredential
         )
         $message = "Select credential to $Operation"
         $Choices = @(foreach ($i in $Credentials){"$($i.username):$($i.Identity)"})
-        $whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
-        #$(
-        #    switch ($host.Name -like 'Console*')
-        #    {
-        #        $false
-        #        {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-        #        $true
-        #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
-        #    }
-        #)
+        #$whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        $whichone = Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered
         $Credentials[$whichone]
     }
 #end function Select-OneShellUserProfileCredential
@@ -2716,16 +2748,8 @@ function Select-Profile
         )
         $message = "Select profile to $Operation"
         $Choices = @(foreach ($i in $Profiles){"$($i.name):$($i.Identity)"})
-        $whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
-        #$(
-        #    switch ($host.Name -like 'Console*')
-        #    {
-        #        $false
-        #        {Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered}
-        #        $true
-        #        {Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered}
-        #    }
-        #)
+        #$whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
+        $whichone = Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered
         $Profiles[$whichone]
     }
 #end function Select-Profile
@@ -2926,10 +2950,3 @@ function GetOneShellUserProfileDirectory
 #################################################
 # Need to add
 #################################################
-Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-OneShellServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttribute', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
-    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
-    Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
-    ForEach-Object {
-        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-    }
-}
