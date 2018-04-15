@@ -207,7 +207,7 @@ function Read-PromptForChoice
                                 break
                             }
                         }
-                        if ($Enumerator -eq $null)
+                        if ($null -eq $Enumerator)
                         {
                             $EnumeratorError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 0 -ErrorCategory InvalidData -TargetObject $choice -Message 'Unable to determine an enumerator'
                             $PSCmdlet.ThrowTerminatingError($EnumeratorError)
@@ -226,7 +226,7 @@ function Read-PromptForChoice
         'ObjectChoices'
         #Validate the Choice Objects using the first object as a representative
         {
-            if ($ChoiceObjects[0].Enumerator -eq $null -or $ChoiceObjects[0].Choice -eq $null)
+            if ($null -eq $ChoiceObjects[0].Enumerator -or $null -eq $ChoiceObjects[0].Choice)
             {
                 $ChoiceObjectError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 1 -ErrorCategory InvalidData -TargetObject $ChoiceObjects[0] -Message 'Choice Object(s) do not include the required enumerator and/or choice properties'
                 $PSCmdlet.ThrowTerminatingError($ChoiceObjectError)
@@ -324,7 +324,7 @@ function Read-Choice
                                 break
                             }
                         }
-                        if ($Enumerator -eq $null)
+                        if ($null -eq $Enumerator)
                         {
                             $EnumeratorError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 0 -ErrorCategory InvalidData -TargetObject $choice -Message 'Unable to determine an enumerator'
                             $PSCmdlet.ThrowTerminatingError($EnumeratorError)
@@ -343,7 +343,7 @@ function Read-Choice
         'ObjectChoices'
         #Validate the Choice Objects using the first object as a representative
         {
-            if ($ChoiceObjects[0].Enumerator -eq $null -or $ChoiceObjects[0].Choice -eq $null)
+            if ($null -eq $ChoiceObjects[0].Enumerator -or $null -eq $ChoiceObjects[0].Choice)
             {
                 $ChoiceObjectError = New-ErrorRecord -Exception System.Management.Automation.RuntimeException -ErrorId 1 -ErrorCategory InvalidData -TargetObject $ChoiceObjects[0] -Message 'Choice Object(s) do not include the required enumerator and/or choice properties'
                 $PSCmdlet.ThrowTerminatingError($ChoiceObjectError)

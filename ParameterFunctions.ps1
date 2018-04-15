@@ -287,7 +287,7 @@ Function Get-CommonParameter
     $MyInvocation.MyCommand.Parameters.Keys
 }
 #end function Get-CommonParameter
-function Get-AllParameters
+function Get-AllParameter
 {
     [cmdletbinding()]
     param
@@ -306,7 +306,7 @@ function Get-AllParameters
     }
     $AllKeys
 }
-#end function Get-AllParameters
+#end function Get-AllParameter
 function Get-AllParametersWithAValue
 {
     [cmdletbinding()]
@@ -320,12 +320,12 @@ function Get-AllParametersWithAValue
         ,
         $Scope = 1
     )
-    $getAllParametersParams = @{
+    $getAllParameterParams = @{
         BoundParameters = $BoundParameters
         AllParameters   = $AllParameters
     }
     if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
-    $AllParameterKeys = Get-AllParameters @getAllParametersParams
+    $AllParameterKeys = Get-AllParameter @getAllParameterParams
     $AllParametersWithAValue = @(
         foreach ($k in $AllParameterKeys)
         {

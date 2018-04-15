@@ -38,6 +38,7 @@ function Test-Member
                 $PSBoundParameters['OutBuffer'] = 1
             }
             $wrappedCmd = $ExecutionContext.InvokeCommand.GetCommand('Get-Member', [Management.Automation.CommandTypes]::Cmdlet)
+            #PSScriptAnalyzer 1.16.1 mistakenly says "The variable 'members' is assigned but never used." about the following line.
             $scriptCmd = {& $wrappedCmd @PSBoundParameters | ForEach-Object -Begin {$members = @()} -Process {$members += $_} -End {$members.Count -ne 0}}
             $steppablePipeline = $scriptCmd.GetSteppablePipeline($myInvocation.CommandOrigin)
             $steppablePipeline.Begin($PSCmdlet)
@@ -200,13 +201,13 @@ Function Test-ForImportedModule
     {$False}
 }
 #end function Test-ForImportedModule
-Function Test-CommandExists
+Function Test-CommandPresent
 {
     Param ([string]$command)
     Try {if (Get-Command -Name $command -ErrorAction Stop) {$true}}
     Catch {$false}
 }
-#end function Test-CommandExists
+#end function Test-CommandPresent
 Function Test-EmailAddress
 {
     [cmdletbinding()]

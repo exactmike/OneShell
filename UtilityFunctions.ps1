@@ -1495,7 +1495,7 @@ function Export-Credential
     }
     $exportCredential
 }
-Function Remove-AgedFiles
+Function Remove-AgedFile
 {
     [cmdletbinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(

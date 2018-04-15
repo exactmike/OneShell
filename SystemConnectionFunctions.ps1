@@ -707,7 +707,7 @@ Function Connect-OneShellSystem
                                     }
                                     $ServiceObject.ServiceType
                                 )
-                                Update-SessionManagementGroups -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
+                                Update-SessionManagementGroup -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
                                 if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
                                 {
                                     Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
@@ -936,7 +936,7 @@ function Add-FunctionToPSSession
         $script = "Get-Command -Name '$FN' -ErrorAction SilentlyContinue"
         $scriptblock = [scriptblock]::Create($script)
         $remoteFunction = Invoke-Command -Session $PSSession -ScriptBlock $scriptblock -ErrorAction SilentlyContinue
-        if ($remoteFunction.CommandType -ne $null -and -not $Refresh)
+        if ($null -ne $remoteFunction.CommandType -and -not $Refresh)
         {
             $FunctionNames = $FunctionNames | Where-Object -FilterScript {$_ -ne $FN}
         }
@@ -961,7 +961,7 @@ function Add-FunctionToPSSession
     Invoke-Command -Session $PSSession -ScriptBlock $ScriptBlock -ErrorAction Stop
 }
 #end function Add-FunctionToPSSession
-Function Update-SessionManagementGroups
+Function Update-SessionManagementGroup
 {
     [cmdletbinding()]
     Param

@@ -919,7 +919,7 @@ function Set-OneShellOrgProfileSystem
         }
     }
 #end function Set-OrgSystemObject
-function Set-OneShellOrgProfileSystemServiceTypeAttributes
+function Set-OneShellOrgProfileSystemServiceTypeAttribute
     {
         [cmdletbinding()]
         param
@@ -2926,7 +2926,7 @@ function GetOneShellUserProfileDirectory
 #################################################
 # Need to add
 #################################################
-Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-OneShellServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttributes', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
+Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-OneShellServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttribute', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
     Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
     ForEach-Object {
