@@ -624,7 +624,6 @@ function Get-ArrayIndexForValue
     }#else
 }
 #End function Get-ArrayIndexForValue
-#Error Handling Functions and used by other OneShell Functions
 function Get-AvailableExceptionsList
 {
     <#
@@ -646,6 +645,7 @@ function Get-AvailableExceptionsList
     $exceptionsWithGetConstructorsMethod = $Exceptions | Where-Object -FilterScript {'GetConstructors' -in @($_ | Get-Member -MemberType Methods | Select-Object -ExpandProperty Name)}
     $exceptionsWithGetConstructorsMethod | Select-Object -ExpandProperty FullName
 }
+#end function Get-AvailableExceptionsList
 function New-ErrorRecord
 {
     <#
@@ -815,6 +815,7 @@ function New-ErrorRecord
         New-Object Management.Automation.ErrorRecord $ExceptionObject, $ErrorID, $ErrorCategory, $TargetObject
     }#Process
 }
+#end function New-ErrorRecord
 function Get-CallerPreference
 {
     <#
@@ -961,58 +962,9 @@ function Get-CallerPreference
             }
         }
     } # end
-} # function Get-CallerPreference
-function New-OneShellGUID {[GUID]::NewGuid()}
-function New-SplitArrayRange
-{
-    <#
-        .SYNOPSIS
-        Provides Start and End Ranges to Split an array into a specified number of parts (new arrays) or parts (new arrays) with a specified number (size) of elements
-        .PARAMETER inArray
-        A one dimensional array you want to split
-        .EXAMPLE
-        Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -parts 3
-        .EXAMPLE
-        Split-array -inArray @(1,2,3,4,5,6,7,8,9,10) -size 3
-        .NOTE
-        Derived from https://gallery.technet.microsoft.com/scriptcenter/Split-an-array-into-parts-4357dcc1#content
-        #>
-    [cmdletbinding()]
-    param(
-        [parameter(Mandatory)]
-        [array]$inputArray
-        ,
-        [parameter(Mandatory, ParameterSetName = 'Parts')]
-        [int]$parts
-        ,
-        [parameter(Mandatory, ParameterSetName = 'Size')]
-        [int]$size
-    )
-    switch ($PSCmdlet.ParameterSetName)
-    {
-        'Parts'
-        {
-            $PartSize = [Math]::Ceiling($inputArray.count / $parts)
-        }#Parts
-        'Size'
-        {
-            $PartSize = $size
-            $parts = [Math]::Ceiling($inputArray.count / $size)
-        }#Size
-    }#switch
-    for ($i = 1; $i -le $parts; $i++)
-    {
-        $start = (($i - 1) * $PartSize)
-        $end = (($i) * $PartSize) - 1
-        if ($end -ge $inputArray.count) {$end = $inputArray.count}
-        $SplitArrayRange = [pscustomobject]@{
-            Part  = $i
-            Start = $start
-            End   = $end
-        }
-        $SplitArrayRange
-    }#for
 }
+#end function Get-CallerPreference
+function New-OneShellGUID {[GUID]::NewGuid()}
 function Convert-HashtableToObject
 {
     [CmdletBinding()]
@@ -1065,222 +1017,6 @@ function Convert-HashtableToObject
             $output
         }
     }
-}
-Function Convert-ObjectToHashTable
-{
-
-    <#
-            .Synopsis
-            Convert an object into a hashtable.
-            .Description
-            This command will take an object and create a hashtable based on its properties.
-            You can have the hashtable exclude some properties as well as properties that
-            have no value.
-            .Parameter Inputobject
-            A PowerShell object to convert to a hashtable.
-            .Parameter NoEmpty
-            Do not include object properties that have no value.
-            .Parameter Exclude
-            An array of property names to exclude from the hashtable.
-            .Example
-            PS C:\> get-process -id $pid | select name,id,handles,workingset | ConvertTo-HashTable
-
-            Name                           Value
-            ----                           -----
-            WorkingSet                     418377728
-            Name                           powershell_ise
-            Id                             3456
-            Handles                        958
-            .Example
-            PS C:\> $hash = get-service spooler | ConvertTo-Hashtable -Exclude CanStop,CanPauseandContinue -NoEmpty
-            PS C:\> $hash
-
-            Name                           Value
-            ----                           -----
-            ServiceType                    Win32OwnProcess, InteractiveProcess
-            ServiceName                    spooler
-            ServiceHandle                  SafeServiceHandle
-            DependentServices              {Fax}
-            ServicesDependedOn             {RPCSS, http}
-            Name                           spooler
-            Status                         Running
-            MachineName                    .
-            RequiredServices               {RPCSS, http}
-            DisplayName                    Print Spooler
-
-            This created a hashtable from the Spooler service object, skipping empty
-            properties and excluding CanStop and CanPauseAndContinue.
-            .Notes
-            Version:  2.0
-            Updated:  January 17, 2013
-            Author :  Jeffery Hicks (http://jdhitsolutions.com/blog)
-
-            Read PowerShell:
-            Learn Windows PowerShell 3 in a Month of Lunches
-            Learn PowerShell Toolmaking in a Month of Lunches
-            PowerShell in Depth: An Administrator's Guide
-
-            "Those who forget to script are doomed to repeat their work."
-
-            .Link
-            http://jdhitsolutions.com/blog/2013/01/convert-powershell-object-to-hashtable-revised
-            .Link
-            About_Hash_Tables
-            Get-Member
-            .Inputs
-            Object
-            .Outputs
-            hashtable
-        #>
-
-    [cmdletbinding()]
-
-    Param(
-        [Parameter(Position = 0, Mandatory,
-            HelpMessage = 'Please specify an object', ValueFromPipeline)]
-        [ValidateNotNullorEmpty()]
-        $InputObject,
-        [switch]$NoEmpty,
-        [string[]]$Exclude
-    )
-
-    Process
-    {
-        #get type using the [Type] class because deserialized objects won't have
-        #a GetType() method which is what we would normally use.
-
-        $TypeName = [type]::GetTypeArray($InputObject).name
-        Write-Verbose -Message "Converting an object of type $TypeName"
-
-        #get property names using Get-Member
-        $names = $InputObject | Get-Member -MemberType properties |
-            Select-Object -ExpandProperty name
-
-        #define an empty hash table
-        $hash = @{}
-
-        #go through the list of names and add each property and value to the hash table
-        $names | ForEach-Object {
-            #only add properties that haven't been excluded
-            if ($Exclude -notcontains $_)
-            {
-                #only add if -NoEmpty is not called and property has a value
-                if ($NoEmpty -AND -Not ($inputobject.$_))
-                {
-                    Write-Verbose -Message "Skipping $_ as empty"
-                }
-                else
-                {
-                    Write-Verbose -Message "Adding property $_"
-                    $hash.Add($_, $inputobject.$_)
-                }
-            } #if exclude notcontains
-            else
-            {
-                Write-Verbose -Message "Excluding $_"
-            }
-        } #foreach
-        Write-Verbose -Message 'Writing the result to the pipeline'
-        $hash
-    }#close process
-
-}
-function Convert-SecureStringToString
-{
-    <#
-            .SYNOPSIS
-            Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user.
-            .DESCRIPTION
-            Decrypts System.Security.SecureString object that were created by the user running the function.  Does NOT decrypt SecureString Objects created by another user.
-            .PARAMETER SecureString
-            Required parameter accepts a System.Security.SecureString object from the pipeline or by direct usage of the parameter.  Accepts multiple inputs.
-            .EXAMPLE
-            Decrypt-SecureString -SecureString $SecureString
-            .EXAMPLE
-            $SecureString1,$SecureString2 | Decrypt-SecureString
-            .LINK
-            This function is based on the code found at the following location:
-            http://blogs.msdn.com/b/timid/archive/2009/09/09/powershell-one-liner-decrypt-securestring.aspx
-            .INPUTS
-            System.Security.SecureString
-            .OUTPUTS
-            System.String
-        #>
-
-    [cmdletbinding()]
-    param (
-        [parameter(ValueFromPipeline = $True)]
-        [securestring[]]$SecureString
-    )
-
-    BEGIN {}
-    PROCESS
-    {
-        foreach ($ss in $SecureString)
-        {
-            if ($ss -is 'SecureString')
-            {[Runtime.InteropServices.marshal]::PtrToStringAuto([Runtime.InteropServices.marshal]::SecureStringToBSTR($ss))}
-        }
-    }
-    END {}
-}
-function Get-GuidFromByteArray
-{
-    [cmdletbinding()]
-    param
-    (
-        [byte[]]$GuidByteArray
-    )
-    New-Object -TypeName guid -ArgumentList (, $GuidByteArray)
-}
-#end function Get-GUIDFromByteArray
-function Get-ImmutableIDFromGUID
-{
-    [cmdletbinding()]
-    param
-    (
-        [guid]$Guid
-    )
-    [Convert]::ToBase64String($Guid.ToByteArray())
-}
-#end function Get-ImmutableIDFromGUID
-function Get-GUIDFromImmutableID
-{
-    [cmdletbinding()]
-    param
-    (
-        $ImmutableID
-    )
-    [GUID][convert]::frombase64string($ImmutableID)
-}
-#end function Get-GUIDFromImmutableID
-function Get-ByteArrayFromGUID
-{
-    [cmdletbinding()]
-    param
-    (
-        [guid]$GUID
-    )
-    $GUID.ToByteArray()
-}
-#end function Get-ByteArrayFromGUID
-function Get-Checksum
-{
-    Param (
-        [parameter(Mandatory = $True)]
-        [ValidateScript( {Test-Path -path $_ -PathType Leaf})]
-        [string]$File
-        ,
-        [ValidateSet('sha1', 'md5')]
-        [string]$Algorithm = 'sha1'
-    )
-    $FileObject = Get-Item -Path $File
-    $fs = new-object System.IO.FileStream $($FileObject.FullName), 'Open'
-    $algo = [type]"System.Security.Cryptography.$Algorithm"
-    $crypto = $algo::Create()
-    $hash = [BitConverter]::ToString($crypto.ComputeHash($fs)).Replace('-', '')
-    $fs.Close()
-    $hash
 }
 function Out-FileUtf8NoBom
 {
@@ -1360,7 +1096,7 @@ function Out-FileUtf8NoBom
         $sw.Dispose()
     }
 }
-Function Export-Data
+Function Export-OneShellData
 {
     [cmdletbinding(DefaultParameterSetName = 'delimited')]
     param(
@@ -1473,29 +1209,7 @@ Function Export-Data
     }#catch
 }
 #End Function Export-Data
-function Export-Credential
-{
-    param(
-        [string]$message
-        ,
-        [string]$username
-    )
-    $GetCredentialParams = @{}
-    if ($message) {$GetCredentialParams.Message = $message}
-    if ($username) {$GetCredentialParams.Username = $username}
-
-    $credential = Get-Credential @GetCredentialParams
-
-    $ExportUserName = $credential.UserName
-    $ExportPassword = ConvertFrom-SecureString -Securestring $credential.Password
-
-    $exportCredential = [pscustomobject]@{
-        UserName = $ExportUserName
-        Password = $ExportPassword
-    }
-    $exportCredential
-}
-Function Remove-AgedFile
+Function Remove-OneShellAgedFile
 {
     [cmdletbinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
@@ -1524,7 +1238,7 @@ Function Remove-AgedFile
         $filestodelete | Remove-Item
     }
 }
-function New-Timer
+function New-OneShellTimer
 {
     <#
       .Synopsis
@@ -1780,3 +1494,4 @@ function New-Timer
         Write-Progress @writeprogressparams
     }
 }
+#end function New-OneShellTimer
