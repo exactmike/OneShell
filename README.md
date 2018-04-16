@@ -67,3 +67,4 @@ See GettingStarted.md
 ## Contributing
 
 TBA . . .
+In the meantime, there are issues and to do items noted in ToDoKnownIssuesEtc.md
