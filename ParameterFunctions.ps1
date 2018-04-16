@@ -282,7 +282,7 @@ function Set-DynamicParameterVariable
 
 Function Get-CommonParameter
 {
-    [cmdletbinding(SupportsShouldProcess)]
+    [cmdletbinding()]
     param()
     $MyInvocation.MyCommand.Parameters.Keys
 }
