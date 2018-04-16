@@ -964,7 +964,7 @@ function Get-CallerPreference
     } # end
 }
 #end function Get-CallerPreference
-function New-OneShellGUID {[GUID]::NewGuid()}
+
 function Convert-HashtableToObject
 {
     [CmdletBinding()]
@@ -1495,3 +1495,4 @@ function New-OneShellTimer
     }
 }
 #end function New-OneShellTimer
+function New-OneShellGUID {[GUID]::NewGuid()}
