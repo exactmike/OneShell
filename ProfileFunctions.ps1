@@ -2237,7 +2237,7 @@ Function Set-OneShellUserProfileSystemCredential
                     }
                     else
                     {
-                        Select-OneShellUserProfileCredential -Credentials $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
+                        Select-OneShellUserProfileCredential -Credential $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
                     }
                 )
                 if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
@@ -2489,7 +2489,7 @@ function Remove-OneShellUserProfileCredential
                 {
                     'Select'
                     {
-                        Select-OneShellUserProfileCredential -Credentials $UserProfile.Credentials -Operation Remove
+                        Select-OneShellUserProfileCredential -Credential $UserProfile.Credentials -Operation Remove
                     }
                     'UserName'
                     {
@@ -2561,7 +2561,7 @@ function Set-OneShellUserProfileCredential
                 {
                     'Select'
                     {
-                        Select-OneShellUserProfileCredential -Credentials $UserProfile.Credentials -Operation Edit
+                        Select-OneShellUserProfileCredential -Credential $UserProfile.Credentials -Operation Edit
                     }
                     'Identity'
                     {
@@ -2721,7 +2721,7 @@ function Select-OneShellUserProfileCredential
         param
         (
             [parameter(Mandatory)]
-            $Credentials
+            [psobject[]]$Credential
             ,
             [parameter(Mandatory)]
             [ValidateSet('Remove','Edit','Associate')]
