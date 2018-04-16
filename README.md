@@ -36,6 +36,7 @@ The following additional ServiceTypes are in development (an earlier version of 
 - SQL Server Databases
 - Azure AD RMS
 - MigrationWiz/BitTitan
+- *OneShell is designed to be easily extensible - what other system/service types do you want support for?*
 
 We hope to soon add support for SSH remoting and endpoints for heterogenous environments.
 
