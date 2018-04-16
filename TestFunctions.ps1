@@ -201,13 +201,13 @@ Function Test-ForImportedModule
     {$False}
 }
 #end function Test-ForImportedModule
-Function Test-CommandPresent
+Function Test-CommandIsPresent
 {
     Param ([string]$command)
     Try {if (Get-Command -Name $command -ErrorAction Stop) {$true}}
     Catch {$false}
 }
-#end function Test-CommandPresent
+#end function Test-CommandIsPresent
 Function Test-EmailAddress
 {
     [cmdletbinding()]
