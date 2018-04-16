@@ -710,7 +710,7 @@ Function Connect-OneShellSystem
                                 Update-SessionManagementGroup -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
                                 if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
                                 {
-                                    Import-OneShellSystem -ServiceObject $ServiceObject -ServiceSession $ServiceSession
+                                    Import-OneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession
                                 }
                             }
                         }
@@ -999,7 +999,7 @@ Function Update-SessionManagementGroup
     }# end foreach
 }
 #end function Update-SessionManagementGroups
-Function Import-OneShellSystem
+Function Import-OneShellSystemPSSession
 {
     [CmdletBinding(DefaultParameterSetName = 'Identity')]
     param
