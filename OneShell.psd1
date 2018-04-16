@@ -72,7 +72,7 @@
         'Export-OneShellData'
         'Export-OneShellOrgProfile'
         'Export-OneShellUserProfile'
-        'Get-OneShellAvailableSystem'
+        'Get-OneShellSystem'
         'Get-OneShellOrgProfile'
         'Get-OneShellOrgProfileSystem'
         'Get-OneShellOrgProfileSystemEndpoint'

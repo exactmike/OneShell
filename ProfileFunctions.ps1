@@ -1791,7 +1791,7 @@ Function Use-OneShellUserProfile
         {
             if ($NoAutoConnect -ne $true)
             {
-                $AutoConnectSystems = Get-OneShellAvailableSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true}
+                $AutoConnectSystems = Get-OneShellSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true}
 
                 if ($NoAutoImport -eq $true)
                 {

@@ -62,7 +62,7 @@
 - [x] Make Profile Identity parameters non-mandatory and prompt for them with a select-profile function like we do with systems? - yes, done
 - [x] per-admin per service prefix configuration
 - [x] Add a DynamicParameter capability for ValueFromPipeline options (<https://stackoverflow.com/questions/28604116/how-to-get-value-from-pipeline-for-a-dynamicparam-in-powershell>),(<https://beatcracker.wordpress.com/2014/12/18/psboundparameters-pipeline-and-the-valuefrompipelinebypropertyname-parameter-attribute/>)
-- [x] Add/Enable Identity parameter for get-oneshellavailablesystem,get-oneshellsystempssession,import-oneshellsystem, etc.
+- [x] Add/Enable Identity parameter for get-oneshellsystem,get-oneshellsystempssession,import-oneshellsystem, etc.
 - [x] Add auto-connect of AutoConnect Service types with Use-OneShellUserProfile unless suppressed by -NoAutoConnect
 - [x] Add suppression of auto Import with -NoAutoImport on Connect-OneShellSystem and Use-OneShellUserProfile
 - [x] Remove imported modules from session when re-connecting to a System

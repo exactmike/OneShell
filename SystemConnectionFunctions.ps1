@@ -140,7 +140,7 @@ function Find-CommandPrefixToUse
     $CommandPrefix
 }
 #end function Find-CommandPrefixToUse
-function Get-OneShellAvailableSystem
+function Get-OneShellSystem
 {
     [cmdletbinding(DefaultParameterSetName = 'Identity')]
     param
@@ -182,7 +182,7 @@ function Get-OneShellAvailableSystem
         }
     }
 }
-#end function Get-OneShellAvailableSystem
+#end function Get-OneShellSystem
 function GetOneShellSystemPSSession
 {
     [cmdletbinding()]
@@ -454,11 +454,11 @@ Function Connect-OneShellSystem
     {
         if ($null -ne $serviceType)
         {
-            $AvailableOneShellSystems = @(Get-OneShellAvailableSystem -ServiceType $ServiceType)
+            $AvailableOneShellSystems = @(Get-OneShellSystem -ServiceType $ServiceType)
         }
         else
         {
-            $AvailableOneShellSystems = @(Get-OneShellAvailableSystem)
+            $AvailableOneShellSystems = @(Get-OneShellSystem)
         }
         $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name; $AvailableOneShellSystems.Identity)
         $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
@@ -1036,7 +1036,7 @@ Function Import-OneShellSystemPSSession
                 {
                     Try
                     {
-                        $ServiceObject = Get-OneShellAvailableSystem -identity $Identity -ErrorAction Stop
+                        $ServiceObject = Get-OneShellSystem -identity $Identity -ErrorAction Stop
                         $ServiceSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
                         ImportOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession
                     }
