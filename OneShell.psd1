@@ -134,10 +134,31 @@
     # FileList = @()
 
     # Private data to pass to the module specified in RootModule/ModuleToProcess
-    # PrivateData = ''
+    # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
+    PrivateData = @{
+        PSData = @{
+            # Tags applied to this module. These help with module discovery in online galleries.
+            Tags = @('Office365','AzureAD','Exchange','Skype','Azure','Active-Directory','AD-LDS','Azure-AD-Connect','administration','migration','skype-for-business','azure-active-directory','lotus-notes','scheduled-tasks')
+
+            # A URL to the license for this module.
+            LicenseUri = 'https://github.com/exactmike/OneShell/blob/master/LICENSE'
+
+            # A URL to the main website for this project.
+            ProjectUri = 'https://github.com/exactmike/OneShell'
+
+            # A URL to an icon representing this module.
+            # IconUri = ''
+
+            # ReleaseNotes of this module
+            # ReleaseNotes = ''
+
+            # External dependent modules of this module
+            # ExternalModuleDependencies = ''
+        } # End of PSData hashtable
+    } # End of PrivateData hashtable
 
     # HelpInfo URI of this module
-    # HelpInfoURI = ''
+    HelpInfoURI = 'https://github.com/exactmike/OneShell/blob/master/GettingStarted.md'
 
     # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
     # DefaultCommandPrefix = ''
