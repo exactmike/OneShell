@@ -185,7 +185,7 @@ function NewGenericUserProfileObject
         [pscustomobject]@{
             Identity = [guid]::NewGuid()
             ProfileType = 'OneShellUserProfile'
-            ProfileTypeVersion = 1.1
+            ProfileTypeVersion = 1.3
             Name = $targetOrgProfile.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
             Host = $env:COMPUTERNAME
             User = $env:USERNAME
@@ -194,6 +194,9 @@ function NewGenericUserProfileObject
                 Identity = $targetOrgProfile.identity
             }
             ProfileFolder = ''
+            LogFolder = ''
+            ExportDataFolder = ''
+            InputFilesFolder = ''
             MailFromSMTPAddress = ''
             Systems = @()
             Credentials = @()
@@ -217,7 +220,8 @@ function GetOrgProfileSystemForUserProfile
                 PreferredPrefix = $null
             }
         }
-    }#end function GetOrgProfileSystemForUserProfile
+    }
+#end function GetOrgProfileSystemForUserProfile
 function UpdateUserProfileObjectVersion
     {
         [cmdletbinding()]
@@ -226,7 +230,7 @@ function UpdateUserProfileObjectVersion
             [parameter(Mandatory)]
             $UserProfile
             ,
-            $DesiredProfileTypeVersion = 1.2
+            $DesiredProfileTypeVersion = 1.3
         )
         do
         {
@@ -331,11 +335,25 @@ function UpdateUserProfileObjectVersion
                     }
                     $UserProfile.ProfileTypeVersion = 1.2
                 }
+                {$_ -eq 1.2}
+                {
+                    #Add attributes for discrete LogFolder, ExportDataFolder, and InputFilesFolder
+                    $NewMembers = ('LogFolder','ExportDataFolder','InputFilesFolder')
+                    foreach ($nm in $NewMembers)
+                    {
+                        if (-not (Test-Member -InputObject $UserProfile -name $nm))
+                        {
+                            $UserProfile | Add-Member -MemberType NoteProperty -Name $nm -Value $null
+                        }
+                    }
+                    $UserProfile.ProfileTypeVersion = 1.3
+                }
             }#end switch
         }
         Until ($UserProfile.ProfileTypeVersion -eq $DesiredProfileTypeVersion)
         $UserProfile
-    } #UpdateUserProfileObjectVersion
+    }
+#end function UpdateUserProfileObjectVersion
 function AddUserProfileFolder
     {
         [cmdletbinding()]
@@ -478,68 +496,58 @@ function Get-OneShellServiceTypeDefinition
 Function Get-OneShellOrgProfile
     {
         [cmdletbinding(DefaultParameterSetName = 'All')]
-        param(
+        param
+        (
+            [parameter(ParameterSetName = 'Identity',Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string[]]$Identity
+            ,
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
-            [parameter(ParameterSetName = 'GetDefault')]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = $Script:OneShellOrgProfilePath
             ,
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
-            [parameter(ParameterSetName = 'GetDefault')]
             $OrgProfileType = 'OneShellOrgProfile'
             ,
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
         )
-        DynamicParam
+        Process
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity)
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1 -ParameterSetName 'Identity'
-            $dictionary
-        }
-        End
-        {
-            Set-DynamicParameterVariable -dictionary $dictionary
-            $outputprofiles = @(
-                Write-Verbose -Message "Parameter Set is $($pscmdlet.ParameterSetName)"
-                switch ($PSCmdlet.ParameterSetName)
+            Write-Verbose -Message "Parameter Set is $($pscmdlet.ParameterSetName)"
+            switch ($PSCmdlet.ParameterSetName)
+            {
+            'GetCurrent'
+            {
+                $Script:CurrentOrgProfile
+            }
+            Default
+            {
+                $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $path)
+                if ($PotentialOrgProfiles.Count -ge 1)
                 {
-                'GetCurrent'
-                {
-                    $Script:CurrentOrgProfile
-                }
-                Default
-                {
-                    $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $path)
-                    if ($PotentialOrgProfiles.Count -ge 1)
+                    $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
+                    Write-Verbose -Message "Found $($FoundOrgProfiles.Count) Org Profiles."
+                    switch ($PSCmdlet.ParameterSetName)
                     {
-                        $FoundOrgProfiles = @($PotentialOrgProfiles | Where-Object {$_.ProfileType -eq $OrgProfileType})
-                        Write-Verbose -Message "Found $($FoundOrgProfiles.Count) Org Profiles."
-                        switch ($PSCmdlet.ParameterSetName)
+                        'Identity'
                         {
-                            'Identity'
+                            foreach ($i in $Identity)
                             {
-                                Write-Verbose -Message "Identity is set to $($identity -join ',')"
-                                $OrgProfiles = @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Name -eq $Identity})
-                                $OrgProfiles
-                            }#Identity
-                            'All'
-                            {
-                                $OrgProfiles = @($FoundOrgProfiles)
-                                $OrgProfiles
-                            }#All
-                        }#switch
-                    }#if
-                }#Default
-                }#switch
-            )
-            #output the profiles
-            $outputprofiles
-        }#end End
+                                Write-Verbose -Message "Identity is set to $"
+                                @($FoundOrgProfiles | Where-Object -FilterScript {$_.Identity -eq $i -or $_.Name -eq $i})
+                            }
+                        }#Identity
+                        'All'
+                        {
+                            @($FoundOrgProfiles)
+                        }#All
+                    }#switch
+                }#if
+            }#Default
+            }#switch
+        }#end Process
     }
 #end Function Get-OneShellOrgProfile
 function New-OneShellOrgProfile
@@ -568,84 +576,54 @@ function Set-OneShellOrgProfile
         [cmdletbinding(DefaultParameterSetName = 'Identity')]
         param
         (
-            [parameter(ParameterSetName = 'Object',ValueFromPipeline)]
-            [ValidateScript({$_.ProfileType -eq 'OneShellOrgProfile'})]
-            [psobject[]]$OrgProfile
+            [parameter(ParameterSetName = 'Identity',Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string]$Identity
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateNotNullOrEmpty()]
             [string]$Name
             ,
-            [parameter()]
+            [parameter(ValueFromPipelineByPropertyName)]
             [ValidateNotNullOrEmpty()]
-            [psobject[]]$Systems #Enables copying systems from one org profile to another.  No validation is implemented, however. Replaces all existing Systems when used so use or build an array of systems to use.
+            [psobject[]]$Systems #Enables copying systems from one org profile to another.  No validation is implemented, however. Replaces all existing Systems when used so use or build an array of systems to use. Use with caution for existing profiles.
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = $Script:OneShellOrgProfilePath
         )
-        DynamicParam
-        {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
-            $dictionary
-        }
-        Begin
-        {
-            Set-DynamicParameterVariable -dictionary $dictionary
-            switch ($PSCmdlet.ParameterSetName)
-            {
-                'Identity'
-                {
-                    if ($null -eq $Identity)
-                    {
-                        $OrgProfile = Select-Profile -Profiles $PotentialOrgProfiles -Operation Edit
-                    }
-                    else
-                    {
-                        #Get the Org Profile
-                        $GetOrgProfileParams = @{
-                            ErrorAction = 'Stop'
-                            Identity = $Identity
-                            Path = $Path
-                        }
-                        $OrgProfile = $(Get-OneShellOrgProfile @GetOrgProfileParams)
-                    }
-                }
-                'Object'
-                {
-                    #nothing to do here at this point
-                }
-            }#end Switch
-        }
         Process
         {
-            foreach ($op in $OrgProfile)
+            foreach ($i in $Identity)
             {
-                Write-Verbose -Message "Selected Org Profile is $($op.Name)"
+                #Get the Org Profile
+                $GetOrgProfileParams = @{
+                    ErrorAction = 'Stop'
+                    Identity = $Identity
+                    Path = $Path
+                }
+                $OrgProfile = $(Get-OneShellOrgProfile @GetOrgProfileParams)
+                Write-Verbose -Message "Selected Org Profile is $($OrgProfile.Name)"
                 foreach ($p in $PSBoundParameters.GetEnumerator())
                 {
                     if ($p.key -in @('Name','Systems'))
                     {
-                        $op.$($p.key) = $p.value
+                        $OrgProfile.$($p.key) = $p.value
                     }
                 }
-                Export-OneShellOrgProfile -profile $op -Path $op.DirectoryPath -ErrorAction 'Stop'
+                Export-OneShellOrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath -ErrorAction 'Stop'
             }
         }
     }
 #end function Set-OneShellOrgProfile
 Function Export-OneShellOrgProfile
     {
-        [cmdletbinding()]
+        [cmdletbinding(SupportsShouldProcess)]
         param
         (
-            [parameter(Mandatory=$true)]
-            $profile
+            [parameter(Mandatory)]
+            [psobject]$profile
             ,
-            [parameter()]
+            [parameter(Mandatory)]
             [AllowNull()]
             [ValidateScript({Test-DirectoryPath -path $_})]
             $Path
@@ -671,8 +649,9 @@ Function Export-OneShellOrgProfile
             ErrorAction = 'Stop'
             FilePath = $FilePath
             Encoding = 'ascii'
-            Force = $true
         }
+        if ($whatifPreference -eq $false)
+        {$OutParams.Force = $true}
         try
         {
             ConvertTo-Json @JSONparams | Out-File @OutParams
@@ -689,6 +668,9 @@ Function Use-OneShellOrgProfile
         [cmdletbinding(DefaultParameterSetName = 'Identity')]
         param
         (
+            [parameter(ParameterSetName = 'Identity',ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string]$Identity
+            ,
             [parameter(ParameterSetName = 'Object')]
             $profile
             ,
@@ -696,23 +678,15 @@ Function Use-OneShellOrgProfile
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = $Script:OneShellOrgProfilePath
         )
-        DynamicParam
-        {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity)
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ParameterSetName 'Identity'
-            $dictionary
-        }
         end
         {
-            Set-DynamicParameterVariable -dictionary $dictionary
             switch ($PSCmdlet.ParameterSetName)
             {
                 'Object'
                 {}
                 'Identity'
                 {
+                    $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
                     if ($null -eq $Identity)
                     {
                         $Profile = Select-Profile -Profiles $PotentialOrgProfiles -Operation Edit
@@ -744,9 +718,12 @@ Function Use-OneShellOrgProfile
 #end function Use-OneShellOrgProfile
 function New-OneShellOrgProfileSystem
     {
-        [cmdletbinding()]
+        [cmdletbinding(SupportsShouldProcess)]
         param
         (
+            [parameter(ParameterSetName = 'Identity',Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string]$ProfileIdentity
+            ,
             [parameter(Mandatory,ValueFromPipelineByPropertyName)]
             [string]$Name
             ,
@@ -783,10 +760,6 @@ function New-OneShellOrgProfileSystem
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles.Name;$PotentialOrgProfiles.Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
             #build any service type specific parameters that may be needed
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
@@ -800,12 +773,10 @@ function New-OneShellOrgProfileSystem
         }#End DynamicParam
         Begin
         {
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
             Set-DynamicParameterVariable -dictionary $dictionary
             #Get/Select the OrgProfile
             $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
-        }
-        Process
-        {
             #Build the System Object
             $GenericSystemObject = NewGenericOrgSystemObject
             $GenericSystemObject.ServiceType = $ServiceType
@@ -840,7 +811,10 @@ function Set-OneShellOrgProfileSystem
         [cmdletbinding()]
         param
         (
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyName)]
+            [string]$ProfileIdentity
+            ,
+            [parameter(ValueFromPipelineByPropertyName,ValueFromPipeline)]
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
             ,
@@ -878,27 +852,18 @@ function Set-OneShellOrgProfileSystem
             [ValidateScript({Test-DirectoryPath -path $_})]
             [string[]]$Path = $Script:OneShellOrgProfilePath
         )#end param
-        DynamicParam
-        {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
-            $dictionary
-        }#End DynamicParam
         Begin
         {
+            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
         }
         Process
         {
             foreach ($i in $Identity)
             {
-                Set-DynamicParameterVariable -dictionary $dictionary
                 #Get/Select the Org Profile
                 $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
                 #Get/Select the System
                 $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $i -Operation Edit
-                if ($ServiceType -ne $System.ServiceType) {throw("ServiceType specified does not match the system.")}
                 #Edit the selected System
                 $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
                 #Set the common System Attributes
@@ -915,7 +880,7 @@ function Set-OneShellOrgProfileSystem
                 }
                 #update the system entry in the org profile
                 $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-                Export-OneShellOrgProfile -profile $OrgProfile -Path $OrgProfile.FilePath
+                Export-OneShellOrgProfile -profile $OrgProfile -Path $OrgProfile.DirectoryPath
             }
         }
     }
@@ -925,20 +890,22 @@ function Set-OneShellOrgProfileSystemServiceTypeAttribute
         [cmdletbinding()]
         param
         (
-            [parameter(ValueFromPipelineByPropertyName)]
+            [parameter(ParameterSetName = 'Identity',ValueFromPipelineByPropertyName,Mandatory)]
+            [string]$ProfileIdentity
+            ,
+            [parameter(ValueFromPipelineByPropertyName,ValueFromPipeline,Mandatory)]
             [ValidateNotNullOrEmpty()]
             [string[]]$Identity #System Identity or Name
             ,
             [parameter(Mandatory)]
             [string]$ServiceType
+            ,
+            [parameter(ValueFromPipelineByPropertyName)]
+            [ValidateScript({Test-DirectoryPath -path $_})]
+            [string[]]$Path = $Script:OneShellOrgProfilePath
         )#end param
         DynamicParam
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1 -ValueFromPipelineByPropertyName $true
-            #build service type specific parameters that may be needed
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
             if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
             {
@@ -949,6 +916,10 @@ function Set-OneShellOrgProfileSystemServiceTypeAttribute
             }
             $dictionary
         }#End DynamicParam
+        Begin
+        {
+            $PotentialOrgProfiles = GetPotentialOrgProfiles -path $Path
+        }
         Process
         {
             foreach ($i in $Identity)
@@ -1460,6 +1431,12 @@ Function Get-OneShellUserProfile
         [cmdletbinding(DefaultParameterSetName='All')]
         param
         (
+            [parameter(ParameterSetName = 'Identity',ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string[]]$Identity
+            ,
+            [parameter(ParameterSetName = 'OrgProfileIdentity')]
+            [string]$OrgProfileIdentity
+            ,            
             [parameter(ParameterSetName = 'All')]
             [parameter(ParameterSetName = 'Identity')]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -1477,20 +1454,11 @@ Function Get-OneShellUserProfile
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
         )#end param
-        DynamicParam
+        Begin
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-            $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 2
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $UserProfileIdentities -ParameterSetName Identity -DPDictionary $dictionary -Mandatory $true -Position 1
-            $dictionary
         }
-        End
+        Process
         {
-            Set-DynamicParameterVariable -dictionary $dictionary
             $outputprofiles = @(
                 switch ($PSCmdlet.ParameterSetName)
                 {
@@ -1512,18 +1480,20 @@ Function Get-OneShellUserProfile
                                 }
                                 'Identity'
                                 {
-                                    $FoundUserProfiles | Where-Object -FilterScript {$_.Identity -eq $Identity -or $_.Name -eq $Identity}
+                                    foreach ($i in $Identity)
+                                    {
+                                        $FoundUserProfiles | Where-Object -FilterScript {$_.Identity -eq $i -or $_.Name -eq $i}
+                                    }
+                                }
+                                'OrgProfileIdentity'
+                                {
+                                    $FoundUserProfiles | Where-Object -FilterScript {$_.organization.identity -eq $OrgProfileIdentity -or $_.organization.Name -eq $OrgProfileIdentity}
                                 }
                             }#end Switch
                         }#end if
                     }#end Default
                 }#end Switch
             )#end outputprofiles
-            #filter the found profiles for OrgIdentity if specified
-            if (-not [string]::IsNullOrWhiteSpace($OrgProfileIdentity))
-            {
-                $outputprofiles = $outputprofiles | Where-Object -FilterScript {$_.organization.identity -eq $OrgProfileIdentity -or $_.organization.Name -eq $OrgProfileIdentity}
-            }
             #output the found profiles
             $outputprofiles
         }#end End
@@ -1534,7 +1504,10 @@ function New-OneShellUserProfile
         [cmdletbinding()]
         param
         (
-            [Parameter()]
+            [parameter(Mandatory)]
+            [string]$OrgProfileIdentity
+            ,
+            [Parameter(Mandatory)]
             [string]$ProfileFolder #The folder to use for logs, exports, etc.
             ,
             [Parameter(Mandatory)]
@@ -1554,17 +1527,8 @@ function New-OneShellUserProfile
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string]$Path = $Script:OneShellUserProfilePath
         )
-        DynamicParam
-        {
-            if ($null -eq $OrgProfilePath -or [string]::IsNullOrEmpty($OrgProfilePath)) {$OrgProfilePath = $Script:OneShellOrgProfilePath}
-            $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
-            $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'OrgProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $true -Position 1
-            $dictionary
-        }
         End
         {
-            Set-DynamicParameterVariable -dictionary $dictionary
             $GetOrgProfileParams = @{
                 ErrorAction = 'Stop'
                 Identity = $OrgProfileIdentity
@@ -1586,7 +1550,7 @@ function New-OneShellUserProfile
                 }
             }
             $UserProfile = NewGenericUserProfileObject -TargetOrgProfile $targetOrgProfile
-            $Systems = @(GetOrgProfileSystemForUserProfile -OneShellOrgProfile $TargetOrgProfile)
+            $Systems = @(GetOrgProfileSystemForUserProfile -OrgProfile $TargetOrgProfile)
             $UserProfile.Systems = $Systems
             foreach ($p in $PSBoundParameters.GetEnumerator())
             {
@@ -1595,11 +1559,11 @@ function New-OneShellUserProfile
                     if ($p.key -eq 'ProfileFolder')
                     {
                         if ($p.value -like '*\' -or $p.value -like '*/')
-                        {$p.value = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
-                        if (-not (Test-Path -PathType Container -Path $p.value))
+                        {$ProfileFolder = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
+                        if (-not (Test-Path -PathType Container -Path $ProfileFolder))
                         {
-                            Write-Warning -Message "The specified ProfileFolder $($p.value) does not exist.  Attempting to Create it."
-                            [void](New-Item -Path $p.value -ItemType Directory)
+                            Write-Warning -Message "The specified Profile Folder $ProfileFolder does not exist.  Attempting to Create it."
+                            [void](New-Item -Path $ProfileFolder -ItemType Directory)
                         }
                     }
                     $UserProfile.$($p.key) = $p.value
@@ -1647,6 +1611,9 @@ Function Use-OneShellUserProfile
         [cmdletbinding(DefaultParameterSetName = 'Identity')]
         param
         (
+            [parameter(ParameterSetName = 'Identity',ValueFromPipeline,ValueFromPipelineByPropertyName,Position = 1)]
+            [string]$Identity
+            ,
             [parameter(ParameterSetName = 'Object',ValueFromPipeline=$true,Position = 1)]
             $UserProfile
             ,
@@ -1662,25 +1629,23 @@ Function Use-OneShellUserProfile
             ,
             [switch]$NoAutoImport
         )
-        DynamicParam
-        {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-            $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -ParameterSetName 'Identity' -Position 1
-            $dictionary
-        }
         begin
         {
-            Set-DynamicParameterVariable -dictionary $dictionary
+            $PotentialUserProfiles = GetPotentialUserProfiles -path $Path
+        }
+        process
+        {
             switch ($PSCmdlet.ParameterSetName)
             {
                 'Object'
-                {}
+                {
+                    #validate that this is a user profile object . . . 
+                }
                 'Identity'
                 {
                     if ($null -eq $Identity)
                     {
-                        $UserProfile = Select-Profile -Profiles $paProfiles -Operation Use
+                        $UserProfile = Select-Profile -Profiles $PotentialUserProfiles -Operation Use
                     }
                     else
                     {
@@ -1694,7 +1659,7 @@ Function Use-OneShellUserProfile
                 }
             }
             #Check User Profile Version
-            $RequiredVersion = 1.1
+            $RequiredVersion = 1.3
             if (! $UserProfile.ProfileTypeVersion -ge $RequiredVersion)
             {
                 throw("The selected User Profile $($UserProfile.Name) is an older version. Please Run Set-OneShellUserProfile -Identity $($UserProfile.Identity) or Update-OneShellUserProfileTypeVersion -Identity $($UserProfile.Identity) to update it to version $RequiredVersion.")
@@ -1786,7 +1751,7 @@ Function Use-OneShellUserProfile
             {
                 [void](New-Item -Path $Script:ExportDataPath -ItemType Directory -ErrorAction Stop)
             }
-        }#begin
+        }#process
         end
         {
             if ($NoAutoConnect -ne $true)
@@ -1813,9 +1778,24 @@ function Set-OneShellUserProfile
         [cmdletbinding(DefaultParameterSetName="Identity")]
         param
         (
+            [parameter(ValueFromPipelineByPropertyName,ValueFromPipeline)]
+            [string[]]$Identity
+            ,
             [parameter(ValueFromPipelineByPropertyName)]
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string]$ProfileFolder
+            ,
+            [parameter(ValueFromPipelineByPropertyName)]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string]$LogFolder
+            ,
+            [parameter(ValueFromPipelineByPropertyName)]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string]$ExportDataFolder
+            ,
+            [parameter(ValueFromPipelineByPropertyName)]
+            [ValidateScript({Test-DirectoryPath -Path $_})]
+            [string]$InputFilesFolder
             ,
             [parameter(ValueFromPipelineByPropertyName)]
             [string]$Name
@@ -1835,19 +1815,15 @@ function Set-OneShellUserProfile
             [ValidateScript({Test-DirectoryPath -Path $_})]
             [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
         )
-        DynamicParam
+        Begin
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-            $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String[]]) -ValidateSet $UserProfileIdentities -Mandatory $true -ValueFromPipelineByPropertyName $true
-            $dictionary
+            $PotentialUserProfiles = GetPotentialUserProfiles -path $Path
         }
         Process
         {
-            Set-DynamicParameterVariable -dictionary $dictionary
             foreach ($i in $Identity)
             {
-                $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $i -Operation Edit
+                $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $PotentialUserProfiles -Identity $i -Operation Edit
                 $GetOrgProfileParams = @{
                     ErrorAction = 'Stop'
                     Path = $orgProfilePath
@@ -1884,16 +1860,16 @@ function Set-OneShellUserProfile
                 }
                 foreach ($p in $PSBoundParameters.GetEnumerator())
                 {
-                    if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress') #,'Credentials','Systems')
+                    if ($p.key -in 'ProfileFolder','Name','MailFromSMTPAddress','LogFolder','ExportDataFolder','InputFilesFolder')
                     {
-                        if ($p.key -eq 'ProfileFolder')
+                        if ($p.key -in 'ProfileFolder','LogFolder','ExportDataFolder','InputFilesFolder')
                         {
                             if ($p.value -like '*\' -or $p.value -like '*/')
-                            {$p.value = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
-                            if (-not (Test-Path -PathType Container -Path $p.value))
+                            {$ProfileFolder = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
+                            if (-not (Test-Path -PathType Container -Path $ProfileFolder))
                             {
-                                Write-Warning -Message "The specified ProfileFolder $($p.value) does not exist.  Attempting to Create it."
-                                [void](New-Item -Path $p.value -ItemType Directory)
+                                Write-Warning -Message "The specified ProfileFolder $ProfileFolder does not exist.  Attempting to Create it."
+                                [void](New-Item -Path $ProfileFolder -ItemType Directory)
                             }
                         }
                         $UserProfile.$($p.key) = $p.value
@@ -1905,65 +1881,45 @@ function Set-OneShellUserProfile
     }
 #end function Set-OneShellUserProfile
 function Remove-OneShellUserProfile
-{
-    [cmdletbinding(DefaultParameterSetName = "Identity")]
-    param
-    (
-        [parameter()]
-        [string[]]$Identity
-        ,
-        [parameter()]
-        [ValidateScript( {Test-DirectoryPath -Path $_})]
-        [string[]]$Path = $Script:OneShellUserProfilePath
-        ,
-        [parameter()]
-        [ValidateScript( {Test-DirectoryPath -Path $_})]
-        [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
-    )
-    Begin
     {
-        $paProfiles = GetPotentialUserProfiles -path $Path
-    }
-    Process
-    {
-        foreach ($i in $Identity)
+        [cmdletbinding(DefaultParameterSetName = "Identity",SupportsShouldProcess)]
+        param
+        (
+            [parameter(ValueFromPipeline,ValueFromPipelineByPropertyName)]
+            [string[]]$Identity
+            ,
+            [parameter()]
+            [ValidateScript( {Test-DirectoryPath -Path $_})]
+            [string[]]$Path = $Script:OneShellUserProfilePath
+        )
+        Begin
         {
-            $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $i -Operation Edit
-            $GetOrgProfileParams = @{
-                ErrorAction = 'Stop'
-                Path        = $orgProfilePath
-                Identity    = $UserProfile.organization.identity
-            }
-            $targetOrgProfile = @(Get-OneShellOrgProfile @GetOrgProfileParams)
-            #Check the Org Identity for validity (exists, not ambiguous)
-            switch ($targetOrgProfile.Count)
+            $paProfiles = GetPotentialUserProfiles -path $Path
+        }
+        Process
+        {
+            foreach ($i in $Identity)
             {
-                1
-                {}
-                0
-                {
-                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $UserProfile.organization.identity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
-                    $PSCmdlet.ThrowTerminatingError($errorRecord)
-                }
-                Default
-                {
-                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $UserProfile.organization.identity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
-                    $PSCmdlet.ThrowTerminatingError($errorRecord)
-                }
-            }
-            #Remove the profile
-            Write-Warning -Message "this is where we remove the profile $i"
-        }#end foreach
-    }#End Process
-}
+                $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $i -Operation Edit
+                $ProfilePath = Join-Path -Path $Path -ChildPath $($UserProfile.Identity + '.json')
+                Remove-Item -Path $ProfilePath
+            }#end foreach
+        }#End Process
+    }
 #end function Remove-OneShellUserProfile
 Function Get-OneShellUserProfileSystem
     {
         [cmdletbinding(DefaultParameterSetName='All')]
         param
         (
-            [parameter(ParameterSetName = 'Identity',Position = 1,ValueFromPipeline)]
+            [parameter(ParameterSetName = 'Identity',Position = 1,ValueFromPipeline,ValueFromPipelineByPropertyName)]
             [string[]]$Identity
+            ,
+            [parameter()]
+            $ProfileIdentity
+            ,
+            [parameter()]
+            [string]$ServiceType
             ,
             [parameter()]
             [ValidateScript({Test-DirectoryPath -Path $_})]
@@ -1976,18 +1932,9 @@ Function Get-OneShellUserProfileSystem
             [parameter(ParameterSetName = 'GetCurrent')]
             [switch]$GetCurrent
         )#end param
-        DynamicParam
+        Begin
         {
-            if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-            $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-            $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -Position 2
-            $dictionary = New-DynamicParameter -Name 'ServiceType' -Type $([string[]]) -ValidateSet $(Get-OneShellServiceTypeName) -DPDictionary $dictionary -Mandatory $false -Position 3
-            $dictionary
-        }
-        Process
-        {
-            Set-DynamicParameterVariable -dictionary $dictionary
-            $auprofiles = @(
+            $UserProfiles = @(
                 switch ($PSCmdlet.ParameterSetName)
                 {
                     'GetCurrent'
@@ -2007,29 +1954,27 @@ Function Get-OneShellUserProfileSystem
                         Get-OneShellUserProfile @GetUserProfileParams
                     }#end Default
                 }#end Switch
-            )#end auprofiles
-            $outputSystems = @(
-                foreach ($aup in $auprofiles)
+            )#end UserProfiles
+            Write-Verbose -Message "Got $($UserProfiles.count) User Profiles"
+        }
+        Process
+        {
+            $OutputSystems = @(
+                foreach ($up in $UserProfiles)
                 {
-                    $orgProfile = Get-OneShellOrgProfile -Identity $aup.organization.Identity -ErrorAction Stop -Path $OrgProfilePath
-                    foreach ($as in $aup.systems)
+                    $orgProfile = Get-OneShellOrgProfile -Identity $up.organization.Identity -ErrorAction Stop -Path $OrgProfilePath
+                    foreach ($us in $up.systems)
                     {
-                        $os = $orgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $as.identity}
-                        $as | Select-Object -Property *,@{n='ServiceType';e={$os.ServiceType}},@{n='Name';e={$os.name}},@{n='UserProfileName';e={$aup.Name}},@{n='UserProfileIdentity';e={$aup.Identity}},@{n='OrgName';e={$orgProfile.Name}},@{n='OrgIdentity';e={$orgProfile.Identity}}
+                        $os = $orgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $us.identity}
+                        $us | Select-Object -Property *,@{n='ServiceType';e={$os.ServiceType}},@{n='Name';e={$os.name}},@{n='UserProfileName';e={$up.Name}},@{n='UserProfileIdentity';e={$up.Identity}},@{n='OrgName';e={$orgProfile.Name}},@{n='OrgIdentity';e={$orgProfile.Identity}}
                     }
                 }
             )
             #filter based on Identity and Service Type
-            if ($null -ne $ServiceType)
-            {
-                $outputSystems = $outputSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType}
-            }
-            if ($null -ne $Identity)
-            {
-                $outputSystems = $outputSystems | Where-Object -FilterScript {$_.Identity -in $Identity -or $_.Name -in $Identity}
-            }
-            $outputSystems
-        }#end End
+            $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.ServiceType -in $ServiceType -or (Test-IsNullorWhiteSpace -String $ServiceType)})
+            $OutputSystems = @($OutputSystems | Where-Object -FilterScript {$_.Identity -in $Identity -or $_.Name -in $Identity -or (Test-IsNullorWhiteSpace -String $Identity)})
+            $OutputSystems
+        }#end Process
     }
 #end function Get-OneShellUserProfileSystem
 Function Set-OneShellUserProfileSystem

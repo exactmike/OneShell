@@ -344,19 +344,116 @@ function Get-AllParametersWithAValue
 }
 #end function Get-AllParametersWithAValue
 
-Register-ArgumentCompleter -CommandName 'New-OneShellOrgProfileSystem', 'Get-OneShellServiceTypeDefinition', 'Set-OneShellOrgProfileSystem', 'Set-OneShellOrgProfileSystemServiceTypeAttribute', 'New-OneShellOrgProfileSystemEndpoint' -ParameterName 'ServiceType' -ScriptBlock {
+Register-ArgumentCompleter -CommandName @(
+    'New-OneShellOrgProfileSystem'
+    'Get-OneShellServiceTypeDefinition'
+    'Set-OneShellOrgProfileSystem'
+    'Set-OneShellOrgProfileSystemServiceTypeAttribute'
+    'New-OneShellOrgProfileSystemEndpoint'
+    'Get-OneShellUserProfileSystem'
+    ) -ParameterName 'ServiceType' -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
     Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object |
         ForEach-Object {
         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
     }
 }
-Register-ArgumentCompleter -CommandName 'Remove-OneShellUserProfile' -ParameterName 'Identity' -ScriptBlock {
+Register-ArgumentCompleter -CommandName @(
+    'Remove-OneShellUserProfile'
+    'Get-OneShellUserProfile'
+    'Set-OneShellUserProfile'
+    'Use-OneShellUserProfile'
+    ) -ParameterName 'Identity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
-    $path = if ($null -eq $fakeBoundParameter.Path) {$path = $Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
-    $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
+    $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
+    $PotentialUserProfiles = GetPotentialUserProfiles -path $Path
+    $UserProfileIdentities = @(
+            @($PotentialUserProfiles.name;$PotentialUserProfiles.Identity) |
+            Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+        )
     foreach ($upi in $UserProfileIdentities)
     {
         [System.Management.Automation.CompletionResult]::new($upi, $upi, 'ParameterValue', $upi)
     }
 }
+Register-ArgumentCompleter -CommandName 'Get-OneShellUserProfileSystem'  -ParameterName 'ProfileIdentity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
+    $PotentialUserProfiles = GetPotentialUserProfiles -path $Path
+    $UserProfileIdentities = @(
+            @($PotentialUserProfiles.name;$PotentialUserProfiles.Identity) |
+            Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+        )
+    foreach ($upi in $UserProfileIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($upi, $upi, 'ParameterValue', $upi)
+    }
+}
+Register-ArgumentCompleter -CommandName @(
+    'Get-OneShellUserProfile'
+    'New-OneShellUserProfile'
+    ) -ParameterName 'OrgProfileIdentity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}
+    $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath )
+    $OrgProfileIdentities = @(
+        @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity) |
+        Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+    )
+    foreach ($opi in $OrgProfileIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($opi, $opi, 'ParameterValue', $opi)
+    }
+}
+Register-ArgumentCompleter -CommandName @(
+    'Get-OneShellOrgProfile'
+    'Set-OneShellOrgProfile'
+    'Use-OneShellOrgProfile'
+    ) -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}
+    $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath )
+    $OrgProfileIdentities = @(
+        @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity) |
+        Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+    )
+    foreach ($opi in $OrgProfileIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($opi, $opi, 'ParameterValue', $opi)
+    }
+}
+Register-ArgumentCompleter -CommandName @(
+    'New-OneShellOrgProfileSystem'
+    'Set-OneShellOrgProfileSystem'
+    'set-OneShellOrgProfileSystemServiceTypeAttribute'
+    ) -ParameterName 'ProfileIdentity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}
+    $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $OrgProfilePath)
+    $OrgProfileIdentities = @(
+        @($PotentialOrgProfiles.Name; $PotentialOrgProfiles.Identity) |
+        Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+    )
+    foreach ($opi in $OrgProfileIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($opi, $opi, 'ParameterValue', $opi)
+    }
+}
+
+Register-ArgumentCompleter -CommandName @(
+    'Set-OneShellOrgProfileSystemServiceTypeAttribute'
+    ) -ParameterName 'Identity' -ScriptBlock {
+        param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+        $OrgProfilePath = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
+        [string]$OrgProfileIdentity = if ($null -eq $fakeBoundParameter.ProfileIdentity) {$null} else {$fakeBoundParameter.ProfileIdentity}
+        $PotentialSystemIdentities = @(
+            $Systems = Get-OneShellOrgProfileSystem -Path $OrgProfilePath
+            $systems = $Systems | Where-Object -FilterScript {$_.OrgName -eq $OrgProfileIdentity -or $_.OrgIdentity -eq $OrgProfileIdentity -or (Test-IsNullorWhiteSpace -string $OrgProfileIdentity)}
+            $Systems.Name
+            $Systems.Identity
+        )
+        foreach ($psi in $PotentialSystemIdentities)
+        {
+            [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
+        }
+    }
