@@ -114,6 +114,7 @@ function SetOneShellVariables
 . $(Join-Path $PSScriptRoot 'ParameterFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'LoggingFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'VariableFunctions.ps1')
+. $(Join-Path $PSScriptRoot 'RegisterArgumentCompleter.ps1')
 ##########################################################################################################
 #Initialization
 ##########################################################################################################
