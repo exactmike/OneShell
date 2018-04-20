@@ -101,6 +101,8 @@ Register-ArgumentCompleter -CommandName @(
     'Get-OneShellOrgProfileSystem'
     'Remove-OneShellOrgProfileSystem'
     'New-OneShellOrgProfileSystemEndpoint'
+    'Remove-OneShellOrgProfileSystemEndpoint'
+    'Get-OneShellOrgProfileSystemEndpoint'
 ) -ParameterName 'ProfileIdentity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
@@ -138,6 +140,8 @@ Register-ArgumentCompleter -CommandName @(
 }
 Register-ArgumentCompleter -CommandName @(
     'New-OneShellOrgProfileSystemEndpoint'
+    'Remove-OneShellOrgProfileSystemEndpoint'
+    'Get-OneShellOrgProfileSystemEndpoint'
 ) -ParameterName 'SystemIdentity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
@@ -154,5 +158,28 @@ Register-ArgumentCompleter -CommandName @(
     foreach ($psi in $PotentialSystemIdentities)
     {
         [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
+    }
+}
+Register-ArgumentCompleter -CommandName @(
+    'Remove-OneShellOrgProfileSystemEndpoint'
+    'Get-OneShellOrgProfileSystemEndpoint'
+) -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
+    $GetOneShellOrgProfileSystemEndpointParams = @{Path = $Path}
+    if ($null -ne $fakeBoundParameter.ProfileIdentity -and $null -ne $fakeBoundParameter.SystemIdentity)
+    {
+        $GetOneShellOrgProfileSystemEndpointParams.ProfileIdentity = $fakeBoundParameter.ProfileIdentity
+        $GetOneShellOrgProfileSystemEndpointParams.SystemIdentity = $fakeBoundParameter.SystemIdentity
+        $Endpoints = Get-OneShellOrgProfileSystemEndpoint @GetOneShellOrgProfileSystemEndpointParams
+        $EndPointIdentities = @(
+            $EndPoints | Select-Object -ExpandProperty Address | Sort-Object
+            $Endpoints | Select-Object -ExpandProperty Identity
+        )
+        $EndPointIdentities = @($EndPointIdentities | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
+        foreach ($epi in $EndPointIdentities)
+        {
+            [System.Management.Automation.CompletionResult]::new($epi, $epi, 'ParameterValue', $epi)
+        }
     }
 }

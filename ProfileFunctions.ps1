@@ -27,7 +27,7 @@ function GetPotentialOrgProfiles
     Write-Verbose -Message "Found $($jsonProfiles.count) json Files"
     $PotentialOrgProfiles = @(
         foreach ($file in $JSONProfiles)
-        {Get-Content -Path $file.fullname -Raw | ConvertFrom-Json | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
+        {Import-JSON -Path $file.fullname | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
     )
     Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
     if ($PotentialOrgProfiles.Count -lt 1)
@@ -1051,6 +1051,9 @@ function New-OneShellOrgProfileSystemEndpoint
     [cmdletbinding()]
     param
     (
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [string]$ProfileIdentity
+        ,
         [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
         [string]$SystemIdentity
@@ -1107,9 +1110,6 @@ function New-OneShellOrgProfileSystemEndpoint
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -path $_})]
         [string]$Path = $Script:OneShellOrgProfilePath
-        ,
-        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
-        [string]$ProfileIdentity
     )
     DynamicParam
     {
@@ -1182,52 +1182,40 @@ function Remove-OneShellOrgProfileSystemEndpoint
     [cmdletbinding()]
     param
     (
-        [parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$Identity
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [string]$ProfileIdentity
         ,
-        [parameter()]
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
         [string]$SystemIdentity
+        ,
+        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string[]]$Identity
         ,
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -path $_})]
         [string]$Path = $Script:OneShellOrgProfilePath
     )
-    DynamicParam
+    Process
     {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-        $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-        $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
-        $dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $Dictionary
-        #Get/Select the Org Profile
-        $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
-        #Get/Select the System
-        $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $SystemIdentity -Operation Edit
+        #Get Org Profile
+        $OrgProfile = Get-OneShellOrgProfile -Identity $ProfileIdentity -Path $Path -ErrorAction Stop
+        #Get the System
+        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop
         if ($System.Endpoints.Count -eq 0) {throw('There are no endpoints to remove')}
-        #Get/Select the Endpoint
-        $endPoint = $(
-            if ($PSBoundParameters.ContainsKey('Identity'))
-            {
-                if ($Identity -in $system.endpoints.Identity)
-                {$system.Endpoints | Where-Object -FilterScript {$_.Identity -eq $Identity}}
-                else
-                {throw("Invalid EndPoint Identity $Identity was provided.  No such endpoint exists for System $($system.identity).")}
-            }
-            else
-            {
-                Select-OneShellOrgProfileSystemEndpoint -Endpoints $System.EndPoints -Operation Remove
-            }
-        )
-        if ($null -eq $endPoint) {throw("No valid endpoint was selected.")}
-        $System = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $endPoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
-        $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
-        Export-OneShellOrgProfile -Path $OrgProfile.DirectoryPath -profile $OrgProfile -ErrorAction Stop
+        #Get the Endpoint
+        foreach ($i in $Identity)
+        {
+            $endPoint = @($System.Endpoints | Where-Object -FilterScript {
+                    $_.Identity -eq $i -or $_.Address -eq $i
+                })
+            if ($endPoint.Count -ne 1) {throw ("Invalid or Ambiguous Endpoint Identity $Identity Provided")}
+            else {$Endpoint = $Endpoint[0]}
+            $System = Remove-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $endPoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
+            $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+            Export-OneShellOrgProfile -Path $OrgProfile.DirectoryPath -profile $OrgProfile -ErrorAction Stop
+        }
     }
 }
 #end function Remove-OneShellOrgProfileSystemEndpoint
@@ -1357,51 +1345,27 @@ function Get-OneShellOrgProfileSystemEndpoint
     [cmdletbinding()]
     param
     (
-        [parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$Identity
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        $ProfileIdentity
         ,
-        [switch]$All
-        ,
-        [parameter()]
-        [ValidateNotNullOrEmpty()]
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
         [string]$SystemIdentity
+        ,
+        [parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [string[]]$Identity
         ,
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -path $_})]
         [string[]]$Path = $Script:OneShellOrgProfilePath
     )
-    DynamicParam
+    Process
     {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-        $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-        $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
-        $dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $Dictionary
-        #Get/Select the Org Profile
-        $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Get
-        #Get/Select the System
-        $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $SystemIdentity -Operation Get
+        #Get Org Profile
+        $OrgProfile = Get-OneShellOrgProfile -Identity $ProfileIdentity -Path $Path -ErrorAction Stop
+        #Get the System
+        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop
         $EndPoints = @(
-            switch ($null -eq $Identity -or [string]::IsNullOrWhiteSpace($Identity))
-            {
-                $true
-                {
-                    $system.endpoints
-                }
-                $false
-                {
-                    if ($Identity -in $System.endpoints.identity)
-                    {$System.endpoints | Where-Object  -FilterScript {$_.Identity -eq $identity -or $_.Address -eq $Identity}}
-                    else
-                    {throw("Invalid Endpoint Identity $Identity was provided.  No such endpoint exists for System $($system.identity).")}
-
-                }
-            }
+            $System.endpoints | Where-Object  -FilterScript {$_.Identity -in $identity -or $_.Address -in $Identity -or (Test-IsNullOrWhiteSpace -String $identity)}
         )
         $EndPoints
     }
