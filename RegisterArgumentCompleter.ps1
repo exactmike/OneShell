@@ -103,6 +103,7 @@ Register-ArgumentCompleter -CommandName @(
     'New-OneShellOrgProfileSystemEndpoint'
     'Remove-OneShellOrgProfileSystemEndpoint'
     'Get-OneShellOrgProfileSystemEndpoint'
+    'Set-OneShellOrgProfileSystemEndpoint'
 ) -ParameterName 'ProfileIdentity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
@@ -142,6 +143,7 @@ Register-ArgumentCompleter -CommandName @(
     'New-OneShellOrgProfileSystemEndpoint'
     'Remove-OneShellOrgProfileSystemEndpoint'
     'Get-OneShellOrgProfileSystemEndpoint'
+    'Set-OneShellOrgProfileSystemEndpoint'
 ) -ParameterName 'SystemIdentity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
@@ -163,6 +165,7 @@ Register-ArgumentCompleter -CommandName @(
 Register-ArgumentCompleter -CommandName @(
     'Remove-OneShellOrgProfileSystemEndpoint'
     'Get-OneShellOrgProfileSystemEndpoint'
+    'Set-OneShellOrgProfileSystemEndpoint'
 ) -ParameterName 'Identity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}

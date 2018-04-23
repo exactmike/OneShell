@@ -490,7 +490,7 @@ function Get-OneShellServiceTypeDefinition
         [parameter()]
         [string]$ServiceType
     )
-    $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType -or $null -eq $ServiceType}
+    $Script:ServiceTypes | where-object -FilterScript {$_.Name -eq $ServiceType -or (Test-IsNullOrWhiteSpace -String $ServiceType)}
 }
 #end function Get-OneShellServiceTypeDefinition
 Function Get-OneShellOrgProfile
@@ -1006,7 +1006,7 @@ Function Get-OneShellOrgProfileSystem
         $OutputSystems = @(
             foreach ($p in $profiles)
             {
-                $p.systems | Select-Object -Property *, @{n = 'OrgName'; e = {$p.Name}}, @{n = 'OrgIdentity'; e = {$p.Identity}}, @{n = 'ProfileIdentity'; e = {$p.Identity}}
+                $p.systems #| Select-Object -Property *, @{n = 'OrgName'; e = {$p.Name}}, @{n = 'OrgIdentity'; e = {$p.Identity}}, @{n = 'ProfileIdentity'; e = {$p.Identity}}
             }
         )
         #Filter outputSystems if required by specified parameters
@@ -1224,13 +1224,19 @@ function Set-OneShellOrgProfileSystemEndpoint
     [cmdletbinding()]
     param
     (
-        [parameter()]
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [string]$ProfileIdentity
+        ,
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SystemIdentity
+        ,
+        [parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateNotNullOrEmpty()]
         [string]$Identity
         ,
-        [parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$SystemIdentity
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [string]$ServiceType
         ,
         [Parameter()]
         [ValidateSet('URL', 'IPAddress', 'FQDN')]
@@ -1284,45 +1290,46 @@ function Set-OneShellOrgProfileSystemEndpoint
     )
     DynamicParam
     {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$Path = $Script:OneShellOrgProfilePath}
-        $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
-        $OrgProfileIdentities = @($PotentialOrgProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $PotentialOrgProfiles | Select-Object -ExpandProperty Identity)
-        $Dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $OrgProfileIdentities -Mandatory $false -Position 1
-        $Dictionary = New-DynamicParameter -Name 'PreferredDomainControllers' -Type $([string[]]) -Mandatory:$false -DPDictionary $dictionary
-        $Dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $Dictionary
-        #Get/Select the Org Profile
-        $OrgProfile = GetSelectProfile -ProfileType Org -Path $path -PotentialProfiles $PotentialOrgProfiles -Identity $ProfileIdentity -Operation Edit
-        #Get/Select the System
-        $System = GetSelectProfileSystem -PotentialSystems $OrgProfile.Systems -Identity $SystemIdentity -Operation Edit
-        if ($System.Endpoints.Count -eq 0) {throw('There are no endpoints to set')}
-        #Get/Select the Endpoint
-        $endPoint = $(
-            if ($PSBoundParameters.ContainsKey('Identity'))
-            {
-                if ($Identity -in $system.endpoints.Identity)
-                {$system.Endpoints | Where-Object -FilterScript {$_.Identity -eq $Identity}}
-                else
-                {throw("Invalid EndPoint Identity $Identity was provided.  No such endpoint exists for System $($system.identity).")}
-            }
-            else
-            {
-                Select-OneShellOrgProfileSystemEndpoint -Endpoints $System.EndPoints -Operation Edit
-            }
-        )
-        if ($null -eq $endPoint) {throw("No valid endpoint was selected.")}
-        #Set the new endpoint object attributes
-        $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
-        foreach ($vp in $AllValuedParameters)
+        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
+        if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
         {
-            if ($vp.name -in 'AddressType', 'Address', 'ServicePort', 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod', 'EndPointGroup', 'EndPointType', 'ServiceType', 'Precedence')
-            {$endpoint.$($vp.name) = $($vp.value)}
+            foreach ($a in $ServiceTypeDefinition.EndpointServiceTypeAttributes)
+            {
+                $Dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.Mandatory -DPDictionary $Dictionary
+            }
+        }
+        if (Test-IsNotNullOrWhiteSpace -string $ServiceTypeDefinition.WellKnownEndpointURI)
+        {Write-Warning -Message "$($serviceType) systems in OneShell use a well-known endpoint $($ServiceTypeDefinition.WellKnownEndpointURI). If you create an endpoint for this system type it will be ignored when connecting to this system."}
+        $Dictionary
+    }#End DynamicParam
+    Process
+    {
+        if ($null -ne $Dictionary)
+        {
+            Set-DynamicParameterVariable -dictionary $Dictionary
+        }
+        #Get Org Profile
+        $OrgProfile = Get-OneShellOrgProfile -Identity $ProfileIdentity -Path $Path -ErrorAction Stop
+        #Get the System
+        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop
+        if ($System.Endpoints.Count -eq 0) {throw('There are no endpoints to set')}
+        #Get the Endpoint
+        foreach ($i in $Identity)
+        {
+            $endPoint = @($System.Endpoints | Where-Object -FilterScript {
+                    $_.Identity -eq $i -or $_.Address -eq $i
+                })
+            if ($endPoint.Count -ne 1) {throw ("Invalid or Ambiguous Endpoint Identity $Identity Provided")}
+            else {$Endpoint = $Endpoint[0]}
+            $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
+            #Set the new endpoint object attributes
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in 'AddressType', 'Address', 'ServicePort', 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod', 'EndPointGroup', 'EndPointType', 'ServiceType', 'Precedence')
+                {$endpoint.$($vp.name) = $($vp.value)}
+            }
         }
         #Set any servicetype specific attributes that were specified
-        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $endpoint.ServiceType
         if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
         {
             $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
@@ -1331,11 +1338,11 @@ function Set-OneShellOrgProfileSystemEndpoint
         {
             if ($vp.name -in $ServiceTypeAttributeNames)
             {
-                $GenericEndpointObject.ServiceTypeAttributes.$($vp.name) = $($vp.value)
+                $Endpoint.ServiceTypeAttributes.$($vp.name) = $($vp.value)
             }
         }
-        $System = update-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $endPoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
-        $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $system -MultiValuedAttributeName Systems -IdentityAttributeName Identity
+        $System = update-ExistingObjectFromMultivaluedAttribute -ParentObject $System -ChildObject $Endpoint -MultiValuedAttributeName Endpoints -IdentityAttributeName Identity
+        $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity
         Export-OneShellOrgProfile -Path $OrgProfile.DirectoryPath -profile $OrgProfile -ErrorAction Stop
     }#end End
 }
