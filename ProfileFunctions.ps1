@@ -1864,13 +1864,13 @@ Function Get-OneShellUserProfileSystem
     [cmdletbinding(DefaultParameterSetName = 'All')]
     param
     (
-        [parameter(ParameterSetName = 'Identity', Position = 1, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [parameter(ValueFromPipelineByPropertyName)]
+        [string]$ProfileIdentity
+        ,
+        [parameter(ParameterSetName = 'Identity', ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [string[]]$Identity
         ,
-        [parameter()]
-        $ProfileIdentity
-        ,
-        [parameter()]
+        [parameter(ValueFromPipelineByPropertyName)]
         [string]$ServiceType
         ,
         [parameter()]
@@ -1880,37 +1880,21 @@ Function Get-OneShellUserProfileSystem
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
-        ,
-        [parameter(ParameterSetName = 'GetCurrent')]
-        [switch]$GetCurrent
     )#end param
-    Begin
-    {
-        $UserProfiles = @(
-            switch ($PSCmdlet.ParameterSetName)
-            {
-                'GetCurrent'
-                {
-                    $script:CurrentUserProfile
-                }#end GetCurrent
-                Default
-                {
-                    $GetUserProfileParams = @{
-                        ErrorAction = 'Stop'
-                        Path        = $Path
-                    }
-                    if ($null -ne $ProfileIdentity)
-                    {
-                        $GetUserProfileParams.Identity = $ProfileIdentity
-                    }
-                    Get-OneShellUserProfile @GetUserProfileParams
-                }#end Default
-            }#end Switch
-        )#end UserProfiles
-        Write-Verbose -Message "Got $($UserProfiles.count) User Profiles"
-    }
     Process
     {
+        $UserProfiles = @(
+            $GetUserProfileParams = @{
+                ErrorAction = 'Stop'
+                Path        = $Path
+            }
+            if (Test-IsNotNullOrWhiteSpace -String $ProfileIdentity)
+            {
+                $GetUserProfileParams.Identity = $ProfileIdentity
+            }
+            Get-OneShellUserProfile @GetUserProfileParams
+        )#end UserProfiles
+        Write-Verbose -Message "Got $($UserProfiles.count) User Profiles"
         $OutputSystems = @(
             foreach ($up in $UserProfiles)
             {
@@ -1918,7 +1902,7 @@ Function Get-OneShellUserProfileSystem
                 foreach ($us in $up.systems)
                 {
                     $os = $orgProfile.systems | Where-Object -FilterScript {$_.Identity -eq $us.identity}
-                    $us | Select-Object -Property *, @{n = 'ServiceType'; e = {$os.ServiceType}}, @{n = 'Name'; e = {$os.name}}, @{n = 'UserProfileName'; e = {$up.Name}}, @{n = 'UserProfileIdentity'; e = {$up.Identity}}, @{n = 'OrgName'; e = {$orgProfile.Name}}, @{n = 'OrgIdentity'; e = {$orgProfile.Identity}}
+                    $us | Select-Object -Property *, @{n = 'ServiceType'; e = {$os.ServiceType}}, @{n = 'Name'; e = {$os.name}}, @{n = 'ProfileName'; e = {$up.Name}}, @{n = 'ProfileIdentity'; e = {$up.Identity}}, @{n = 'OrgName'; e = {$orgProfile.Name}}, @{n = 'OrgIdentity'; e = {$orgProfile.Identity}}
                 }
             }
         )
@@ -1934,8 +1918,11 @@ Function Set-OneShellUserProfileSystem
     [cmdletbinding()]
     param
     (
-        [parameter(Position = 1, ValueFromPipelineByPropertyName, ValueFromPipeline)]
-        [string]$Identity
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [string]$ProfileIdentity
+        ,
+        [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline,Mandatory)]
+        [string[]]$Identity
         ,
         [parameter()]
         [bool]$AutoConnect
@@ -1959,27 +1946,20 @@ Function Set-OneShellUserProfileSystem
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
     )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -Position 2
-        $dictionary
-    }
-    Begin
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
-        #Get/Select the Profile
-        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
-        Write-Verbose -Message "Loaded User Profile $($UserProfile.name) with Identity $($UserProfile.Identity)"
-        #Get/Select the System
-        $Systems = Get-OneShellUserProfileSystem -ProfileIdentity $UserProfile.Identity -Path $Path -ErrorAction 'Stop'
-    }
     Process
     {
+        $UserProfile = @(Get-OneShellUserProfile -Identity $ProfileIdentity -Path $Path -OrgProfilePath $OrgProfilePath -ErrorAction Stop)
+        if ($UserProfile.Count -ne 1)
+        {throw("Ambiguous or not found User ProfileIdentity $ProfileIdentity was specified")}
+        else
+        {$UserProfile = $UserProfile[0]}
         foreach ($i in $Identity)
         {
-            $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $i -Operation Edit
+            $System = @(Get-OneShellUserProfileSystem -ProfileIdentity $ProfileIdentity -Identity $i -Path $Path -OrgProfilePath $OrgProfilePath -ErrorAction Stop)
+            if ($System.Count -ne 1)
+            {throw("Ambiguous or not found System Identity $i was specified")}
+            else
+            {$System = $System[0]}
             #Edit the System
             switch ($PSBoundParameters.getenumerator())
             {
@@ -2011,66 +1991,7 @@ Function Set-OneShellUserProfileSystem
     }#end Process
 }
 #end function Set-OneShellUserProfileSystem
-Function Set-OneShellUserProfileSystemPreferredEndpoint
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter()]
-        [string]$SystemIdentity
-        ,
-        [parameter()]
-        [string]$EndpointIdentity
-        ,
-        [parameter()]
-        [ValidateScript( {Test-DirectoryPath -Path $_})]
-        [string[]]$Path = $Script:OneShellUserProfilePath
-        ,
-        [parameter()]
-        [ValidateScript( {Test-DirectoryPath -Path $_})]
-        [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
-    )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -Position 2
-        $dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
-        #Get/Select the Profile
-        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
-        #Get/Select the System
-        $Systems = Get-OneShellUserProfileSystem -ProfileIdentity $UserProfile.Identity -Path $Path -ErrorAction 'Stop'
-        $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $SystemIdentity -Operation Edit
-        #Get/Select the Endpoint
-        $Endpoints = @(Get-OneShellOrgProfileSystemEndpoint -SystemIdentity $system.Identity -ProfileIdentity $UserProfile.Organization.Identity -Path $OrgProfilePath -ErrorAction 'Stop')
-        $SelectedEndpointIdentity = $(
-            if ($PsBoundParameters.ContainsKey('EndpointIdentity'))
-            {
-                if ($EndpointIdentity -in $Endpoints.Identity)
-                {$EndpointIdentity}
-                else
-                {
-                    throw("Invalid Endpoint Identity $EndpointIdentity was provided. No such endpoint exists for system $($system.identity).")
-                }
-            }
-            else
-            {
-                Select-OneShellOrgProfileSystemEndpoint -EndPoints $Endpoints -Operation Associate | Select-Object -ExpandProperty Identity
-            }
-        )
-        if ($null -eq $SelectedEndpointIdentity) {throw("No valid Endpoint Identity was provided.")}
-        $System = $System | Select-Object -Property $(GetUserProfileSystemPropertySet)
-        $system.PreferredEndpoint = $SelectedEndpointIdentity
-        #Save the system changes to the User Profile
-        $UserProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $UserProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity -ErrorAction 'Stop'
-        Export-OneShellUserProfile -profile $UserProfile -path $path -ErrorAction 'Stop'
-    }#end End
-}
-#end function Set-OneShellUserProfileSystemPreferredEndpoint
+
 Function Set-OneShellUserProfileSystemCredential
 {
     [cmdletbinding()]
