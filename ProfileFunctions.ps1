@@ -1640,11 +1640,11 @@ Function Use-OneShellUserProfile
             }
         }
         #Check User Profile Version
-        $RequiredVersion = 1.3
-        if (! $UserProfile.ProfileTypeVersion -ge $RequiredVersion)
-        {
-            throw("The selected User Profile $($UserProfile.Name) is an older version. Please Run Set-OneShellUserProfile -Identity $($UserProfile.Identity) or Update-OneShellUserProfileTypeVersion -Identity $($UserProfile.Identity) to update it to version $RequiredVersion.")
-        }
+        #$RequiredVersion = 1.3
+        #if (! $UserProfile.ProfileTypeVersion -ge $RequiredVersion)
+        #{
+        #    throw("The selected User Profile $($UserProfile.Name) is an older version. Please Run Set-OneShellUserProfile -Identity $($UserProfile.Identity) or Update-OneShellUserProfileTypeVersion -Identity $($UserProfile.Identity) to update it to version $RequiredVersion.")
+        #}
         #Get and use the related Org Profile
         $UseOrgProfileParams = @{
             ErrorAction = 'Stop'
@@ -2195,7 +2195,7 @@ function Update-OneShellUserProfileTypeVersion
     [cmdletbinding()]
     param
     (
-        $Path
+        $Path = $Script:OneShellUserProfilePath
     )
     DynamicParam
     {
@@ -2233,7 +2233,7 @@ function Update-OneShellUserProfileTypeVersion
             }
         }
         $UpdatedUserProfile = UpdateUserProfileObjectVersion -UserProfile $UserProfile
-        Export-OneShellUserProfile -profile $UpdatedUserProfile -path $UserProfile.profilefolder  > $null
+        Export-OneShellUserProfile -profile $UpdatedUserProfile -path $Path
     }
 }
 #end function Update-OneShellUserProfileTypeVersion
