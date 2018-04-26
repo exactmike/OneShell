@@ -1135,7 +1135,7 @@ function New-OneShellOrgProfileSystemEndpoint
             }
             #Get the System and then the profile from the system
             $System = Get-OneShellOrgProfileSystem -Identity $i -Path $Path -ErrorAction Stop -ProfileIdentity $ProfileIdentity
-            $OrgProfile = Get-OneShellOrgProfile -Identity $System.ProfileIdentity
+            $OrgProfile = Get-OneShellOrgProfile -Identity $ProfileIdentity
             if ($ServiceType -ne $system.ServiceType)
             {throw("Invalid ServiceType $serviceType specified (does not match system ServiceType $($system.servicetype))")}
             #Get the new endpoint object
