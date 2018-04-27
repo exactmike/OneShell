@@ -1921,7 +1921,7 @@ Function Set-OneShellUserProfileSystem
         [parameter(Mandatory, ValueFromPipelineByPropertyName)]
         [string]$ProfileIdentity
         ,
-        [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline,Mandatory)]
+        [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline, Mandatory)]
         [string[]]$Identity
         ,
         [parameter()]
@@ -2195,7 +2195,7 @@ function Update-OneShellUserProfileSystem
                 $PSCmdlet.ThrowTerminatingError($errorRecord)
             }
         }
-        $OrgProfileSystems = @(GetOrgProfileSystemForUserProfile -OneShellOrgProfile $TargetOrgProfile)
+        $OrgProfileSystems = @(GetOrgProfileSystemForUserProfile -OrgProfile $TargetOrgProfile)
         $UserProfileSystems = @($UserProfile.Systems)
         #Remove those that are no longer in the Org Profile
         $UserProfileSystems = @($UserProfileSystems | Where-Object {$_.Identity -in $OrgProfileSystems.Identity})
