@@ -129,7 +129,7 @@ Register-ArgumentCompleter -CommandName @(
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
     $GetOneShellOrgProfileSystemParams = @{
         ErrorAction = 'Stop'
-        Path = $Path
+        Path        = $Path
     }
     if (Test-IsNotNullOrWhiteSpace -String  $fakeBoundParameter.ProfileIdentity) {$GetOneShellOrgProfileSystemParams.ProfileIdentity = $fakeBoundParameter.ProfileIdentity}
     $PotentialSystemIdentities = @(
@@ -152,7 +152,7 @@ Register-ArgumentCompleter -CommandName @(
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.Path}
     $GetOneShellOrgProfileSystemParams = @{
-        Path = $Path
+        Path        = $Path
         ErrorAction = 'Stop'
     }
     if (Test-IsNotNullOrWhiteSpace -String $fakeBoundParameter.ProfileIdentity) {$GetOneShellOrgProfileSystemParams.ProfileIdentity = $fakeBoundParameter.ProfileIdentity}
@@ -200,10 +200,16 @@ Register-ArgumentCompleter -CommandName @(
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}
     $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
-    [string]$ProfileIdentity = if ($null -eq $fakeBoundParameter.ProfileIdentity) {$null} else {$fakeBoundParameter.ProfileIdentity}
+    $GetOneShellUserProfileSystemParams = @{
+        Path           = $Path
+        OrgProfilePath = $OrgProfilePath
+    }
+    if (Test-IsNotNullOrWhiteSpace -String $fakeBoundParameter.ProfileIdentity)
+    {
+        $GetOneShellUserProfileSystemParams.ProfileIdentity = $fakeBoundParameter.ProfileIdentity
+    }
     $PotentialSystemIdentities = @(
-        $Systems = Get-OneShellUserProfileSystem -Path $Path -OrgProfilePath $OrgProfilePath
-        $systems = $Systems | Where-Object -FilterScript {$_.OrgName -eq $ProfileIdentity -or $_.OrgIdentity -eq $ProfileIdentity -or (Test-IsNullorWhiteSpace -string $ProfileIdentity)}
+        $Systems = Get-OneShellUserProfileSystem @GetOneShellUserProfileSystemParams
         $Systems.Name
         $Systems.Identity
     )
@@ -218,7 +224,7 @@ Register-ArgumentCompleter -CommandName @(
 ) -ParameterName 'PreferredEndPoint' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}
-    $GetOneShellOrgProfileSystemEndpointParams = @{Path = $OrgProfilePath;ErrorAction = 'Stop'}
+    $GetOneShellOrgProfileSystemEndpointParams = @{Path = $OrgProfilePath; ErrorAction = 'Stop'}
     if ($null -ne $fakeBoundParameter.ProfileIdentity -and $null -ne $fakeBoundParameter.Identity)
     {
         $GetOneShellOrgProfileSystemEndpointParams.ProfileIdentity = $fakeBoundParameter.ProfileIdentity
