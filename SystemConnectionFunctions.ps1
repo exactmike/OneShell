@@ -857,7 +857,10 @@ function Initialize-OneShellSystemPSSession
                                         }
                                     }
                                 )
-                                $CmdParams.$($p.name) = $value
+                                if ($null -ne $value)
+                                {
+                                    $CmdParams.$($p.name) = $value
+                                }
                             }
                             Try
                             {
