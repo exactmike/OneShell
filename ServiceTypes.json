@@ -116,14 +116,8 @@
         },
         {
             "Name": "ExchangeComplianceCenter",
-            "SessionTestCmdlet": "Get-User",
-            "SessionTestCmdletParameters": [
-                {
-                    "Name": "Identity",
-                    "ValueType": "ScriptBlock",
-                    "Value": "$ServiceObject.Credentials.Service.Username"
-                }
-            ],
+            "SessionTestCmdlet": "Get-AdminAuditLogConfig",
+            "SessionTestCmdletParameters": [],
             "OrgSystemServiceTypeAttributes": [],
             "DefaultsToWellKnownEndPoint": true,
             "WellKnownEndPointURI": "https://ps.compliance.protection.outlook.com/powershell-liveid/",
