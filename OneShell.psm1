@@ -90,8 +90,8 @@ function SetOneShellVariables
         'proxyAddresses'
     )#MultiValuedADAttributesToRetrieve
     $Script:ADUserAttributes = @($script:ScalarADAttributes + $Script:MultiValuedADAttributes)
-    $Script:ADContactAttributes = @('CanonicalName', 'CN', 'Created', 'createTimeStamp', 'Deleted', 'Description', 'DisplayName', 'DistinguishedName', 'givenName', 'instanceType', 'internetEncoding', 'isDeleted', 'LastKnownParent', 'legacyExchangeDN', 'mail', 'mailNickname', 'mAPIRecipient', 'memberOf', 'Modified', 'modifyTimeStamp', 'msExchADCGlobalNames', 'msExchALObjectVersion', 'msExchPoliciesExcluded', 'Name', 'ObjectCategory', 'ObjectClass', 'ObjectGUID', 'ProtectedFromAccidentalDeletion', 'proxyAddresses', 'showInAddressBook', 'sn', 'targetAddress', 'textEncodedORAddress', 'uSNChanged', 'uSNCreated', 'whenChanged', 'whenCreated','city')
-    $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName','city')}
+    $Script:ADContactAttributes = @('CanonicalName', 'CN', 'Created', 'createTimeStamp', 'Deleted', 'Description', 'DisplayName', 'DistinguishedName', 'givenName', 'instanceType', 'internetEncoding', 'isDeleted', 'LastKnownParent', 'legacyExchangeDN', 'mail', 'mailNickname', 'mAPIRecipient', 'memberOf', 'Modified', 'modifyTimeStamp', 'msExchADCGlobalNames', 'msExchALObjectVersion', 'msExchPoliciesExcluded', 'Name', 'ObjectCategory', 'ObjectClass', 'ObjectGUID', 'ProtectedFromAccidentalDeletion', 'proxyAddresses', 'showInAddressBook', 'sn', 'targetAddress', 'textEncodedORAddress', 'uSNChanged', 'uSNCreated', 'whenChanged', 'whenCreated')
+    $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName','city','AccountExpirationDate')}
     $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members'
     $Script:Stamp = GetTimeStamp
