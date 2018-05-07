@@ -1563,10 +1563,10 @@ Function Use-OneShellUserProfile
     [cmdletbinding(DefaultParameterSetName = 'Identity')]
     param
     (
-        [parameter(ParameterSetName = 'Identity', ValueFromPipeline, ValueFromPipelineByPropertyName, Position = 1)]
+        [parameter(ParameterSetName = 'Identity', ValueFromPipeline, ValueFromPipelineByPropertyName, Position = 1, Mandatory)]
         [string]$Identity
         ,
-        [parameter(ParameterSetName = 'Object', ValueFromPipeline = $true, Position = 1)]
+        [parameter(ParameterSetName = 'Object', ValueFromPipeline = $true, Position = 1, Mandatory)]
         $UserProfile
         ,
         [parameter()]
