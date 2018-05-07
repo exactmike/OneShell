@@ -379,7 +379,10 @@ function Get-OneShellSystemEndpointPSSessionParameter
         $NewPSSessionParams = @{
             ErrorAction = 'Stop'
             Name        = $($ServiceObject.Identity + '%' + $Endpoint.Identity)
-            Credential  = $ServiceObject.Credentials.PSSession
+        }
+        if ($null -ne $ServiceObject.Credentials.PSSession)
+        {
+            $NewPSSessionParams.Credential = $ServiceObject.Credentials.PSSession
         }
         #Apply Service Type Defaults
         foreach ($p in $ServiceTypeDefinition.PSSessionParameters)
@@ -854,7 +857,10 @@ function Initialize-OneShellSystemPSSession
                                         }
                                     }
                                 )
-                                $CmdParams.$($p.name) = $value
+                                if ($null -ne $value)
+                                {
+                                    $CmdParams.$($p.name) = $value
+                                }
                             }
                             Try
                             {
