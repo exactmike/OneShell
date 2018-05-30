@@ -1189,7 +1189,6 @@ Function Export-OneShellData
         )
         $outFileParams = @{
             ErrorAction = 'Stop'
-            InputObject = $formattedData
             LiteralPath = $ExportFilePath
         }
         switch ($Encoding)
@@ -1199,6 +1198,7 @@ Function Export-OneShellData
                 if ($Append)
                 {
                     $outFileParams.Append = $true
+                    $outFileParams.InputObject = $formattedData
                 }
                 Out-FileUtf8NoBom @outFileParams
             }
@@ -1207,10 +1207,12 @@ Function Export-OneShellData
                 $outFileParams.Encoding = $Encoding
                 if ($DataType -eq 'clixml')
                 {
-                    $DataToExport | Export-Clixml -Depth $Depth @outFileParams
+                    $outFileParams.InputObject = $DataToExport
+                    Export-Clixml -Depth $Depth @outFileParams
                 }
                 else
                 {
+                    $outFileParams.InputObject = $formattedData
                     if ($append)
                     {
                         $outFileParams.Append = $true
