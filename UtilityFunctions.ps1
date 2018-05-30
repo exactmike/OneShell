@@ -1111,7 +1111,7 @@ Function Export-OneShellData
         ,
         [parameter(ParameterSetName = 'delimited')]
         [parameter(ParameterSetName = 'xml/json')]
-        [ValidateSet('xml', 'csv', 'json')]
+        [ValidateSet('xml', 'csv', 'json', 'clixml')]
         [string]$DataType
         ,
         [parameter(ParameterSetName = 'delimited')]
@@ -1127,10 +1127,19 @@ Function Export-OneShellData
         [string]$Encoding = 'Ascii'
     )
     #Determine Export File Path
+    #validate append
+    if ($Append -eq $true -and $DataType -ne 'csv')
+    {
+        throw("-Append is not supported with data type $DataType.  It is only supported with data type 'csv'")
+    }
     $stamp = GetTimeStamp
     switch ($DataType)
     {
         'xml'
+        {
+            $ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp + $DataToExportTitle + '.xml')
+        }#xml
+        'clixml'
         {
             $ExportFilePath = Join-Path -Path $exportFolderPath -ChildPath $($Stamp + $DataToExportTitle + '.xml')
         }#xml
@@ -1164,6 +1173,10 @@ Function Export-OneShellData
                 {
                     $DataToExport | ConvertTo-Xml -Depth $Depth -ErrorAction Stop -NoTypeInformation -As String
                 }#xml
+                'clixml'
+                {
+                    #$DataToExport | ConvertTo-CliXML -Depth -errorAction Stop -Encoding $Encoding #not supported in Windows PowerShell, also need to handle Encoding if UTF8NOBOM is specified
+                }#xml
                 'json'
                 {
                     $DataToExport | ConvertTo-Json -Depth $Depth -ErrorAction Stop
@@ -1192,11 +1205,18 @@ Function Export-OneShellData
             Default
             {
                 $outFileParams.Encoding = $Encoding
-                if ($append)
+                if ($DataType -eq 'clixml')
                 {
-                    $outFileParams.Append = $true
+                    $DataToExport | Export-Clixml -Depth $Depth @outFileParams
                 }
-                Out-File @outFileParams
+                else
+                {
+                    if ($append)
+                    {
+                        $outFileParams.Append = $true
+                    }
+                    Out-File @outFileParams
+                }
             }
         }
         if ($ReturnExportFilePath) {$ExportFilePath}
