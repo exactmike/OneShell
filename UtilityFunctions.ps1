@@ -1133,6 +1133,7 @@ Function Export-OneShellData
         throw("-Append is not supported with data type $DataType.  It is only supported with data type 'csv'")
     }
     $stamp = GetTimeStamp
+    #Build the ExportFilePath value
     switch ($DataType)
     {
         'xml'
@@ -1207,8 +1208,9 @@ Function Export-OneShellData
                 $outFileParams.Encoding = $Encoding
                 if ($DataType -eq 'clixml')
                 {
+                    $outFileParams.Depth = $Depth
                     $outFileParams.InputObject = $DataToExport
-                    Export-Clixml -Depth $Depth @outFileParams
+                    Export-Clixml @outFileParams
                 }
                 else
                 {
