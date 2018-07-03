@@ -302,6 +302,12 @@
                     "type": "string",
                     "mandatory": true,
                     "value": ""
+                },
+                {
+                    "Name": "SQLServerFQDN",
+                    "type": "string",
+                    "mandatory": true,
+                    "value": ""
                 }
             ],
             "DefaultsToWellKnownEndPoint": false,
@@ -328,10 +334,47 @@
                     "Phase1_PreModuleImport": [],
                     "Phase2_ModuleImport": [
                         {
-                            "name": "POSH_ADO_SQLServer"
+                            "name": "dbaTools",
+                            "type": "module"
                         }
                     ],
-                    "Phase3": []
+                    "Phase3": [
+                        {
+                            "command":"Connect-DBAInstance",
+                            "parameters":[
+                                {
+                                    "name": "SQLConnectionOnly",
+                                    "ValueType":"Static",
+                                    "Value" : true
+                                },
+                                {
+                                    "name": "SQLInstance",
+                                    "ValueType":"ScriptBlock",
+                                    "Value" : "$ServiceObject.ServiceTypeAttributes.SQLServerFQDN"
+                                },
+                                {
+                                    "name": "Database",
+                                    "ValueType":"ScriptBlock",
+                                    "Value" : "$ServiceObject.ServiceTypeAttributes.DatabaseName"
+                                },
+                                {
+                                    "name": "ClientName",
+                                    "ValueType":"Static",
+                                    "Value" : "OneShell"
+                                },
+                                {
+                                    "name": "EncryptConnection",
+                                    "ValueType":"Static",
+                                    "Value" : true
+                                },
+                                {
+                                    "name": "TrustServerCertificate",
+                                    "ValueType":"Static",
+                                    "Value" : true
+                                }
+                            ]
+                        }
+                    ]
                 }
             }
         },
