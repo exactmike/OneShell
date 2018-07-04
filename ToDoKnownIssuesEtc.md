@@ -18,7 +18,7 @@
 - [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the module's onremove capability: <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
 - [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
-- [ ] Finish SQL ServiceType support (initialization) - use dbatools module instead of the previously used POSH_ADO module?
+- [ ] Finish SQL ServiceType support (initialization) - use dbatools module instead of the previously used POSH_ADO module? Yes, dbatools IN PROGRESS
 - [ ] Add LotusNotesDatabase ServiceType support
 - [ ] Add Exchange 2007 ServiceType support - in progress
 - [ ] Add MigrationWiz/BitTitan ServiceType Support

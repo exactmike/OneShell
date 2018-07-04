@@ -371,6 +371,17 @@
                                     "name": "TrustServerCertificate",
                                     "ValueType":"Static",
                                     "Value" : true
+                                },
+                                {
+                                    "name": "OutVariable",
+                                    "ValueType":"Static",
+                                    "Value" : "SQLConnection"
+                                }
+                                ,
+                                {
+                                    "name": "Credential",
+                                    "ValueType":"ScriptBlock",
+                                    "Value" : "$ServiceObject.Credentials.Service"
                                 }
                             ]
                         }
