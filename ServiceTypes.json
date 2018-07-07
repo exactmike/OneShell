@@ -288,12 +288,12 @@
         },
         {
             "Name": "SQLDatabase",
-            "SessionTestCmdlet": "Get-Command",
+            "SessionTestCmdlet": "Test-DbaConnection",
             "SessionTestCmdletParameters": [
                 {
-                    "Name": "Name",
+                    "Name": "SQLInstance",
                     "ValueType": "Static",
-                    "Value": "Get-Command"
+                    "Value": "$SQLConnection"
                 }
             ],
             "OrgSystemServiceTypeAttributes": [
@@ -386,6 +386,30 @@
                             ]
                         }
                     ]
+                },
+                "Import":{
+                    "ModulesAndCommands":
+                    [
+                        {
+                            "name": "Invoke-DbaSql*",
+                            "type": "Command"
+                        }
+                    ],
+                    "ArbitraryCommands":
+                    [
+                        {
+                            "conditions": [],
+                            "command": "Invoke-Expression",
+                            "parameters": [
+                                {
+                                    "name": "command",
+                                    "ValueType": "Static",
+                                    "Value": "$PSDefaultParameterValues.Add('Invoke-DbaSql*:SQLInstance',$SqlConnection)"
+                                }
+                            ]
+                        }
+                    ]
+
                 }
             }
         },

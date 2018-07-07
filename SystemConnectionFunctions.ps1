@@ -1044,11 +1044,12 @@ Function Import-OneShellSystemPSSession
                     {
                         $ServiceObject = Get-OneShellSystem -identity $Identity -ErrorAction Stop
                         $ServiceSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
-                        ImportOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession
+                        ImportOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
                     }
                     Catch
                     {
-                        Write-Warning -Message "Failed to Find Available System or Existing PSSession for $i"
+                        $myerror = $_
+                        Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                     }
                 }
             }
@@ -1074,14 +1075,88 @@ Function ImportOneShellSystemPSSession
         AllowClobber  = $true
     }
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-    switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
+    if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Import -and $ServiceTypeDefinition.PSSessionSettings.Import.ArbitraryCommands.count -ge 1)
     {
-        $null
-        {}
-        {$_ -ge 1}
+        foreach ($cmd in $ServiceTypeDefinition.PSSessionSettings.Import.ArbitraryCommands)
         {
-            $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.Name
+            $conditionResults = @(
+                foreach ($c in $cmd.conditions)
+                {
+                    switch ($c.type)
+                    {
+                        'Local'
+                        {
+                            $ScriptBlockToTest = [scriptblock]::Create($c.test)
+                            &$ScriptBlockToTest
+                        }
+                        'InPSSession'
+                        {
+                            Invoke-Command -Session $serviceSession -ScriptBlock {& $($($using:c).test)}
+                        }
+                    }
+                }
+            )
+            if ($conditionResults -notcontains $false)
+            {
+                $CmdParams = @{
+                    ErrorAction = 'Stop'
+                }
+                foreach ($p in $cmd.parameters)
+                {
+                    $value = $(
+                        switch ($p.ValueType)
+                        {
+                            'Static'
+                            {$p.Value}
+                            'ScriptBlock'
+                            {
+                                $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
+                                &$ValueGeneratingScriptBlock
+                            }
+                        }
+                    )
+                    if ($null -ne $value)
+                    {
+                        $CmdParams.$($p.name) = $value
+                    }
+                }
+                Try
+                {
+                    [void](Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:cmd).command) @using:CmdParams} -ErrorAction Stop)
+                }#end Try
+                Catch
+                {
+                    $myerror = $_
+                    Write-OneShellLog -Message "Import PSSession Command $($cmd.command) failed." -ErrorLog -Verbose -EntryType Failed
+                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
+                }
+            }
         }
+    }#end if
+    if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Import -and $ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands.count -ge 1)
+    {
+        $Command = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Command'})
+        $Module  = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Module'})
+        if ($Command.Count -ge 1)
+        {
+            $ImportPSSessionParams.CommandName = $Command.name
+        }
+        if ($Module.Count -ge 1)
+        {
+            $ImportPSSessionParams.Module = $Module.name
+        }
+    }
+    else
+    {
+        switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
+        {
+            $null
+            {}
+            {$_ -ge 1}
+            {
+                $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.Name
+            }
+        }        
     }
     #Setup for CommandPrefix
     if ($PSBoundParameters.ContainsKey('CommandPrefix'))
