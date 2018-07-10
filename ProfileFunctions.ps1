@@ -2422,15 +2422,18 @@ function Set-OneShellUserProfileCredential
                 }
             }
         )
-        $UserProfileCredential = Convert-CredentialToUserProfileCredential -credential $EditedCredential -Identity $SelectedCredential.Identity
-        $Index = Get-ArrayIndexForValue -array $UserProfile.Credentials -value $SelectedCredential.Identity -property Identity -ErrorAction Stop
-        $UserProfile.Credentials[$Index] = $UserProfileCredential
-        $exportUserProfileParams = @{
-            profile     = $UserProfile
-            path        = $Path
-            ErrorAction = 'Stop'
+        if ($null -ne $EditedCredential)
+        {
+            $UserProfileCredential = Convert-CredentialToUserProfileCredential -credential $EditedCredential -Identity $SelectedCredential.Identity
+            $Index = Get-ArrayIndexForValue -array $UserProfile.Credentials -value $SelectedCredential.Identity -property Identity -ErrorAction Stop
+            $UserProfile.Credentials[$Index] = $UserProfileCredential
+            $exportUserProfileParams = @{
+                profile     = $UserProfile
+                path        = $Path
+                ErrorAction = 'Stop'
+            }
+            Export-OneShellUserProfile @exportUserProfileParams
         }
-        Export-OneShellUserProfile @exportUserProfileParams
     }
 }
 #end function Set-OneShellUserProfileCredential
