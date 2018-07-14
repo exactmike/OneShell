@@ -2413,7 +2413,7 @@ function Set-OneShellUserProfileCredential
                 #Only Password Specified - Update Password, Preserve Username
                 {-not $PSBoundParameters.ContainsKey('NewUsername') -and $PSBoundParameters.ContainsKey('NewPassword')}
                 {
-                    New-Object System.Management.Automation.PSCredential ($SelectedCredential.Username, $Password)
+                    New-Object System.Management.Automation.PSCredential ($SelectedCredential.Username, $NewPassword)
                 }
                 #nothing Specified except Identity - suggest preserving username, prompt to update password
                 {-not $PSBoundParameters.ContainsKey('NewUsername') -and -not $PSBoundParameters.ContainsKey('NewPassword')}
