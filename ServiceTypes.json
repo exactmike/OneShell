@@ -391,7 +391,7 @@
                     "ModulesAndCommands":
                     [
                         {
-                            "name": "Invoke-DbaSql*",
+                            "name": "Invoke-DbaSql*,Import-DbaCsvToSql,Write-DbaDataTable,ConvertTo-DbaDataTable",
                             "type": "Command"
                         }
                     ],
@@ -405,6 +405,28 @@
                                     "name": "command",
                                     "ValueType": "Static",
                                     "Value": "$PSDefaultParameterValues.Add('Invoke-DbaSql*:SQLInstance',$SqlConnection)"
+                                }
+                            ]
+                        },
+                        {
+                            "conditions": [],
+                            "command": "Invoke-Expression",
+                            "parameters": [
+                                {
+                                    "name": "command",
+                                    "ValueType": "Static",
+                                    "Value": "$PSDefaultParameterValues.Add('Import-DbaCsvToSql:SQLInstance',$SqlConnection)"
+                                }
+                            ]
+                        },
+                        {
+                            "conditions": [],
+                            "command": "Invoke-Expression",
+                            "parameters": [
+                                {
+                                    "name": "command",
+                                    "ValueType": "Static",
+                                    "Value": "$PSDefaultParameterValues.Add('Write-DbaDataTable:SQLInstance',$SqlConnection)"
                                 }
                             ]
                         }
