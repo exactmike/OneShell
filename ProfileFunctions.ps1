@@ -212,6 +212,7 @@ function GetOrgProfileSystemForUserProfile
             Identity          = $s.Identity
             AutoConnect       = $null
             AutoImport        = $null
+            UsePSRemoting     = $null
             Credentials       = [PSCustomObject]@{
                 PSSession = $null
                 Service   = $null
@@ -843,6 +844,10 @@ function Set-OneShellOrgProfileSystem
         [bool]$UseTLS
         ,
         [parameter(ValueFromPipelineByPropertyName)]
+        [validateset($true, $false)]
+        [bool]$UsePSRemoting
+        ,
+        [parameter(ValueFromPipelineByPropertyName)]
         [ValidateSet('Basic', 'Kerberos', 'Integrated')]
         $AuthMethod
         ,
@@ -878,7 +883,7 @@ function Set-OneShellOrgProfileSystem
             #set the default System Attributes
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod')
+                if ($vp.name -in 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod','UsePSRemoting')
                 {$System.defaults.$($vp.name) = $($vp.value)}
             }
             #update the system entry in the org profile
@@ -1925,10 +1930,16 @@ Function Set-OneShellUserProfileSystem
         [string[]]$Identity
         ,
         [parameter()]
+        [validateset($true, $false)]
         [bool]$AutoConnect
         ,
         [parameter()]
+        [validateset($true, $false)]
         [bool]$AutoImport
+        ,
+        [parameter()]
+        [validateset($true, $false)]
+        [bool]$UsePSRemoting
         ,
         [parameter()]
         [ValidateScript( {($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
@@ -1967,6 +1978,8 @@ Function Set-OneShellUserProfileSystem
                 {$System.AutoConnect = $AutoConnect}
                 {$_.key -eq 'AutoImport'}
                 {$System.AutoImport = $AutoImport}
+                {$_.key -eq 'UsePSRemoting'}
+                {$System.UsePSRemoting = $UsePSRemoting}
                 {$_.key -eq 'PreferredPrefix'}
                 {$System.PreferredPrefix = $PreferredPrefix}
                 {$_.key -eq 'PreferredEndpoint'}

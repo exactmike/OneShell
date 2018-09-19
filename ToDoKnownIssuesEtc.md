@@ -1,6 +1,7 @@
 # To Do Items
 
 - [ ] Add function AddUserProfileFolder to Use-OneShellUserProfile
+- [ ] Add support for multi-geo in Exchange Online <https://docs.microsoft.com/en-us/office365/enterprise/multi-geo-capabilities-in-exchange-online>
 - [ ] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [ ] Remove-* functions for OrgProfile, UserProfile
 - [ ] NeededCode:  Remove references to the removed credential from user profile Systems?
