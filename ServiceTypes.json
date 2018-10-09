@@ -533,7 +533,13 @@
                             }
                         }
                     ]
-                }
+                },
+                "Import":[
+                    {
+                        "name": "adsync",
+                        "type": "Module"
+                    }
+                ]
             }
         },
         {
