@@ -713,7 +713,16 @@ Function Connect-OneShellSystem
                                 Update-SessionManagementGroup -ServiceSession $ServiceSession -ManagementGroups $SessionManagementGroups
                                 if ($ServiceObject.AutoImport -eq $true -and $NoAutoImport -ne $true)
                                 {
-                                    Import-OneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession
+                                    $ImportOneShellSystemPSSessionParams = @{
+                                        ErrorAction    = 'Stop'
+                                        ServiceSession = $ServiceSession
+                                        ServiceObject  = $ServiceObject
+                                    }
+                                    if ($PSBoundParameters.ContainsKey('CommandPrefix'))
+                                    {
+                                        $ImportOneShellSystemPSSessionParams.CommandPrefix = $CommandPrefix
+                                    }
+                                    Import-OneShellSystemPSSession @ImportOneShellSystemPSSessionParams
                                 }
                             }
                         }
@@ -1027,13 +1036,25 @@ Function Import-OneShellSystemPSSession
         $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity -ValueFromPipeline $true
         $Dictionary
     }
+    Begin
+    {
+        $ImportOneShellSystemPSSessionParams = @{
+            ErrorAction = 'Stop'
+        }
+        if ($PSBoundParameters.ContainsKey('CommandPrefix'))
+        {
+            $ImportOneShellSystemPSSessionParams.CommandPrefix = $CommandPrefix
+        }
+    }
     Process
     {
         switch ($PSCmdlet.ParameterSetName)
         {
             'ServiceObjectAndSession'
             {
-                ImportOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession
+                $ImportOneShellSystemPSSessionParams.ServiceObject = $ServiceObject
+                $ImportOneShellSystemPSSessionParams.ServiceSession = $ServiceSession
+                ImportOneShellSystemPSSession @ImportOneShellSystemPSSessionParams
             }
             'Identity'
             {
@@ -1042,9 +1063,9 @@ Function Import-OneShellSystemPSSession
                 {
                     Try
                     {
-                        $ServiceObject = Get-OneShellSystem -identity $Identity -ErrorAction Stop
-                        $ServiceSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
-                        ImportOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
+                        $ImportOneShellSystemPSSessionParams.ServiceObject = Get-OneShellSystem -identity $Identity -ErrorAction Stop
+                        $ImportOneShellSystemPSSessionParams.ServiceSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
+                        ImportOneShellSystemPSSession @ImportOneShellSystemPSSessionParams
                     }
                     Catch
                     {
@@ -1067,6 +1088,9 @@ Function ImportOneShellSystemPSSession
         ,
         [parameter(ParameterSetName = 'ServiceObjectAndSession')]
         [System.Management.Automation.Runspaces.PSSession]$ServiceSession
+        ,
+        [parameter()]
+        [string]$CommandPrefix
     )
     $ImportPSSessionParams = @{
         ErrorAction   = 'Stop'
@@ -1136,7 +1160,7 @@ Function ImportOneShellSystemPSSession
     if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Import -and $ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands.count -ge 1)
     {
         $Command = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Command'})
-        $Module  = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Module'})
+        $Module = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Module'})
         if ($Command.Count -ge 1)
         {
             $ImportPSSessionParams.CommandName = $Command.name
@@ -1156,7 +1180,7 @@ Function ImportOneShellSystemPSSession
             {
                 $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.Name
             }
-        }        
+        }
     }
     #Setup for CommandPrefix
     if ($PSBoundParameters.ContainsKey('CommandPrefix'))
