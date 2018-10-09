@@ -23,7 +23,7 @@ function Find-EndPointToUse
         {
             $false
             {
-                Write-verbose -Message "Endpoint Identity was specified.  Return only that endpoint."
+                #Write-verbose -Message "Endpoint Identity was specified.  Return only that endpoint."
                 if ($EndPointIdentity -notin $ServiceObject.EndPoints.Identity)
                 {throw("Invalid EndPoint Identity $EndPointIdentity was specified. System $($ServiceObject.Identity) has no such endpoint.")}
                 else
@@ -33,23 +33,23 @@ function Find-EndPointToUse
             }
             $true
             {
-                Write-verbose -message "Endpoint Identity was not specified.  Return all applicable endpoints, with preferred first if specified."
+                #Write-verbose -message "Endpoint Identity was not specified.  Return all applicable endpoints, with preferred first if specified."
                 switch ($null -eq $ServiceObject.PreferredEndpoint)
                 {
                     $false
                     {
-                        Write-Verbose -Message "Preferred Endpoint is specified."
+                        #Write-Verbose -Message "Preferred Endpoint is specified."
                         $PreEndpoints = @(
                             switch ($null -eq $EndPointGroup)
                             {
                                 $true
                                 {
-                                    Write-Verbose -message 'EndPointGroup was not specified'
+                                    #Write-Verbose -message 'EndPointGroup was not specified'
                                     $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType} | Sort-Object -Property Precedence
                                 }#end false
                                 $false
                                 {
-                                    Write-Verbose -message 'EndPointGroup was specified'
+                                    #Write-Verbose -message 'EndPointGroup was specified'
                                     $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType -and $_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
                                 }#end true
                             }#end switch
@@ -59,18 +59,18 @@ function Find-EndPointToUse
                     }#end false
                     $true
                     {
-                        Write-Verbose -Message "Preferred Endpoint is not specified."
+                        #Write-Verbose -Message "Preferred Endpoint is not specified."
                         switch ($null -eq $EndPointGroup)
                         {
                             $true
                             {
-                                Write-Verbose -message 'EndPointGroup was not specified'
+                                #Write-Verbose -message 'EndPointGroup was not specified'
                                 $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType} | Sort-Object -Property Precedence
                             }#end false
                             #EndPointGroup was specified
                             $false
                             {
-                                Write-Verbose -message 'EndPointGroup was specified'
+                                #Write-Verbose -message 'EndPointGroup was specified'
                                 $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType -and $_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
                             }#end true
                         }#end switch
@@ -194,15 +194,15 @@ function GetOneShellSystemPSSession
     $message = "Run Get-PSSession for name like $SessionNameWildcard"
     try
     {
-        Write-OneShellLog -Message $message -EntryType Attempting
+        #Write-OneShellLog -Message $message -EntryType Attempting
         $ServiceSession = @(Get-PSSession -Name $SessionNameWildcard -ErrorAction Stop)
-        Write-OneShellLog -Message $message -EntryType Succeeded
+        #Write-OneShellLog -Message $message -EntryType Succeeded
     }
     catch
     {
         $myerror = $_
-        Write-OneShellLog -Message $message -EntryType Failed
-        Write-OneShellLog -Message $myerror.tostring() -ErrorLog
+        #Write-OneShellLog -Message $message -EntryType Failed
+        #Write-OneShellLog -Message $myerror.tostring() -ErrorLog
     }
     $ServiceSession
 }
@@ -277,7 +277,7 @@ function Test-OneShellSystemConnection
             {
                 $ServiceSession = $ServiceSession[0]
                 $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
-                Write-OneShellLog -Message $message -EntryType Notification
+                #Write-OneShellLog -Message $message -EntryType Notification
                 #Test the Session functionality
                 if ($ServiceSession.state -ne 'Opened')
                 {
@@ -287,9 +287,9 @@ function Test-OneShellSystemConnection
                 }
                 else
                 {
-                    Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                    #Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                 }
-                Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
+                #Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
                 $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
                 if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
                 {
@@ -318,13 +318,13 @@ function Test-OneShellSystemConnection
                         }
 
                     }
-                    Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+                    #Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
                     $message = "Run $testCommand in $($serviceSession.name) PSSession"
                     try
                     {
-                        Write-OneShellLog -Message $message -EntryType Attempting
+                        #Write-OneShellLog -Message $message -EntryType Attempting
                         [void](invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop)
-                        Write-OneShellLog -Message $message -EntryType Succeeded
+                        #Write-OneShellLog -Message $message -EntryType Succeeded
                         $true
                     }
                     catch
@@ -338,7 +338,7 @@ function Test-OneShellSystemConnection
                 }#end if
                 else
                 {
-                    Write-OneShellLog "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
+                    #Write-OneShellLog "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
                     $true
                 }
             }
@@ -481,16 +481,16 @@ Function Connect-OneShellSystem
         foreach ($id in $Identity)
         {
             $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $id -or $_.Identity -eq $id}
-            Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
+            #Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
-            Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
+            #Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
             $EndPointGroups = @(
-                Write-Verbose -Message "Selecting an Endpoint"
+                #Write-Verbose -Message "Selecting an Endpoint"
                 switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
                 {
                     $true
                     {
-                        Write-Verbose -Message "Get Well Known Endpoint(s)."
+                        #Write-Verbose -Message "Get Well Known Endpoint(s)."
                         Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
                     }
                     Default
@@ -525,7 +525,7 @@ Function Connect-OneShellSystem
                     #check results of the test for an existing session
                     if ($ExistingConnectionIsValid)
                     {
-                        Write-OneShellLog -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
+                        #Write-OneShellLog -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
                         #nothing further to do since existing connection is valid
                         #add logic for preferred endpoint/specified endpoint checking?
                     }#end if
@@ -533,6 +533,7 @@ Function Connect-OneShellSystem
                     {
                         if ($null -ne $ExistingSession)
                         {
+                            $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
                             try
                             {
                                 if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
@@ -552,7 +553,7 @@ Function Connect-OneShellSystem
                                         Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                     }
                                 }
-                                $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
+
                                 Try
                                 {
                                     Write-OneShellLog -Message $message -EntryType Attempting
