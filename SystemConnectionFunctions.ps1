@@ -1027,6 +1027,8 @@ Function Import-OneShellSystemPSSession
         [System.Management.Automation.Runspaces.PSSession]$ServiceSession
         ,
         [parameter()]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$CommandPrefix
     )
     DynamicParam
@@ -1091,6 +1093,8 @@ Function ImportOneShellSystemPSSession
         [System.Management.Automation.Runspaces.PSSession]$ServiceSession
         ,
         [parameter()]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$CommandPrefix
     )
     $ImportPSSessionParams = @{
@@ -1098,6 +1102,7 @@ Function ImportOneShellSystemPSSession
         Session       = $ServiceSession
         WarningAction = 'SilentlyContinue'
         AllowClobber  = $true
+        DisableNameChecking = $true
     }
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Import -and $ServiceTypeDefinition.PSSessionSettings.Import.ArbitraryCommands.count -ge 1)
@@ -1210,8 +1215,15 @@ Function ImportOneShellSystemPSSession
     $message = "Import OneShell System $($ServiceObject.Name) Session $($ServiceSession.Name) into Current Session"
     if ($CommandPrefixExists -eq $true)
     {
-        $ImportPSSessionParams.Prefix = $CommandPrefix
-        $message = $message + " with Command Prefix $CommandPrefix"
+        if ($null -ne $CommandPrefix -and -not [string]::IsNullOrWhiteSpace($CommandPrefix))
+        {
+            $ImportPSSessionParams.Prefix = $CommandPrefix
+            $message = $message + " with Command Prefix $CommandPrefix"
+        }
+        else
+        {
+            $message = $message + " with NO Command Prefix"
+        }
     }
     $ImportModuleParams = @{
         ErrorAction   = 'Stop'
@@ -1219,6 +1231,7 @@ Function ImportOneShellSystemPSSession
         Passthru      = $true
         Global        = $true
         ModuleInfo    = Import-PSSession @ImportPSSessionParams
+        DisableNameChecking = $true
     }
     if ($CommandPrefixExists -eq $true)
     {
