@@ -1,36 +1,37 @@
 # To Do Items
-
+- [ ] Add Non-PSRemoting Service Attribute and Connection support
 - [ ] Add function AddUserProfileFolder to Use-OneShellUserProfile
+- [ ] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
+
+- [ ] Move Credential Storage to the following options: 1 - Azure based storage, 2 - Credential Manager, 3 - equivalent of credential manager on linux/macOS, 4 - AWS/other
 - [ ] Add support for multi-geo in Exchange Online <https://docs.microsoft.com/en-us/office365/enterprise/multi-geo-capabilities-in-exchange-online>
 - [ ] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [ ] Remove-* functions for OrgProfile, UserProfile
-- [ ] NeededCode:  Remove references to the removed credential from user profile Systems?
+- [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
 - [ ] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
 - [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] call update-OneShellUserProfilesystem in every set-OneShellUserProfile* cmdlet to catch recently added orgprofilesystems
 - [ ] fix Set-OneShellUserProfile* functions so that path is preserved for user profiles when editing in a non-default location
 - [ ] if Set-OneShellUserProfile* functions are used against the current user profile then automatically run use-oneshelluserprofile to update the active profile?
 - [ ] replace code in New-OneShellOrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
-- [ ] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
 - [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
 - [ ] Clean up PSSessions when switching user or Org Profiles with Use-*Profile functions
 - [ ] Write GUI/Wizard Functions for Org and user Profile Creation
-- [ ] Add Non-PSRemoting Service Attribute and Connection support
 - [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the module's onremove capability: <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
 - [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
-- [ ] Finish SQL ServiceType support (initialization) - use dbatools module instead of the previously used POSH_ADO module? Yes, dbatools IN PROGRESS
 - [ ] Add LotusNotesDatabase ServiceType support
 - [ ] Add Exchange 2007 ServiceType support - in progress
 - [ ] Add MigrationWiz/BitTitan ServiceType Support
 - [ ] Add Azure AD RMS ServiceType Support <https://docs.microsoft.com/en-us/information-protection/deploy-use/install-powershell>
 - [ ] Add sophisticated CommandPrefix validation for org and user profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
 - [ ] Convert Write-OneShellLog to use System.IO.FileStream . . . and allow concurrent/asynch writing.
-- [ ] Does $PSSenderInfo have any use cases for OneShell
-- [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
+- [ ] Add a ServiceType for Network Drive Connections (and cloud storage connections?)
+- [ ] Add a ServiceType for Remote Desktop Connections
+- [ ] Does $PSSenderInfo have any use cases for OneShell?
 - [ ] spin off parameter functions to a separate module and add multiple parameter set support to Dynamic Parameters (so that a parameter can be mandatory in one and not in another)
-- [ ] need to add disconnect-oneshellsystem function to clean up modules/sessions when not needed
 - [ ] AD LDS support needs to be completed and tested (mostly ServiceTypes.json updated with the right values)
+- [ ] Disconnect-OneShellSystem
 
 ## Bugs/Known Issues
 
@@ -44,12 +45,12 @@
 
 ## Requested Features
 
-- [ ] Disconnect-OneShellSystem
 - [ ] Multiple OneShellSystem Connections for Jobs, parallel tasking, etc.
 - [ ] MFA support <https://techcommunity.microsoft.com/t5/Windows-PowerShell/Can-I-Connect-to-O365-Security-amp-Compliance-center-via/td-p/68898>
 
 ## Completed Items
 
+- [x] Finish SQL ServiceType support (initialization) - use dbatools module instead of the previously used POSH_ADO module? Yes, dbatools IN PROGRESS
 - [x] fix user provided User Profile folder path if they include a trailing \
 - [x] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
 - [x] Write Org Profile Creation/Editing Functions
