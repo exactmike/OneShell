@@ -145,20 +145,16 @@ function Get-OneShellSystem
     [cmdletbinding(DefaultParameterSetName = 'Identity')]
     param
     (
+        [parameter(ParameterSetName = 'Identity')]
+        [string[]]$Identity
+        ,
+        [parameter(ParameterSetName = 'ServiceType')]
+        [string[]]$ServiceType
     )
-    DynamicParam
+    begin
     {
         if ($null -eq $script:CurrentUserProfile)
         {throw('No OneShell User Profile is active.  Use function Use-OneShellUserProfile to load an User Profile.')}
-        $AvailableServiceTypes = @($script:CurrentSystems | Select-object -ExpandProperty ServiceType | Select-Object -Unique)
-        $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity
-        $Dictionary = New-DynamicParameter -Name ServiceType -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableServiceTypes -Position 1 -DPDictionary $Dictionary -ParameterSetName ServiceType
-        $Dictionary
-    }#DynamicParam
-    begin
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
     }
     Process
     {
@@ -1098,10 +1094,10 @@ Function ImportOneShellSystemPSSession
         [string]$CommandPrefix
     )
     $ImportPSSessionParams = @{
-        ErrorAction   = 'Stop'
-        Session       = $ServiceSession
-        WarningAction = 'SilentlyContinue'
-        AllowClobber  = $true
+        ErrorAction         = 'Stop'
+        Session             = $ServiceSession
+        WarningAction       = 'SilentlyContinue'
+        AllowClobber        = $true
         DisableNameChecking = $true
     }
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
@@ -1226,11 +1222,11 @@ Function ImportOneShellSystemPSSession
         }
     }
     $ImportModuleParams = @{
-        ErrorAction   = 'Stop'
-        WarningAction = 'SilentlyContinue'
-        Passthru      = $true
-        Global        = $true
-        ModuleInfo    = Import-PSSession @ImportPSSessionParams
+        ErrorAction         = 'Stop'
+        WarningAction       = 'SilentlyContinue'
+        Passthru            = $true
+        Global              = $true
+        ModuleInfo          = Import-PSSession @ImportPSSessionParams
         DisableNameChecking = $true
     }
     if ($CommandPrefixExists -eq $true)

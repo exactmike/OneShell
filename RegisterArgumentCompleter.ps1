@@ -6,6 +6,7 @@ Register-ArgumentCompleter -CommandName @(
     'Set-OneShellOrgProfileSystemServiceTypeAttribute'
     'New-OneShellOrgProfileSystemEndpoint'
     'Get-OneShellUserProfileSystem'
+    'Get-OneShellSystem'
 ) -ParameterName 'ServiceType' -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
     $ServiceTypes = Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object
@@ -23,6 +24,7 @@ Register-ArgumentCompleter -CommandName @(
         $system = $Systems | Where-Object -FilterScript {$_.Identity -like "$($fakeBoundParameter.SystemIdentity)*" -or $_.Name -like "$($fakeBoundParameter.SystemIdentity)*"}
         $ServiceTypes = @($system.ServiceType)
     }
+    #add a filter for Get-OneShellSystem to show only available/existing service types
     ForEach ($st in $ServiceTypes)
     {
         [System.Management.Automation.CompletionResult]::new($st, $st, 'ParameterValue', $st)
@@ -241,5 +243,14 @@ Register-ArgumentCompleter -CommandName @(
         }
     }
 }
-
-
+Register-ArgumentCompleter -CommandName @(
+    'Get-OneShellSystem'
+    'Connect-OneShellSystem'
+) -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity) | Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+    foreach ($psi in $AvailableOneShellSystemNamesAndIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
+    }
+}
