@@ -248,8 +248,25 @@ Register-ArgumentCompleter -CommandName @(
     'Connect-OneShellSystem'
 ) -ParameterName 'Identity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
-    $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity) | Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+    [string]$ServiceType = if ($null -eq $fakeBoundParameter.ServiceType) {$null} else {$fakeBoundParameter.ServiceType}
+    $PotentialSystemIdentities = @(
+        $Systems = $script:CurrentSystems | Where-Object -FilterScript {$_.ServiceType -like "$($ServiceType)*" -or (Test-IsNullorWhiteSpace -string $ServiceType)}
+        $Systems.Name
+        $Systems.Identity
+    )
+    $AvailableOneShellSystemNamesAndIdentities = @($PotentialSystemIdentities | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
     foreach ($psi in $AvailableOneShellSystemNamesAndIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
+    }
+}
+Register-ArgumentCompleter -CommandName @(
+    'Get-OneShellSystemPSSession'
+) -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $AvailableOneShellSystemPSSessions = @(Get-PSSession | Where-Object -FilterScript {$_.Name.Split('%')[0] -in $script:CurrentSystems.Identity} | Select-Object -ExpandProperty Name | ForEach-Object {$_.split('%')[0]})
+    $OneShellSystemsWithPSSessions = @($script:CurrentSystems | Where-Object -FilterScript {$_.Identity -in $AvailableOneShellSystemPSSessions} | ForEach-Object {$_.Name;$_.Identity} | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
+    foreach ($psi in $OneShellSystemsWithPSSessions)
     {
         [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
     }

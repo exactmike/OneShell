@@ -205,20 +205,16 @@ function GetOneShellSystemPSSession
 #end function GetOneShellSystemPSSession
 function Get-OneShellSystemPSSession
 {
-    [cmdletbinding(DefaultParameterSetName = 'ServiceObject')]
+    [cmdletbinding(DefaultParameterSetName = 'Identity')]
     param
     (
-        [parameter(Mandatory, ParameterSetName = 'ServiceObject')]
+        [parameter(Mandatory, ParameterSetName = 'ServiceObject', ValueFromPipeline)]
         $serviceObject
+        ,
+        [parameter(Mandatory, ParameterSetName = 'Identity', ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [string[]]$Identity
+
     )
-    DynamicParam
-    {
-        if ($null -eq $script:CurrentUserProfile)
-        {throw('No OneShell User Profile is active.  Use function Use-OneShellUserProfile to load an User Profile.')}
-        $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $true -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
-        $Dictionary
-    }#DynamicParam
     begin
     {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
@@ -229,7 +225,6 @@ function Get-OneShellSystemPSSession
         {
             'Identity'
             {
-                Set-DynamicParameterVariable -dictionary $Dictionary
                 foreach ($i in $Identity)
                 {
                     $ServiceObject = $script:CurrentSystems | Where-Object -FilterScript {$_.Identity -eq $i -or $_.name -eq $i}
@@ -427,6 +422,9 @@ Function Connect-OneShellSystem
     [cmdletbinding(DefaultParameterSetName = 'Default')]
     Param
     (
+        [parameter(Mandatory, ParameterSetName = 'Identity', ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [string[]]$Identity
+        ,
         [parameter(ParameterSetName = 'EndPointIdentity')]
         [ValidateNotNullOrEmpty()]
         [string]$EndPointIdentity #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
@@ -449,34 +447,19 @@ Function Connect-OneShellSystem
         [parameter(Mandatory, ParameterSetName = 'Reconnect')]
         [switch]$Reconnect
     )
-    DynamicParam
-    {
-        if ($null -ne $serviceType)
-        {
-            $AvailableOneShellSystems = @(Get-OneShellSystem -ServiceType $ServiceType)
-        }
-        else
-        {
-            $AvailableOneShellSystems = @(Get-OneShellSystem)
-        }
-        $AvailableOneShellSystemNamesAndIdentities = @($AvailableOneShellSystems.Name; $AvailableOneShellSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ValueFromPipelineByPropertyName $true -ValueFromPipeline $true
-        $Dictionary
-    }#DynamicParam
     begin
     {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     }
     process
     {
-        Set-DynamicParameterVariable -dictionary $Dictionary
         if ($PSCmdlet.ParameterSetName -eq 'Reconnect')
         {
-            $Identity = @(Get-Pssession | Where-Object {$_.State -eq 'Broken'} | ForEach-Object {$_.name.split('%')[0]} | Where-Object {$_ -in $AvailableOneShellSystemNamesAndIdentities})
+            $Identity = @(Get-Pssession | Where-Object {$_.State -eq 'Broken'} | ForEach-Object {$_.name.split('%')[0]} | Where-Object {$_ -in $script:CurrentSystems.Identity})
         }
         foreach ($id in $Identity)
         {
-            $ServiceObject = $AvailableOneShellSystems  | Where-Object -FilterScript {$_.name -eq $id -or $_.Identity -eq $id}
+            $ServiceObject = $script:CurrentSystems  | Where-Object -FilterScript {$_.name -eq $id -or $_.Identity -eq $id}
             #Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
             #Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
@@ -567,7 +550,7 @@ Function Connect-OneShellSystem
                             {
                                 $myerror = $_
                                 Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
-                                Write-OneShellLog -Message $myerror.tostring() -EntryType -ErrorLog
+                                Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                                 throw ($myerror)
                             }
                         }#end if
