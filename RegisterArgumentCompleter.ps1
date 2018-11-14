@@ -35,6 +35,8 @@ Register-ArgumentCompleter -CommandName @(
     'Get-OneShellUserProfile'
     'Set-OneShellUserProfile'
     'Use-OneShellUserProfile'
+    'Update-OneShellUserProfileSystem'
+    'Update-OneShellUserProfileTypeVersion'
 ) -ParameterName 'Identity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
@@ -51,6 +53,11 @@ Register-ArgumentCompleter -CommandName @(
 Register-ArgumentCompleter -CommandName @(
     'Get-OneShellUserProfileSystem'
     'Set-OneShellUserProfileSystem'
+    'Get-OneShellUserProfileCredential'
+    'Set-OneShellUserProfileCredential'
+    'Remove-OneShellUserProfileCredential'
+    'New-OneShellUserProfileCredential'
+    'Set-OneShellUserProfileSystemCredential'
 )  -ParameterName 'ProfileIdentity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
@@ -62,6 +69,31 @@ Register-ArgumentCompleter -CommandName @(
     foreach ($upi in $UserProfileIdentities)
     {
         [System.Management.Automation.CompletionResult]::new($upi, $upi, 'ParameterValue', $upi)
+    }
+}
+
+Register-ArgumentCompleter -CommandName @(
+    'Get-OneShellUserProfileCredential'
+    'Set-OneShellUserProfileCredential'
+    'Remove-OneShellUserProfileCredential'
+    'New-OneShellUserProfileCredential'
+    'Set-OneShellUserProfileSystemCredential'
+)  -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
+    $PotentialUserProfiles = GetPotentialUserProfiles -path $Path
+    $UserProfiles = @(
+        $PotentialUserProfiles | Where-Object -FilterScript {$_.Name -like "$($fakeBoundParameter.ProfileIdentity)*" -or $_.Identity -like "$($fakeBoundParameter.ProfileIdentity)*"}
+    )
+    $Credentials = @($UserProfiles.Credentials)
+    $CredentialIdentities = @(@($Credentials.UserName;$Credentials.Identity) | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
+    #if ($commandName -notin @('Set-OneShellUserProfileCredential','Set-OneShellUserProfileSystemCredential','Remove-OneShellUserProfileCredential'))
+    #{
+    #    $CredentialIdentities += $Credentials.UserName
+    #}
+    foreach ($ci in $CredentialIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($ci, $ci, 'ParameterValue', $ci)
     }
 }
 Register-ArgumentCompleter -CommandName @(
@@ -221,6 +253,34 @@ Register-ArgumentCompleter -CommandName @(
         [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
     }
 }
+
+Register-ArgumentCompleter -CommandName @(
+    'Set-OneShellUserProfileSystemCredential'
+    'Get-OneShellUserProfileSystemCredential'
+) -ParameterName 'SystemIdentity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}
+    $Path = if ($null -eq $fakeBoundParameter.Path) {$Script:OneShellUserProfilePath} else {$fakeBoundParameter.Path}
+    $GetOneShellUserProfileSystemParams = @{
+        Path           = $Path
+        OrgProfilePath = $OrgProfilePath
+    }
+    if (Test-IsNotNullOrWhiteSpace -String $fakeBoundParameter.ProfileIdentity)
+    {
+        $GetOneShellUserProfileSystemParams.ProfileIdentity = $fakeBoundParameter.ProfileIdentity
+    }
+    $PotentialSystemIdentities = @(
+        $Systems = Get-OneShellUserProfileSystem @GetOneShellUserProfileSystemParams
+        $Systems.Name
+        $Systems.Identity
+    )
+    $PotentialSystemIdentities = @($PotentialSystemIdentities | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
+    foreach ($psi in $PotentialSystemIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
+    }
+}
+
 Register-ArgumentCompleter -CommandName @(
     'Set-OneShellUserProfileSystem'
 ) -ParameterName 'PreferredEndPoint' -ScriptBlock {
@@ -248,8 +308,26 @@ Register-ArgumentCompleter -CommandName @(
     'Connect-OneShellSystem'
 ) -ParameterName 'Identity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
-    $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity) | Where-Object -FilterScript {$_ -like "$WordToComplete*"}
+    [string]$ServiceType = if ($null -eq $fakeBoundParameter.ServiceType) {$null} else {$fakeBoundParameter.ServiceType}
+    $PotentialSystemIdentities = @(
+        $Systems = $script:CurrentSystems | Where-Object -FilterScript {$_.ServiceType -like "$($ServiceType)*" -or (Test-IsNullorWhiteSpace -string $ServiceType)}
+        $Systems.Name
+        $Systems.Identity
+    )
+    $AvailableOneShellSystemNamesAndIdentities = @($PotentialSystemIdentities | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
     foreach ($psi in $AvailableOneShellSystemNamesAndIdentities)
+    {
+        [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
+    }
+}
+Register-ArgumentCompleter -CommandName @(
+    'Get-OneShellSystemPSSession'
+    'Import-OneShellSystemPSSession'
+) -ParameterName 'Identity' -ScriptBlock {
+    param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
+    $AvailableOneShellSystemPSSessions = @(Get-PSSession | Where-Object -FilterScript {$_.Name.Split('%')[0] -in $script:CurrentSystems.Identity} | Select-Object -ExpandProperty Name | ForEach-Object {$_.split('%')[0]})
+    $OneShellSystemsWithPSSessions = @($script:CurrentSystems | Where-Object -FilterScript {$_.Identity -in $AvailableOneShellSystemPSSessions} | ForEach-Object {$_.Name;$_.Identity} | Where-Object -FilterScript {$_ -like "$WordToComplete*"})
+    foreach ($psi in $OneShellSystemsWithPSSessions)
     {
         [System.Management.Automation.CompletionResult]::new($psi, $psi, 'ParameterValue', $psi)
     }

@@ -1,27 +1,25 @@
 # To Do Items
 - [ ] Add Non-PSRemoting Service Attribute and Connection support
 - [ ] Add function AddUserProfileFolder to Use-OneShellUserProfile
-- [ ] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
-
+- [ ] Add function Get-OneShellUserProfileSystemCredential
 - [ ] Move Credential Storage to the following options: 1 - Azure based storage, 2 - Credential Manager, 3 - equivalent of credential manager on linux/macOS, 4 - AWS/other
 - [ ] Add support for multi-geo in Exchange Online <https://docs.microsoft.com/en-us/office365/enterprise/multi-geo-capabilities-in-exchange-online>
-- [ ] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [ ] Remove-* functions for OrgProfile, UserProfile
 - [ ] Consider/Test Using $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell
 - [ ] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
-- [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
+- [.] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] call update-OneShellUserProfilesystem in every set-OneShellUserProfile* cmdlet to catch recently added orgprofilesystems
 - [ ] fix Set-OneShellUserProfile* functions so that path is preserved for user profiles when editing in a non-default location
 - [ ] if Set-OneShellUserProfile* functions are used against the current user profile then automatically run use-oneshelluserprofile to update the active profile?
-- [ ] replace code in New-OneShellOrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
-- [ ] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
+known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
+- [.] Enable pipelined and/or bulk editing of profile elements (systems, endpoints, credentials, etc.) - InProgress
 - [ ] Clean up PSSessions when switching user or Org Profiles with Use-*Profile functions
 - [ ] Write GUI/Wizard Functions for Org and user Profile Creation
 - [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the module's onremove capability: <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
 - [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
 - [ ] Add LotusNotesDatabase ServiceType support
-- [ ] Add Exchange 2007 ServiceType support - in progress
+- [.] Add Exchange 2007 ServiceType support - in progress
 - [ ] Add MigrationWiz/BitTitan ServiceType Support
 - [ ] Add Azure AD RMS ServiceType Support <https://docs.microsoft.com/en-us/information-protection/deploy-use/install-powershell>
 - [ ] Add sophisticated CommandPrefix validation for org and user profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
@@ -69,3 +67,6 @@
 - [x] Add suppression of auto Import with -NoAutoImport on Connect-OneShellSystem and Use-OneShellUserProfile
 - [x] Remove imported modules from session when re-connecting to a System
 - [x] Improve CommandPrefix configurations with profiles - allow NULL or blank
+- [x] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
+- [x] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
+- [x] replace code in New-OneShellOrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well
