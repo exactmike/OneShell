@@ -818,7 +818,7 @@ function Set-OneShellOrgProfileSystem
         [parameter(ParameterSetName = 'Identity', ValueFromPipelineByPropertyName)]
         [string]$ProfileIdentity
         ,
-        [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [parameter(ValueFromPipelineByPropertyName, ParameterSetName = 'Identity')]
         [ValidateNotNullOrEmpty()]
         [string[]]$Identity #System Identity or Name
         #,switching service types of a system is not currently supported because of ServiceTypeAttributes for systems and endpoints
@@ -2010,11 +2010,15 @@ Function Set-OneShellUserProfileSystemCredential
     [cmdletbinding()]
     param
     (
-        [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [parameter(Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileIdentity
+        ,
+        [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline, Position = 2)]
         [string[]]$SystemIdentity
         ,
-        [parameter(ValueFromPipelineByPropertyName)]
-        [string]$CredentialIdentity
+        [parameter(ValueFromPipelineByPropertyName, Position = 3)]
+        [string]$Identity
         ,
         [parameter(ValueFromPipelineByPropertyName)]
         [ValidateSet('All', 'PSSession', 'Service')]
@@ -2028,18 +2032,12 @@ Function Set-OneShellUserProfileSystemCredential
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
     )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -Position 2
-        $dictionary
-    }
     Begin
     {
-        Set-DynamicParameterVariable -dictionary $dictionary
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
+        $puProfiles = GetPotentialUserProfiles -path $Path;
         #Get/Select the Profile
-        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
+        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $puProfiles -Identity $ProfileIdentity -Operation Edit
         #Get/Select the System
         $Systems = Get-OneShellUserProfileSystem -ProfileIdentity $UserProfile.Identity -Path $Path -ErrorAction 'Stop'
     }
@@ -2056,22 +2054,16 @@ Function Set-OneShellUserProfileSystemCredential
             $System = GetSelectProfileSystem -PotentialSystems $Systems -Identity $i -Operation Edit
             #Get/Select the Credential
             $Credentials = @(Get-OneShellUserProfileCredential -ProfileIdentity $UserProfile.Identity -ErrorAction 'Stop' -Path $path)
-            $SelectedCredentialIdentity = $(
-                if ($PsBoundParameters.ContainsKey('CredentialIdentity'))
-                {
-                    if ($CredentialIdentity -in $Credentials.Identity)
-                    {$CredentialIdentity}
-                    else
-                    {
-                        throw("Invalid Credential Identity $CredentialIdentity was provided. No such Credential exists for user profile $ProfileIdentity.")
-                    }
-                }
-                else
-                {
-                    Select-OneShellUserProfileCredential -Credential $Credentials -Operation Associate | Select-Object -ExpandProperty Identity
-                }
+            $SelectedCredential = @(
+                $Credentials | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                $Credentials | Where-Object -FilterScript {$_.Username -eq $Identity}
             )
-            if ($null -eq $SelectedCredentialIdentity) {throw("No valid Credential Identity was provided.")}
+            switch ($SelectedCredential.Count)
+            {
+                0 {throw("Matching credential for value $($Identity;$UserName) not found")}
+                1 {}
+                default {throw("Multiple credentials with value $($Identity;$UserName) found.")}
+            }
             #If this is the first time a credential has been added we may need to add Properties/Attributes
             if ($null -eq $system.Credentials)
             {
@@ -2080,12 +2072,12 @@ Function Set-OneShellUserProfileSystemCredential
             #Remove any existing credential with the same purpose (only one of each purpose is allowed at one time)
             if ($Purpose -eq 'All')
             {
-                $system.Credentials.PSSession = $SelectedCredentialIdentity
-                $system.Credentials.Service = $SelectedCredentialIdentity
+                $system.Credentials.PSSession = $SelectedCredential.Identity
+                $system.Credentials.Service = $SelectedCredential.Identity
             }
             else
             {
-                $system.Credentials.$purpose = $SelectedCredentialIdentity
+                $system.Credentials.$purpose = $SelectedCredential.Identity
             }
             $system = $system | Select-Object -Property $(GetUserProfileSystemPropertySet)
             #Save the system changes to the User Profile
@@ -2100,18 +2092,13 @@ function Update-OneShellUserProfileTypeVersion
     [cmdletbinding()]
     param
     (
+        [parameter(Mandatory)]
+        $Identity
+        ,
         $Path = $Script:OneShellUserProfilePath
     )
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $true -Position 1
-        $dictionary
-    }
     End
     {
-        Set-DynamicParameterVariable -dictionary $dictionary
         $GetUserProfileParams = @{
             Identity    = $Identity
             errorAction = 'Stop'
@@ -2144,12 +2131,15 @@ function Update-OneShellUserProfileTypeVersion
 #end function Update-OneShellUserProfileTypeVersion
 function Update-OneShellUserProfileSystem
 {
-    [cmdletbinding()]
+    [cmdletbinding(DefaultParameterSetName = 'Identity')]
     param
     (
+        [Parameter(Mandatory,ParameterSetName = 'Identity', ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [string[]]$Identity
+        ,
         [Parameter(ParameterSetName = 'Object', ValueFromPipeline, Mandatory)]
         [ValidateScript( {$_.ProfileType -eq 'OneShellUserProfile'})]
-        [psobject]$ProfileObject
+        [psobject[]]$ProfileObject
         ,
         [parameter(ParameterSetName = 'Identity')]
         [ValidateScript( {Test-DirectoryPath -Path $_})]
@@ -2159,65 +2149,73 @@ function Update-OneShellUserProfileSystem
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$OrgProfilePath = $Script:OneShellOrgProfilePath
     )
-    DynamicParam
+    Process
     {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'Identity' -Type $([String]) -ValidateSet $UserProfileIdentities -ParameterSetName 'Identity' -Mandatory $true
-        $dictionary
-    }
-    End
-    {
-        Set-DynamicParameterVariable -dictionary $dictionary
-        switch ($PSCmdlet.ParameterSetName)
-        {
-            'Object'
+        $IncomingObjects = @(
+            switch ($PSCmdlet.ParameterSetName)
             {
-                #validate the object
-                $UserProfile = $ProfileObject
-            }
-            'Identity'
-            {
-                $GetUserProfileParams = @{
-                    ErrorAction = 'Stop'
-                    Identity    = $Identity
-                    Path        = $Path
+                'Object'
+                {
+                    $ProfileObject
                 }
-                $UserProfile = $(Get-OneShellUserProfile @GetUserProfileParams)
+                'Identity'
+                {
+                    $Identity
+                }
             }
-        }#end switch ParameterSetName
-        $GetOrgProfileParams = @{
-            ErrorAction = 'Stop'
-            Path        = $orgProfilePath
-            Identity    = $UserProfile.organization.identity
-        }
-        $targetOrgProfile = @(Get-OneShellOrgProfile @GetOrgProfileParams)
-        #Check the Org Identity for validity (exists, not ambiguous)
-        switch ($targetOrgProfile.Count)
+        )
+        foreach ($io in $IncomingObjects)
         {
-            1
-            {}
-            0
+            switch ($PSCmdlet.ParameterSetName)
             {
-                $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
-                $PSCmdlet.ThrowTerminatingError($errorRecord)
+                'Object'
+                {
+                    #validate the object
+                    $UserProfile = $io
+                }
+                'Identity'
+                {
+                    $GetUserProfileParams = @{
+                        ErrorAction = 'Stop'
+                        Identity    = $io
+                        Path        = $Path
+                    }
+                    $UserProfile = $(Get-OneShellUserProfile @GetUserProfileParams)
+                }
+            }#end switch ParameterSetName
+            $GetOrgProfileParams = @{
+                ErrorAction = 'Stop'
+                Path        = $orgProfilePath
+                Identity    = $UserProfile.organization.identity
             }
-            Default
+            $targetOrgProfile = @(Get-OneShellOrgProfile @GetOrgProfileParams)
+            #Check the Org Identity for validity (exists, not ambiguous)
+            switch ($targetOrgProfile.Count)
             {
-                $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
-                $PSCmdlet.ThrowTerminatingError($errorRecord)
+                1
+                {}
+                0
+                {
+                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory ObjectNotFound -TargetObject $OrganizationIdentity -Message "No matching Organization Profile was found for identity $OrganizationIdentity"
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
+                Default
+                {
+                    $errorRecord = New-ErrorRecord -Exception System.Exception -ErrorId 0 -ErrorCategory InvalidData -TargetObject $OrganizationIdentity -Message "Multiple matching Organization Profiles were found for identity $OrganizationIdentity"
+                    $PSCmdlet.ThrowTerminatingError($errorRecord)
+                }
             }
-        }
-        $OrgProfileSystems = @(GetOrgProfileSystemForUserProfile -OrgProfile $TargetOrgProfile)
-        $UserProfileSystems = @($UserProfile.Systems)
-        #Remove those that are no longer in the Org Profile
-        $UserProfileSystems = @($UserProfileSystems | Where-Object {$_.Identity -in $OrgProfileSystems.Identity})
-        #Add those that are new to the Org Profile
-        $NewOrgProfileSystems = @($OrgProfileSystems | Where-Object {$_.Identity -notin $UserProfileSystems.Identity})
-        $NewUserProfileSystems = @($UserProfileSystems; $NewOrgProfileSystems)
-        $UserProfile.Systems = $NewUserProfileSystems
-        Export-OneShellUserProfile -profile $UserProfile -ErrorAction 'Stop'
-    }#End End
+            $OrgProfileSystems = @(GetOrgProfileSystemForUserProfile -OrgProfile $TargetOrgProfile)
+            $UserProfileSystems = @($UserProfile.Systems)
+            #Remove those that are no longer in the Org Profile
+            $UserProfileSystems = @($UserProfileSystems | Where-Object {$_.Identity -in $OrgProfileSystems.Identity})
+            #Add those that are new to the Org Profile
+            $NewOrgProfileSystems = @($OrgProfileSystems | Where-Object {$_.Identity -notin $UserProfileSystems.Identity})
+            $NewUserProfileSystems = @($UserProfileSystems; $NewOrgProfileSystems)
+            $UserProfile.Systems = $NewUserProfileSystems
+            Export-OneShellUserProfile -profile $UserProfile -ErrorAction 'Stop'
+        }#Foreach
+    }#Process
 }
 #end function Update-OneShellUserProfileSystem
 function New-OneShellUserProfileCredential
@@ -2225,6 +2223,10 @@ function New-OneShellUserProfileCredential
     [cmdletbinding()]
     param
     (
+        [parameter(Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileIdentity
+        ,
         [Parameter(Position = 2)]
         [ValidateNotNullOrEmpty()]
         [string]$Username
@@ -2237,19 +2239,12 @@ function New-OneShellUserProfileCredential
         [ValidateScript( {Test-DirectoryPath -path $_})]
         [string[]]$Path = $Script:OneShellUserProfilePath
     )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $paProfiles = GetPotentialUserProfiles -path $Path
-        $UserProfileIdentities = @($paProfiles.name; $paProfiles.Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
-        $dictionary
-    }
     End
     {
-        Set-DynamicParameterVariable -dictionary $dictionary
         #Get/Select the Profile
-        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
+        $puProfiles = GetPotentialUserProfiles -path $Path
+        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $puProfiles -Identity $ProfileIdentity -Operation Edit
         $NewCredential = $(
             switch ($PSBoundParameters.ContainsKey('Username'))
             {
@@ -2292,28 +2287,26 @@ function Remove-OneShellUserProfileCredential
     [cmdletbinding(DefaultParameterSetName = 'Select')]
     param
     (
-        [parameter(ParameterSetName = 'Identity', Position = 2)]
+        [parameter(Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileIdentity
+        ,
+        [parameter(Mandatory, ParameterSetName = 'Identity', Position = 2)]
         [string]$Identity
         ,
-        [parameter(ParameterSetName = 'UserName', Position = 2)]
+        [parameter(Mandatory, ParameterSetName = 'UserName', Position = 2)]
         [string]$Username
         ,
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$Path = $Script:OneShellUserProfilePath
     )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -DPDictionary $dictionary -Mandatory $false -Position 1
-        $dictionary
-    }
     End
     {
-        Set-DynamicParameterVariable -dictionary $dictionary
         #Get/Select the Profile
-        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
+        $puProfiles = GetPotentialUserProfiles -path $Path
+        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $puProfiles -Identity $ProfileIdentity -Operation Edit
         if ($UserProfile.Credentials.Count -eq 0) {throw('There are no credentials to remove')}
         $SelectedCredential = @(
             switch ($PSCmdlet.ParameterSetName)
@@ -2329,14 +2322,15 @@ function Remove-OneShellUserProfileCredential
                 'Identity'
                 {
                     $UserProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                    $UserProfile.Credentials | Where-Object -FilterScript {$_.Username -eq $Identity}
                 }
             }
         )
         switch ($SelectedCredential.Count)
         {
-            0 {throw("Matching credential not found")}
+            0 {throw("Matching credential for value $($Identity;$UserName) not found")}
             1 {}
-            default {throw("Multiple credentials found.")}
+            default {throw("Multiple credentials with value $($Identity;$UserName) found.")}
         }
         $UserProfile.Credentials = @($UserProfile.Credentials | Where-Object -FilterScript {$_ -ne $SelectedCredential[0]})
         $exportUserProfileParams = @{
@@ -2354,6 +2348,10 @@ function Set-OneShellUserProfileCredential
     [cmdletbinding(DefaultParameterSetName = 'Select')]
     param
     (
+        [parameter(Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileIdentity
+        ,
         [parameter(ParameterSetName = 'Identity', Position = 2)]
         [ValidateNotNullOrEmpty()]
         [string]$Identity
@@ -2374,18 +2372,12 @@ function Set-OneShellUserProfileCredential
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$Path = $Script:OneShellUserProfilePath
     )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -Position 1
-        $dictionary
-    }
     End
     {
-        Set-DynamicParameterVariable -dictionary $dictionary
         #Get/Select the Profile
-        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $paProfiles -Identity $ProfileIdentity -Operation Edit
+        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
+        $puProfiles = GetPotentialUserProfiles -path $Path
+        $UserProfile = GetSelectProfile -ProfileType User -Path $path -PotentialProfiles $puProfiles -Identity $ProfileIdentity -Operation Edit
         if ($UserProfile.Credentials.Count -eq 0) {throw('There are no credentials to set')}
         $SelectedCredential = @(
             switch ($PSCmdlet.ParameterSetName)
@@ -2397,6 +2389,7 @@ function Set-OneShellUserProfileCredential
                 'Identity'
                 {
                     $UserProfile.Credentials | Where-Object -FilterScript {$_.Identity -eq $Identity}
+                    $UserProfile.Credentials | Where-Object -FilterScript {$_.Username -eq $Identity}
                 }
                 'Username'
                 {
@@ -2406,9 +2399,9 @@ function Set-OneShellUserProfileCredential
         )
         switch ($SelectedCredential.Count)
         {
-            0 {throw("Matching credential not found")}
+            0 {throw("Matching credential for value $($Identity;$UserName) not found")}
             1 {}
-            default {throw("Multiple credentials found.")}
+            default {throw("Multiple credentials with value $($Identity;$UserName) found.")}
         }
         $EditedCredential = $(
             switch ($SelectedCredential)
@@ -2455,23 +2448,20 @@ function Get-OneShellUserProfileCredential
     [cmdletbinding()]
     param
     (
+        [parameter(Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileIdentity
+        ,
         [parameter(Position = 2)]
         [string]$Identity #Credential Identity or UserName
         ,
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -Path $_})]
         [string[]]$Path = $Script:OneShellUserProfilePath
+
     )#end param
-    DynamicParam
-    {
-        if ($null -eq $Path -or [string]::IsNullOrEmpty($Path)) {$path = $Script:OneShellUserProfilePath}
-        $UserProfileIdentities = @($paProfiles = GetPotentialUserProfiles -path $Path; $paProfiles | Select-object -ExpandProperty Name -ErrorAction SilentlyContinue; $paProfiles | Select-Object -ExpandProperty Identity)
-        $dictionary = New-DynamicParameter -Name 'ProfileIdentity' -Type $([String]) -ValidateSet $UserProfileIdentities -Mandatory $false -Position 1
-        $dictionary
-    }
     End
     {
-        Set-DynamicParameterVariable -dictionary $dictionary
         $getUserProfileParams = @{
             ErrorAction = 'Stop'
             Path        = $Path
@@ -2562,10 +2552,10 @@ function Select-OneShellUserProfileCredential
         [string]$Operation
     )
     $message = "Select credential to $Operation"
-    $Choices = @(foreach ($i in $Credentials) {"$($i.username):$($i.Identity)"})
+    $Choices = @(foreach ($i in $Credential) {"$($i.username):$($i.Identity)"})
     #$whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
     $whichone = Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered
-    $Credentials[$whichone]
+    $Credential[$whichone]
 }
 #end function Select-OneShellUserProfileCredential
 function Select-Profile
@@ -2574,7 +2564,7 @@ function Select-Profile
     param
     (
         [parameter(Mandatory)]
-        $Profiles
+        [pscustomobject[]]$Profiles
         ,
         [parameter(Mandatory)]
         [ValidateSet('Remove', 'Edit', 'Associate', 'Get', 'Use')]

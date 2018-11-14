@@ -999,6 +999,9 @@ Function Import-OneShellSystemPSSession
     [CmdletBinding(DefaultParameterSetName = 'Identity')]
     param
     (
+        [parameter(Mandatory, ParameterSetName = 'Identity', ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [string[]]$Identity
+        ,
         [parameter(ParameterSetName = 'ServiceObjectAndSession', ValueFromPipelineByPropertyName, Mandatory)]
         [psobject]$ServiceObject
         ,
@@ -1010,16 +1013,10 @@ Function Import-OneShellSystemPSSession
         [AllowEmptyString()]
         [string]$CommandPrefix
     )
-    DynamicParam
+    Begin
     {
         if ($null -eq $script:CurrentUserProfile)
         {throw('No OneShell User Profile is active.  Use function Use-OneShellUserProfile to load an User Profile.')}
-        $AvailableOneShellSystemNamesAndIdentities = @($script:CurrentSystems.Name; $script:CurrentSystems.Identity)
-        $Dictionary = New-DynamicParameter -Name Identity -Type $([String[]]) -Mandatory $false -ValidateSet $AvailableOneShellSystemNamesAndIdentities -Position 1 -ParameterSetName Identity -ValueFromPipeline $true
-        $Dictionary
-    }
-    Begin
-    {
         $ImportOneShellSystemPSSessionParams = @{
             ErrorAction = 'Stop'
         }
@@ -1040,13 +1037,12 @@ Function Import-OneShellSystemPSSession
             }
             'Identity'
             {
-                Set-DynamicParameterVariable -dictionary $Dictionary
                 foreach ($i in $Identity)
                 {
                     Try
                     {
-                        $ImportOneShellSystemPSSessionParams.ServiceObject = Get-OneShellSystem -identity $Identity -ErrorAction Stop
-                        $ImportOneShellSystemPSSessionParams.ServiceSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
+                        $ImportOneShellSystemPSSessionParams.ServiceObject = Get-OneShellSystem -identity $i -ErrorAction Stop
+                        $ImportOneShellSystemPSSessionParams.ServiceSession = Get-OneShellSystemPSSession -serviceObject $ImportOneShellSystemPSSessionParams.ServiceObject -ErrorAction Stop
                         ImportOneShellSystemPSSession @ImportOneShellSystemPSSessionParams
                     }
                     Catch
