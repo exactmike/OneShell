@@ -1,0 +1,51 @@
+{
+    "Name":  "SMTPMailRelay",
+    "SessionTestCmdlet":  "Send-MailMessage",
+    "SessionTestCmdletParameters":  [
+                                        {
+                                            "Name":  "Name",
+                                            "ValueType":  "Static",
+                                            "Value":  "Get-Command"
+                                        }
+                                    ],
+    "OrgSystemServiceTypeAttributes":  [
+
+                                       ],
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
+    "EndPointServiceTypeAttributes":  [
+
+                                      ],
+    "PSSessionConnectRequiredModule":  [
+
+                                       ],
+    "PSSessionCmdlet":  null,
+    "PSSessionConstrained":  false,
+    "PSSessionParameters":  [
+
+                            ],
+    "PSSessionSettings":  {
+                              "Initialization":  {
+                                                     "Phase1_PreModuleImport":  [
+                                                                                    {
+                                                                                        "Command":  "",
+                                                                                        "parameters":  {
+
+                                                                                                       }
+                                                                                    }
+                                                                                ],
+                                                     "Phase2_ModuleImport":  [
+
+                                                                             ],
+                                                     "Phase3":  [
+                                                                    {
+                                                                        "command":  "",
+                                                                        "parameters":  {
+
+                                                                                       }
+                                                                    }
+                                                                ]
+                                                 }
+                          }
+}

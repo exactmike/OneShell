@@ -1,0 +1,72 @@
+{
+    "Name": "ExchangeOnPremises",
+    "SessionTestCmdlet": "Get-OrganizationConfig",
+    "SessionTestCmdletParameters": [],
+    "OrgSystemServiceTypeAttributes": [],
+    "DefaultsToWellKnownEndPoint": false,
+    "WellKnownEndPointURI": null,
+    "WellKnownEndPointAuthMethod": null,
+    "EndPointServiceTypeAttributes": [
+        {
+            "Name": "PreferredDomainControllers",
+            "type": "string[]",
+            "Mandatory": false,
+            "Value": []
+        }
+    ],
+    "PSSessionConnectRequiredModule": [],
+    "PSSessionCmdlet": null,
+    "PSSessionConstrained": true,
+    "PSSessionParameters": [
+        {
+            "name": "ConnectionURI",
+            "ValueType": "ScriptBlock",
+            "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
+        },
+        {
+            "name": "ConfigurationName",
+            "ValueType": "Static",
+            "Value": "Microsoft.Exchange"
+        },
+        {
+            "name": "Authentication",
+            "ValueType": "Static",
+            "Value": "Kerberos"
+        }
+    ],
+    "PSSessionSettings": {
+        "Initialization": {
+            "Phase1_PreModuleImport": [],
+            "Phase2_ModuleImport": [],
+            "Phase3": [
+                {
+                    "conditions": [
+                        {
+                            "type": "local",
+                            "test": "($endpoint.ServiceTypeAttributes.PreferredDomainControllers.count -ge 1)"
+                        }
+                    ],
+                    "command": "Set-ADServerSettings",
+                    "parameters": [
+                        {
+                            "name": "SetPreferredDomainControllers",
+                            "ValueType": "ScriptBlock",
+                            "Value": "$endpoint.ServiceTypeAttributesPreferredDomainControllers"
+                        }
+                    ]
+                },
+                {
+                    "conditions": [],
+                    "command": "Set-ADServerSettings",
+                    "parameters": [
+                        {
+                            "name": "ViewEntireForest",
+                            "ValueType": "Static",
+                            "Value": true
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

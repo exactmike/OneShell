@@ -1,0 +1,56 @@
+{
+    "Name":  "ExchangeComplianceCenter",
+    "SessionTestCmdlet":  "Get-AdminAuditLogConfig",
+    "SessionTestCmdletParameters":  [
+
+                                    ],
+    "OrgSystemServiceTypeAttributes":  [
+
+                                       ],
+    "DefaultsToWellKnownEndPoint":  true,
+    "WellKnownEndPointURI":  "https://ps.compliance.protection.outlook.com/powershell-liveid/",
+    "WellKnownEndPointAuthMethod":  "Basic",
+    "EndPointServiceTypeAttributes":  [
+
+                                      ],
+    "PSSessionConnectRequiredModule":  [
+
+                                       ],
+    "PSSessionCmdlet":  null,
+    "PSSessionConstrained":  true,
+    "PSSessionParameters":  [
+                                {
+                                    "name":  "ConnectionURI",
+                                    "ValueType":  "ScriptBlock",
+                                    "Value":  "$Endpoint.Address"
+                                },
+                                {
+                                    "name":  "ConfigurationName",
+                                    "ValueType":  "Static",
+                                    "Value":  "Microsoft.Exchange"
+                                },
+                                {
+                                    "name":  "Authentication",
+                                    "ValueType":  "Static",
+                                    "Value":  "Basic"
+                                },
+                                {
+                                    "name":  "AllowRedirection",
+                                    "ValueType":  "Static",
+                                    "Value":  true
+                                }
+                            ],
+    "PSSessionSettings":  {
+                              "Initialization":  {
+                                                     "Phase1_PreModuleImport":  [
+
+                                                                                ],
+                                                     "Phase2_ModuleImport":  [
+
+                                                                             ],
+                                                     "Phase3":  [
+
+                                                                ]
+                                                 }
+                          }
+}

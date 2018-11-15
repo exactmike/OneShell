@@ -1,4 +1,50 @@
-﻿
+﻿function Update-OneShellServiceType
+{
+    [CmdletBinding()]
+    param(
+        [parameter(ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [ValidateScript({Test-Path -Path $_ })]
+        [string[]]$Path
+    )
+    Begin
+    {
+        $ServiceTypeFiles = @(Get-ChildItem -Path $Script:ServiceTypesDirectory -Filter '*.json' -Recurse)
+    }
+    Process
+    {
+        $ServiceTypeFiles += $(
+            foreach ($p in $Path)
+            {
+                $item = Get-Item -Path $p
+                switch ($item.PSIsContainer)
+                {
+                    $true
+                    {
+                        Get-ChildItem -Path $p -Filter '*.json' -Recurse
+                    }
+                    $false
+                    {
+                        if ($item.FullName -like '*.json')
+                        {
+                            $item
+                        }
+                    }
+                }    
+            }
+        )
+    }
+    End
+    {
+        $Script:ServiceTypes = @(
+            foreach ($stf in $ServiceTypeFiles)
+            {
+                import-JSON -Path $stf.fullname -ErrorAction Stop # need to add a uniqueness detection for overrides / prevention of duplicate types
+            }
+        )
+    }
+    
+}
+
 function Remove-Member
 {
     [cmdletbinding()]

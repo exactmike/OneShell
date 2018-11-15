@@ -1,0 +1,40 @@
+{
+    "Name": "Exchange2007",
+    "SessionTestCmdlet": "Get-OrganizationConfig",
+    "SessionTestCmdletParameters": {
+        "ErrorAction": "Stop",
+        "WarningAction": "SilentlyContinue"
+    },
+    "OrgSystemServiceTypeAttributes": [],
+    "DefaultsToWellKnownEndPoint": false,
+    "WellKnownEndPointURI": null,
+    "WellKnownEndPointAuthMethod": null,
+    "EndPointServiceTypeAttributes": [],
+    "PSSessionConnectRequiredModule": [],
+    "PSSessionCmdlet": null,
+    "PSSessionConstrained": true,
+    "PSSessionParameters": [
+        {
+            "name": "ComputerName",
+            "ValueType": "ScriptBlock",
+            "Value": "$Endpoint.Address"
+        },
+        {
+            "name": "ConfigurationName",
+            "ValueType": "Static",
+            "Value": "Microsoft.Powershell"
+        }
+    ],
+    "PSSessionSettings": {
+        "Initialization": {
+            "Phase1_PreModuleImport": [],
+            "Phase2_ModuleImport": [
+                {
+                    "name": "Microsoft.Exchange.Management.PowerShell.Admin",
+                    "type": "PSSnapIn"
+                }
+            ],
+            "Phase3": []
+        }
+    }
+}

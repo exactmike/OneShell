@@ -98,7 +98,8 @@ function SetOneShellVariables
     ##########################################################################################################
     #Import settings from json files
     ##########################################################################################################
-    $Script:ServiceTypes = import-JSON -Path (Join-Path $PSScriptRoot ServiceTypes.json) -ErrorAction Stop | Select-Object -ExpandProperty ServiceTypes -ErrorAction Stop
+    $Script:ServiceTypesDirectory = Join-Path $PSScriptRoot 'ServiceTypes'
+    Update-OneShellServiceType
 }
 #end function Set-OneShellVariables
 ##########################################################################################################
