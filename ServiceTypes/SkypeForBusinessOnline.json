@@ -1,0 +1,43 @@
+{
+    "Name":  "SkypeForBusinessOnline",
+    "SessionTestCmdlet":  "Get-Command",
+    "SessionTestCmdletParameters":  [
+                                        {
+                                            "Name":  "Name",
+                                            "ValueType":  "Static",
+                                            "Value":  "Get-Command"
+                                        }
+                                    ],
+    "OrgSystemServiceTypeAttributes":  [
+
+                                       ],
+    "DefaultsToWellKnownEndPoint":  true,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
+    "EndPointServiceTypeAttributes":  [
+
+                                      ],
+    "PSSessionConnectRequiredModule":  [
+                                           {
+                                               "name":  "SkypeOnlineConnector"
+                                           }
+                                       ],
+    "PSSessionCmdlet":  "New-SkypeOnlinePSSession",
+    "PSSessionConstrained":  true,
+    "PSSessionParameters":  [
+
+                            ],
+    "PSSessionSettings":  {
+                              "Initialization":  {
+                                                     "Phase1_PreModuleImport":  [
+
+                                                                                ],
+                                                     "Phase2_ModuleImport":  [
+
+                                                                             ],
+                                                     "Phase3":  [
+
+                                                                ]
+                                                 }
+                          }
+}

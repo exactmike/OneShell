@@ -1,0 +1,57 @@
+{
+    "Name":  "PowerShell32",
+    "SessionTestCmdlet":  "Get-Command",
+    "SessionTestCmdletParameters":  [
+                                        {
+                                            "Name":  "Name",
+                                            "ValueType":  "Static",
+                                            "Value":  "Get-Command"
+                                        }
+                                    ],
+    "OrgSystemServiceTypeAttributes":  [
+                                           {
+                                               "name":  "SessionManagementGroups",
+                                               "type":  "string[]",
+                                               "mandatory":  false,
+                                               "value":  [
+
+                                                         ]
+                                           }
+                                       ],
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
+    "EndPointServiceTypeAttributes":  [
+
+                                      ],
+    "PSSessionConnectRequiredModule":  [
+
+                                       ],
+    "PSSessionCmdlet":  null,
+    "PSSessionConstrained":  false,
+    "PSSessionParameters":  [
+                                {
+                                    "name":  "ComputerName",
+                                    "ValueType":  "ScriptBlock",
+                                    "Value":  "$Endpoint.Address"
+                                },
+                                {
+                                    "name":  "ConfigurationName",
+                                    "ValueType":  "Static",
+                                    "Value":  "Microsoft.Powershell32"
+                                }
+                            ],
+    "PSSessionSettings":  {
+                              "Initialization":  {
+                                                     "Phase1_PreModuleImport":  [
+
+                                                                                ],
+                                                     "Phase2_ModuleImport":  [
+
+                                                                             ],
+                                                     "Phase3":  [
+
+                                                                ]
+                                                 }
+                          }
+}

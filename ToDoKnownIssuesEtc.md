@@ -2,9 +2,9 @@
 
 ## In Progress And Help Wanted
 
-- [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] Add Non-PSRemoting Service Attribute and Connection support
-- [ ] Add Exchange 2007 ServiceType support - in progress
+- [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
+- [ ] Add Exchange 2007 ServiceType support - in progress (will likely depend on Non-PSRemoting support for service connections)
 
 ## Pending and Help Wanted
 
@@ -38,6 +38,8 @@
 - [ ] Add a ServiceType for Network Drive Connections (and cloud storage connections?)
 - [ ] Add a ServiceType for Remote Desktop Connections
 - [ ] AD LDS support needs to be completed and tested (mostly ServiceTypes.json updated with the right values)
+- [ ] Microsoft Teams
+- [ ] SharePoint Online
 
 ## Help Wanted Requested Features
 

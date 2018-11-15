@@ -1,0 +1,71 @@
+{
+    "Name":  "AzureADPreview",
+    "SessionTestCmdlet":  "Get-Command",
+    "SessionTestCmdletParameters":  [
+                                        {
+                                            "Name":  "Name",
+                                            "ValueType":  "Static",
+                                            "Value":  "Get-Command"
+                                        }
+                                    ],
+    "OrgSystemServiceTypeAttributes":  [
+                                           {
+                                               "Name":  "TenantSubDomain",
+                                               "type":  "string",
+                                               "mandatory":  true,
+                                               "value":  ""
+                                           }
+                                       ],
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
+    "EndPointServiceTypeAttributes":  [
+
+                                      ],
+    "PSSessionConnectRequiredModule":  [
+
+                                       ],
+    "PSSessionCmdlet":  null,
+    "PSSessionConstrained":  false,
+    "PSSessionParameters":  [
+                                {
+                                    "name":  "ComputerName",
+                                    "ValueType":  "ScriptBlock",
+                                    "Value":  "$Endpoint.Address"
+                                },
+                                {
+                                    "name":  "ConfigurationName",
+                                    "ValueType":  "Static",
+                                    "Value":  "Microsoft.Powershell"
+                                }
+                            ],
+    "PSSessionSettings":  {
+                              "Initialization":  {
+                                                     "Phase1_PreModuleImport":  [
+
+                                                                                ],
+                                                     "Phase2_ModuleImport":  [
+                                                                                 {
+                                                                                     "name":  "AzureADPreview",
+                                                                                     "type":  "module"
+                                                                                 }
+                                                                             ],
+                                                     "Phase3":  [
+                                                                    {
+                                                                        "command":  "Connect-AzureAD",
+                                                                        "parameters":  {
+                                                                                           "Name":  "Credential",
+                                                                                           "ValueType":  "ScriptBlock",
+                                                                                           "Value":  "$ServiceObject.Credentials.Service"
+                                                                                       }
+                                                                    }
+                                                                ]
+                                                 },
+                              "Import":  [
+                                             {
+                                                 "name":  "adsync",
+                                                 "type":  "Module"
+                                             }
+                                         ]
+                          }
+}

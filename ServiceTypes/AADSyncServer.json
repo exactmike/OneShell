@@ -1,0 +1,52 @@
+{
+    "Name":  "AADSyncServer",
+    "SessionTestCmdlet":  "Get-Command",
+    "SessionTestCmdletParameters":  [
+                                        {
+                                            "Name":  "Name",
+                                            "ValueType":  "Static",
+                                            "Value":  "Get-Command"
+                                        }
+                                    ],
+    "OrgSystemServiceTypeAttributes":  [
+
+                                       ],
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
+    "EndPointServiceTypeAttributes":  [
+
+                                      ],
+    "PSSessionConnectRequiredModule":  [
+
+                                       ],
+    "PSSessionCmdlet":  null,
+    "PSSessionConstrained":  false,
+    "PSSessionParameters":  [
+                                {
+                                    "name":  "ComputerName",
+                                    "ValueType":  "ScriptBlock",
+                                    "Value":  "$Endpoint.Address"
+                                },
+                                {
+                                    "name":  "ConfigurationName",
+                                    "ValueType":  "Static",
+                                    "Value":  "Microsoft.Powershell"
+                                }
+                            ],
+    "PSSessionSettings":  {
+                              "Initialization":  {
+                                                     "Phase1_PreModuleImport":  [
+
+                                                                                ],
+                                                     "Phase2_ModuleImport":  [
+                                                                                 {
+                                                                                     "name":  "ADSync"
+                                                                                 }
+                                                                             ],
+                                                     "Phase3":  [
+
+                                                                ]
+                                                 }
+                          }
+}
