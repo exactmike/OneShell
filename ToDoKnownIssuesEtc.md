@@ -25,10 +25,10 @@
 - [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the [module's onremove capability:] <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
 - [ ] Add CommandPrefix validation for org and user profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
 - [ ] Convert Write-OneShellLog to use System.IO.FileStream . . . and allow concurrent/asynch writing.
-
 - [ ] Does $PSSenderInfo have any use cases for OneShell?
 - [ ] spin off parameter functions to a separate module and add multiple parameter set support to Dynamic Parameters (so that a parameter can be mandatory in one and not in another)
 - [ ] Disconnect-OneShellSystem
+- [ ] Add functionality to Update-OneShellServiceType to check for duplicate types and allow override of a ServiceType by user imported ServiceType file.  
 
 ## Help Wanted Service Types to Add
 
