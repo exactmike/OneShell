@@ -1,13 +1,7 @@
 {
     "Name":  "AzureAD",
-    "SessionTestCmdlet":  "Get-Command",
-    "SessionTestCmdletParameters":  [
-                                        {
-                                            "Name":  "Name",
-                                            "ValueType":  "Static",
-                                            "Value":  "Get-Command"
-                                        }
-                                    ],
+    "SessionTestCmdlet":  "Get-AzureADTenantDetail",
+    "SessionTestCmdletParameters":  [],
     "OrgSystemServiceTypeAttributes":  [
                                            {
                                                "Name":  "TenantSubDomain",
@@ -19,9 +13,18 @@
     "DefaultsToWellKnownEndPoint":  false,
     "WellKnownEndPointURI":  null,
     "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
+    "EndPointServiceTypeAttributes":  [],
+    "DirectConnectRequiredModule": [
+        "AzureAD"
+    ],
+    "DirectConnectCommand": {
+        "command":  "Connect-AzureAD",
+        "parameters":  {
+                           "Name":  "Credential",
+                           "ValueType":  "ScriptBlock",
+                           "Value":  "$ServiceObject.Credentials.Service"
+                       }
+    }
     "PSSessionConnectRequiredModule":  [
 
                                        ],

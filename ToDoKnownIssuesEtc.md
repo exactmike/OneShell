@@ -9,7 +9,7 @@
 ## Pending and Help Wanted
 
 - [ ] update SkypeForBusinessOnline connection test command to Get-CSTenant?
-- [ ] Update Azure AD connection test command to Get-AzureADCurrentSessionInfo?
+- [ ] Update Azure AD connection test command to Get-AzureADTenantDetail
 - [ ] fix Set-OneShellUserProfile* functions so that path is preserved for user profiles when editing in a non-default location
 - [ ] call update-OneShellUserProfilesystem in every set-OneShellUserProfile* cmdlet to catch recently added orgprofilesystems
 - [ ] if Set-OneShellUserProfile* functions are used against the current user profile then automatically run use-oneshelluserprofile to update the active profile
@@ -28,7 +28,7 @@
 - [ ] Does $PSSenderInfo have any use cases for OneShell?
 - [ ] spin off parameter functions to a separate module and add multiple parameter set support to Dynamic Parameters (so that a parameter can be mandatory in one and not in another)
 - [ ] Disconnect-OneShellSystem
-- [ ] Add functionality to Update-OneShellServiceType to check for duplicate types and allow override of a ServiceType by user imported ServiceType file.  
+- [ ] Add functionality to Update-OneShellServiceType to check for duplicate types and allow override of a ServiceType by user imported ServiceType file.
 
 ## Help Wanted Service Types to Add
 
