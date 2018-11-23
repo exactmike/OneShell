@@ -212,13 +212,17 @@ function GetOrgProfileSystemForUserProfile
             Identity          = $s.Identity
             AutoConnect       = $null
             AutoImport        = $null
-            UsePSRemoting     = $null
             Credentials       = [PSCustomObject]@{
                 PSSession = $null
                 Service   = $null
             }
             PreferredEndpoint = $null
             PreferredPrefix   = $null
+            UsePSRemoting     = $null
+            ProxyEnabled      = $null
+            AuthenticationRequired = $null
+            UseTLS = $null
+            AuthMethod = $null
         }
     }
 }
@@ -381,7 +385,7 @@ function AddUserProfileFolder
 #end function AddUserProfileFolder
 function GetUserProfileSystemPropertySet
 {
-    "Identity", "AutoConnect", "AutoImport", "Credentials", "PreferredEndpoint", "PreferredPrefix"
+    "Identity", "AutoConnect", "AutoImport", "Credentials", "PreferredEndpoint", "PreferredPrefix","UsePSRemoting","ProxyEnabled","AuthenticationRequired","UseTLS","AuthMethod"
 }
 #end function GetUserProfileSystemPropertySet
 function GetSelectProfile
