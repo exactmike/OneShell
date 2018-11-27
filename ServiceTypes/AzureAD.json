@@ -24,7 +24,7 @@
                            "ValueType":  "ScriptBlock",
                            "Value":  "$ServiceObject.Credentials.Service"
                        }
-    }
+    },
     "PSSessionConnectRequiredModule":  [
 
                                        ],
