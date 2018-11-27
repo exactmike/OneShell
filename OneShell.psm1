@@ -95,6 +95,8 @@ function SetOneShellVariables
     $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName','city','AccountExpirationDate','LastLogonDate')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members'
     $Script:Stamp = GetTimeStamp
+    $Script:UserProfileTypeLatestVersion = 1.4
+    $script:OrgProfileTypeLatestVersion = 1.2
     ##########################################################################################################
     #Import settings from json files
     ##########################################################################################################
