@@ -185,7 +185,7 @@ function NewGenericUserProfileObject
     [pscustomobject]@{
         Identity            = [guid]::NewGuid()
         ProfileType         = 'OneShellUserProfile'
-        ProfileTypeVersion  = 1.3
+        ProfileTypeVersion  = 1.4
         Name                = $targetOrgProfile.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
         Host                = $env:COMPUTERNAME
         User                = $env:USERNAME
@@ -212,13 +212,13 @@ function GetOrgProfileSystemForUserProfile
             Identity          = $s.Identity
             AutoConnect       = $null
             AutoImport        = $null
-            UsePSRemoting     = $null
             Credentials       = [PSCustomObject]@{
                 PSSession = $null
                 Service   = $null
             }
             PreferredEndpoint = $null
             PreferredPrefix   = $null
+            UsePSRemoting     = $null
         }
     }
 }
@@ -231,7 +231,7 @@ function UpdateUserProfileObjectVersion
         [parameter(Mandatory)]
         $UserProfile
         ,
-        $DesiredProfileTypeVersion = 1.3
+        $DesiredProfileTypeVersion = $Script:UserProfileLatestVersion
     )
     do
     {
@@ -349,6 +349,15 @@ function UpdateUserProfileObjectVersion
                 }
                 $UserProfile.ProfileTypeVersion = 1.3
             }
+            {$_ -eq 1.3}
+            {
+                $NewMembers = GetUserProfileSystemPropertySet
+                foreach ($s in $UserProfile.systems)
+                {
+                    Add-RequiredMember -RequiredMember $NewMembers -InputObject $s
+                }
+                $UserProfile.ProfileTypeVersion = 1.4
+            }
         }#end switch
     }
     Until ($UserProfile.ProfileTypeVersion -eq $DesiredProfileTypeVersion)
@@ -381,7 +390,7 @@ function AddUserProfileFolder
 #end function AddUserProfileFolder
 function GetUserProfileSystemPropertySet
 {
-    "Identity", "AutoConnect", "AutoImport", "Credentials", "PreferredEndpoint", "PreferredPrefix"
+    "Identity", "AutoConnect", "AutoImport", "Credentials", "PreferredEndpoint", "PreferredPrefix","UsePSRemoting"
 }
 #end function GetUserProfileSystemPropertySet
 function GetSelectProfile
@@ -1453,6 +1462,13 @@ Function Get-OneShellUserProfile
         )#end outputprofiles
         #output the found profiles
         $outputprofiles
+        foreach ($opp in $outputprofiles)
+        {
+            if ($opp.ProfileTypeVersion -lt $script:UserProfileTypeLatestVersion)
+            {
+                Write-Warning -Message "The Schema of User Profile $($opp.Name) is out of date. Run Update-OneShellUserProfileTypeVersion -Identity $($opp.Name) to update."
+            }
+        }
     }#end End
 }
 #end function Get-OneShellUserProfile
@@ -1977,9 +1993,26 @@ Function Set-OneShellUserProfileSystem
                 {$_.key -eq 'AutoConnect'}
                 {$System.AutoConnect = $AutoConnect}
                 {$_.key -eq 'AutoImport'}
-                {$System.AutoImport = $AutoImport}
+                {
+                    if ($true -eq $AutoImport -and ($false -eq $system.UsePSRemoting -or $false -eq $UsePSRemoting))
+                    {
+                        Write-Warning -Message 'When UsePSRemoting is set to $false, AutoImport $true will be effective when connecting to a System.'
+                    }
+                    $System.AutoImport = $AutoImport
+                }
                 {$_.key -eq 'UsePSRemoting'}
-                {$System.UsePSRemoting = $UsePSRemoting}
+                {
+                    $System.UsePSRemoting = $UsePSRemoting
+                    if ($false -eq $UsePSRemoting)
+                    {
+                        if ($true -eq $System.AutoImport)
+                        {
+                            Write-Warning -Message 'When UsePSRemoting is set to $False, AutoImport is also set to $False'
+                            $AutoImport = $false
+                            $System.AutoImport = $AutoImport  
+                        }
+                    }
+                }
                 {$_.key -eq 'PreferredPrefix'}
                 {$System.PreferredPrefix = $PreferredPrefix}
                 {$_.key -eq 'PreferredEndpoint'}
@@ -2108,22 +2141,6 @@ function Update-OneShellUserProfileTypeVersion
             $GetUserProfileParams.Path = $Path
         }
         $UserProfile = Get-OneShellUserProfile @GetUserProfileParams
-        $BackupProfileUserChoice = Read-Choice -Title 'Backup Profile?' -Message "Create a backup copy of the User Profile $($UserProfile.General.Name)?`r`nYes is Recommended." -Choices 'Yes', 'No' -DefaultChoice 0 -ReturnChoice -ErrorAction Stop
-        if ($BackupProfileUserChoice -eq 'Yes')
-        {
-            $Folder = Read-FolderBrowserDialog -Description "Choose a directory to contain the backup copy of the User Profile $($UserProfile.General.Name). This should NOT be the current location of the User Profile." -ErrorAction Stop
-            if (Test-IsWriteableDirectory -Path $Folder -ErrorAction Stop)
-            {
-                if ($Folder -ne $UserProfile.General.ProfileFolder -and $folder -ne $UserProfile.ProfileFolder)
-                {
-                    Export-OneShellUserProfile -profile $UserProfile -path $Folder -ErrorAction Stop  > $null
-                }
-                else
-                {
-                    throw 'Choose a different directory.'
-                }
-            }
-        }
         $UpdatedUserProfile = UpdateUserProfileObjectVersion -UserProfile $UserProfile
         Export-OneShellUserProfile -profile $UpdatedUserProfile -path $Path
     }
