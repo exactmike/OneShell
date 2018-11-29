@@ -1385,10 +1385,8 @@ function Get-OneShellOrgProfileSystemEndpoint
     )
     Process
     {
-        #Get Org Profile
-        $OrgProfile = Get-OneShellOrgProfile -Identity $ProfileIdentity -Path $Path -ErrorAction Stop
         #Get the System
-        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop
+        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop -ProfileIdentity $ProfileIdentity
         $EndPoints = @(
             $System.endpoints | Where-Object  -FilterScript {$_.Identity -in $identity -or $_.Address -in $Identity -or (Test-IsNullOrWhiteSpace -String $identity)}
         )
