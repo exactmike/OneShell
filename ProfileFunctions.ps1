@@ -235,7 +235,7 @@ function UpdateUserProfileObjectVersion
         [parameter(Mandatory)]
         $UserProfile
         ,
-        $DesiredProfileTypeVersion = $Script:UserProfileLatestVersion
+        $DesiredProfileTypeVersion = $Script:UserProfileTypeLatestVersion
     )
     do
     {
