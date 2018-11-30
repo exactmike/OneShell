@@ -25,6 +25,17 @@
             "Value": []
         }
     ],
+    "DirectConnectRequiredModule": [
+        "AzureAD"
+    ],
+    "DirectConnectCommand": {
+        "command":  "Connect-AzureAD",
+        "parameters":  {
+                           "Name":  "Credential",
+                           "ValueType":  "ScriptBlock",
+                           "Value":  "$ServiceObject.Credentials.Service"
+                       }
+    },
     "PSSessionConnectRequiredModule": [
         {
             "name": "SkypeOnlineConnector"

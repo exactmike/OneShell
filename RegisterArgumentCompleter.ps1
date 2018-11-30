@@ -7,6 +7,7 @@ Register-ArgumentCompleter -CommandName @(
     'New-OneShellOrgProfileSystemEndpoint'
     'Get-OneShellUserProfileSystem'
     'Get-OneShellSystem'
+    'Connect-OneShellSystem'
 ) -ParameterName 'ServiceType' -ScriptBlock {
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
     $ServiceTypes = Get-OneShellServiceTypeName | Where-Object -FilterScript {$_ -like "$wordToComplete*"} | Sort-Object

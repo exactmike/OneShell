@@ -8,6 +8,18 @@
                                                "type":  "string",
                                                "mandatory":  true,
                                                "value":  ""
+                                           },
+                                           {
+                                            "Name":  "TenantID",
+                                            "type":  "string",
+                                            "mandatory":  true,
+                                            "value":  ""
+                                           },
+                                           {
+                                            "Name":  "AzureEnvironmentName",
+                                            "type":  "string",
+                                            "mandatory":  true,
+                                            "value":  ""
                                            }
                                        ],
     "DefaultsToWellKnownEndPoint":  false,

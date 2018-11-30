@@ -423,6 +423,7 @@ Function Connect-OneShellSystem
     Param
     (
         [parameter(Mandatory, ParameterSetName = 'Identity', ValueFromPipelineByPropertyName, ValueFromPipeline)]
+        [parameter(ParameterSetName = 'Reconnect', ValueFromPipelineByPropertyName, ValueFromPipeline)]
         [string[]]$Identity
         ,
         [parameter(ParameterSetName = 'EndPointIdentity')]
@@ -438,7 +439,6 @@ Function Connect-OneShellSystem
         [string]$CommandPrefix #Overrides the otherwise specified command prefix.
         ,
         [parameter()]
-        [ValidateSet('PowerShell', 'SQLDatabase', 'ExchangeOnPremises', 'ExchangeOnline', 'ExchangeComplianceCenter', 'AADSyncServer', 'AzureAD', 'AzureADPreview', 'MSOnline', 'ActiveDirectoryDomain', 'ActiveDirectoryGlobalCatalog', 'ActiveDirectoryLDS', 'SMTPMailRelay', 'SkypeForBusinessOnline', 'SkypeForBusinessOnPremises')]
         [string[]]$ServiceType #used only to filter list of available system identities and names
         ,
         [parameter()]
@@ -455,7 +455,10 @@ Function Connect-OneShellSystem
     {
         if ($PSCmdlet.ParameterSetName -eq 'Reconnect')
         {
-            $Identity = @(Get-Pssession | Where-Object {$_.State -eq 'Broken'} | ForEach-Object {$_.name.split('%')[0]} | Where-Object {$_ -in $script:CurrentSystems.Identity})
+            if (-not $PSBoundParameters.ContainsKey('Identity'))
+            {
+                $Identity = @(Get-Pssession | Where-Object {$_.State -eq 'Broken'} | ForEach-Object {$_.name.split('%')[0]} | Where-Object {$_ -in $script:CurrentSystems.Identity})
+            }
         }
         foreach ($id in $Identity)
         {

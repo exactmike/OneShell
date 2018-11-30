@@ -3,6 +3,8 @@
 ## In Progress And Help Wanted
 
 - [ ] Add Non-PSRemoting Service Attribute and Connection support
+- [ ] Re-Work Connect-OneShellSystem -reconnect for DirectConnect systems.
+- [ ] Add Connect-OneShellSystem -autoconnect for autoconnecting all autoconnect systems in the current profile
 - [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] Add Exchange 2007 ServiceType support - in progress (will likely depend on Non-PSRemoting support for service connections)
 
