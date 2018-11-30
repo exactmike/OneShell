@@ -219,6 +219,10 @@ function GetOrgProfileSystemForUserProfile
             PreferredEndpoint = $null
             PreferredPrefix   = $null
             UsePSRemoting     = $null
+            ProxyEnabled      = $null
+            AuthenticationRequired = $null
+            UseTLS = $null
+            AuthMethod = $null
         }
     }
 }
@@ -390,7 +394,7 @@ function AddUserProfileFolder
 #end function AddUserProfileFolder
 function GetUserProfileSystemPropertySet
 {
-    "Identity", "AutoConnect", "AutoImport", "Credentials", "PreferredEndpoint", "PreferredPrefix","UsePSRemoting"
+    "Identity", "AutoConnect", "AutoImport", "Credentials", "PreferredEndpoint", "PreferredPrefix","UsePSRemoting","ProxyEnabled","AuthenticationRequired","UseTLS","AuthMethod"
 }
 #end function GetUserProfileSystemPropertySet
 function GetSelectProfile
@@ -1381,10 +1385,8 @@ function Get-OneShellOrgProfileSystemEndpoint
     )
     Process
     {
-        #Get Org Profile
-        $OrgProfile = Get-OneShellOrgProfile -Identity $ProfileIdentity -Path $Path -ErrorAction Stop
         #Get the System
-        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop
+        $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop -ProfileIdentity $ProfileIdentity
         $EndPoints = @(
             $System.endpoints | Where-Object  -FilterScript {$_.Identity -in $identity -or $_.Address -in $Identity -or (Test-IsNullOrWhiteSpace -String $identity)}
         )
@@ -2009,7 +2011,7 @@ Function Set-OneShellUserProfileSystem
                         {
                             Write-Warning -Message 'When UsePSRemoting is set to $False, AutoImport is also set to $False'
                             $AutoImport = $false
-                            $System.AutoImport = $AutoImport  
+                            $System.AutoImport = $AutoImport
                         }
                     }
                 }

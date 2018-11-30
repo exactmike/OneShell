@@ -37,9 +37,7 @@
                            "Value":  "$ServiceObject.Credentials.Service"
                        }
     },
-    "PSSessionConnectRequiredModule":  [
-
-                                       ],
+    "PSSessionConnectRequiredModule":  [],
     "PSSessionCmdlet":  null,
     "PSSessionConstrained":  false,
     "PSSessionParameters":  [
