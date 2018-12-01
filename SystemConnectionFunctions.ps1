@@ -466,38 +466,6 @@ Function Connect-OneShellSystem
             #Write-Verbose -Message "Using Service/System: $($serviceObject.Name)"
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
             #Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
-            $EndPointGroups = @(
-                #Write-Verbose -Message "Selecting an Endpoint"
-                switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
-                {
-                    $true
-                    {
-                        #Write-Verbose -Message "Get Well Known Endpoint(s)."
-                        Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
-                    }
-                    Default
-                    {
-                        $FindEndPointToUseParams = @{
-                            ErrorAction   = 'Stop'
-                            ServiceObject = $ServiceObject
-                        }
-                        switch ($PSCmdlet.ParameterSetName)
-                        {
-                            'Default'
-                            {}
-                            'EndPointIdentity'
-                            {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
-                            'EndPointGroup'
-                            {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
-                            Default
-                            {}
-                        }
-                        Find-EndPointToUse @FindEndPointToUseParams
-                    }
-                }
-            )
-            if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
-            {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
             #Test for an existing connection
             switch ($ServiceObject.defaults.UsePSRemoting -or $true)
             {
@@ -559,6 +527,38 @@ Function Connect-OneShellSystem
                         }#end if
                         Write-OneShellLog -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
                         #create and test the new session
+                        $EndPointGroups = @(
+                            #Write-Verbose -Message "Selecting an Endpoint"
+                            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
+                            {
+                                $true
+                                {
+                                    #Write-Verbose -Message "Get Well Known Endpoint(s)."
+                                    Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
+                                }
+                                Default
+                                {
+                                    $FindEndPointToUseParams = @{
+                                        ErrorAction   = 'Stop'
+                                        ServiceObject = $ServiceObject
+                                    }
+                                    switch ($PSCmdlet.ParameterSetName)
+                                    {
+                                        'Default'
+                                        {}
+                                        'EndPointIdentity'
+                                        {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
+                                        'EndPointGroup'
+                                        {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
+                                        Default
+                                        {}
+                                    }
+                                    Find-EndPointToUse @FindEndPointToUseParams
+                                }
+                            }
+                        )
+                        if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
+                        {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
                         $ConnectionReady = $false #we switch this to true when a session is connected and initialized with required modules and settings
                         #Work through the endpoint groups to try connecting in order of precedence
                         for ($i = 0; $i -lt $EndPointGroups.count -and $ConnectionReady -eq $false; $i++)
@@ -711,9 +711,10 @@ Function Connect-OneShellSystem
                         }
                     }
                 }#end $true
-                default
+                $false
                 {
                     Write-Warning -Message "This version of OneShell does not yet test for existing connections to services/systems configured with UsePSRemoting: False"
+                    #new DirectConnect code
                 }#end $false
             }#end Switch
         }#end foreach i in Identity
