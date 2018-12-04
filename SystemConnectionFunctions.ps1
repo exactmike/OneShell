@@ -1252,10 +1252,6 @@ Function ImportOneShellSystemPSSession
         $CommandPrefixExists = Test-IsNotNullOrWhiteSpace -String $CommandPrefix
     }
     #Imported Session Module Cleanup and Tracking
-    if (-not (Test-Path -Path variable:Script:ImportedSessionModules))
-    {
-        New-Variable -Name 'ImportedSessionModules' -Value @{} -Description 'Modules Imported From OneShell Sessions' -Scope Script
-    }
     if ($script:ImportedSessionModules.ContainsKey($ServiceObject.Identity))
     {
         $ImportedSessionModule = $Script:ImportedSessionModules.$($ServiceObject.Identity)
