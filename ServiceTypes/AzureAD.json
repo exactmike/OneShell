@@ -91,6 +91,15 @@
                     ]
                 }
             ]
+        },
+        "Import":{
+            "ModulesAndCommands":[
+                {
+                    "Name":"AzureAD",
+                    "Type":"Module"
+                }
+            ],
+            "ArbitraryCommands":[]
         }
     }
 }

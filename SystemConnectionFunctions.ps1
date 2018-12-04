@@ -809,9 +809,9 @@ function Import-ModuleInOneShellSystemPSSession
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
     $ModuleImportResults = @(
-        if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport.count -ge 1)
         {
-            foreach ($m in $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport)
+            foreach ($m in $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport)
             {
                 $ModuleName = $m.name
                 $ImportModuleParams = @{
@@ -1158,9 +1158,9 @@ Function ImportOneShellSystemPSSession
         DisableNameChecking = $true
     }
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-    if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Import -and $ServiceTypeDefinition.PSSessionSettings.Import.ArbitraryCommands.count -ge 1)
+    if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.Import -and $ServiceTypeDefinition.PSRemotingSettings.Import.ArbitraryCommands.count -ge 1)
     {
-        foreach ($cmd in $ServiceTypeDefinition.PSSessionSettings.Import.ArbitraryCommands)
+        foreach ($cmd in $ServiceTypeDefinition.PSRemotingSettings.Import.ArbitraryCommands)
         {
             $conditionResults = @(
                 foreach ($c in $cmd.conditions)
@@ -1216,10 +1216,10 @@ Function ImportOneShellSystemPSSession
             }
         }
     }#end if
-    if ($null -ne $ServiceTypeDefinition.PSSessionSettings.Import -and $ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands.count -ge 1)
+    if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.Import -and $ServiceTypeDefinition.PSRemotingSettings.Import.ModulesAndCommands.count -ge 1)
     {
-        $Command = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Command'})
-        $Module = @($ServiceTypeDefinition.PSSessionSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Module'})
+        $Command = @($ServiceTypeDefinition.PSRemotingSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Command'})
+        $Module = @($ServiceTypeDefinition.PSRemotingSettings.Import.ModulesAndCommands | Where-Object -FilterScript {$_.Type -eq 'Module'})
         if ($Command.Count -ge 1)
         {
             $ImportPSSessionParams.CommandName = $Command.name
@@ -1231,13 +1231,13 @@ Function ImportOneShellSystemPSSession
     }
     else
     {
-        switch ($ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.count)
+        switch ($ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport.count)
         {
             $null
             {}
             {$_ -ge 1}
             {
-                $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSSessionSettings.Initialization.Phase2_ModuleImport.Name
+                $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport.Name
             }
         }
     }
