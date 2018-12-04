@@ -279,12 +279,12 @@ function Test-OneShellSystemConnection
                         {
                             Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
                             #no existing PSSession found so we aren't connected to this system. Output $false
-                            $false
-                            break
+                            return $false
+
                         }
                         else
                         {
-                            #Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                            Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                         }
                         #Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
                         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
@@ -293,13 +293,13 @@ function Test-OneShellSystemConnection
                     {
                         $message = "Found No PSSession for service $($serviceObject.Name)."
                         Write-OneShellLog -Message $message -EntryType Notification
-                        $false
+                        return $false
                     }
                     Default
                     {
                         $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
-                        $false
+                        return $false
                     }
                 }
             }
@@ -353,8 +353,7 @@ function Test-OneShellSystemConnection
                         $myerror = $_
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
-                        $false
-                        break
+                        return $false
                     }
                 }
                 $false
@@ -371,8 +370,7 @@ function Test-OneShellSystemConnection
                         $myerror = $_
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
-                        $false
-                        break
+                        return $false
                     }
                 }
             }
@@ -401,29 +399,27 @@ function Test-OneShellSystemConnection
                             }
                             else {
                                 $false
-                                break
                             }
                         }
                     )
-                    if ($Validations -contains $false) {$false} else {$true}
+                    if ($Validations -contains $false) {return $false} else {return $true}
                 }
                 else
                 {
                     #No Validation is specified and ConnectionTestCommandOutput is not null so we pass the connection test and output $true
-                    $true
+                    return $true
                 }
             }
             else
             {
                 #$ConnectionTestCommandOutput was NULL so test fails and output $false
-                $false
-                break
+                return $false
             }
         }#end if
         else
         {
             #Write-OneShellLog "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
-            $true
+            return $true
         }
     }
 }
