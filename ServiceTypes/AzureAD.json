@@ -1,77 +1,96 @@
 {
     "Name":  "AzureAD",
-    "SessionTestCmdlet":  "Get-AzureADTenantDetail",
-    "SessionTestCmdletParameters":  [],
+    "ConnectionTestCommand":{
+        "Command":"Get-AzureADTenantDetail",
+        "Parameters":[],
+        "Validation":[
+            {
+                "Name":  "ObjectID",
+                "ValueType":  "ScriptBlock",
+                "Value":  "$ServiceObject.ServiceTypeAttributes.TenantID",
+                "Operator":"-eq"
+            }
+        ]
+    },
     "OrgSystemServiceTypeAttributes":  [
-                                           {
-                                               "Name":  "TenantSubDomain",
-                                               "type":  "string",
-                                               "mandatory":  true,
-                                               "value":  ""
-                                           },
-                                           {
-                                            "Name":  "TenantID",
-                                            "type":  "string",
-                                            "mandatory":  true,
-                                            "value":  ""
-                                           },
-                                           {
-                                            "Name":  "AzureEnvironmentName",
-                                            "type":  "string",
-                                            "mandatory":  true,
-                                            "value":  ""
-                                           }
-                                       ],
+        {
+            "Name":  "TenantSubDomain",
+            "Type":  "string",
+            "Mandatory":  true,
+            "Value":  ""
+        },
+        {
+            "Name":  "TenantID",
+            "Type":  "string",
+            "Mandatory":  true,
+            "Value":  ""
+        },
+        {
+            "Name":  "AzureEnvironmentName",
+            "Type":  "string",
+            "Mandatory":  false,
+            "Value":  ""
+        }
+        ],
     "DefaultsToWellKnownEndPoint":  false,
     "WellKnownEndPointURI":  null,
     "WellKnownEndPointAuthMethod":  null,
     "EndPointServiceTypeAttributes":  [],
-    "DirectConnectRequiredModule": [
-        "AzureAD"
-    ],
-    "DirectConnectCommand": {
-        "command":  "Connect-AzureAD",
-        "parameters":  {
-                           "Name":  "Credential",
-                           "ValueType":  "ScriptBlock",
-                           "Value":  "$ServiceObject.Credentials.Service"
-                       }
+    "DirectConnectSettings": {
+        "RequiredLocalModule": [
+            {
+                "Name":"AzureAD",
+                "Version":null
+            }
+        ],
+        "ConnectCommand":{
+            "Command":  "Connect-AzureAD",
+            "Parameters":  [
+                {
+                    "Name":  "Credential",
+                    "ValueType":  "ScriptBlock",
+                    "Value":  "$ServiceObject.Credentials.Service"
+                }
+            ]
+        }
     },
-    "PSSessionConnectRequiredModule":  [],
-    "PSSessionCmdlet":  null,
-    "PSSessionConstrained":  false,
-    "PSSessionParameters":  [
-                                {
-                                    "name":  "ComputerName",
-                                    "ValueType":  "ScriptBlock",
-                                    "Value":  "$Endpoint.Address"
-                                },
-                                {
-                                    "name":  "ConfigurationName",
-                                    "ValueType":  "Static",
-                                    "Value":  "Microsoft.Powershell"
-                                }
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-                                                                                 {
-                                                                                     "name":  "AzureAD"
-                                                                                 }
-                                                                             ],
-                                                     "Phase3":  [
-                                                                    {
-                                                                        "command":  "Connect-AzureAD",
-                                                                        "parameters":  {
-                                                                                           "Name":  "Credential",
-                                                                                           "ValueType":  "ScriptBlock",
-                                                                                           "Value":  "$ServiceObject.Credentials.Service"
-                                                                                       }
-                                                                    }
-                                                                ]
-                                                 }
-                          }
+    "PSRemotingSettings":{
+        "RequiredLocalModule":[],
+        "Command":null,
+        "Parameters":[
+            {
+                "Name":  "ComputerName",
+                "ValueType":  "ScriptBlock",
+                "Value":  "$Endpoint.Address"
+            },
+            {
+                "Name":  "ConfigurationName",
+                "ValueType":  "Static",
+                "Value":  "Microsoft.Powershell"
+            }
+        ],
+        "ExpectConstrainedSession": false,
+        "SessionInitialization":
+        {
+            "Phase1_PreModuleImport":  [],
+            "Phase2_ModuleImport":  [
+                {
+                    "Name":  "AzureAD",
+                    "Version": null
+                }
+            ],
+            "Phase3":  [
+                {
+                    "Command":  "Connect-AzureAD",
+                    "Parameters": [
+                        {
+                            "Name":  "Credential",
+                            "ValueType":  "ScriptBlock",
+                            "Value":  "$ServiceObject.Credentials.Service"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 }

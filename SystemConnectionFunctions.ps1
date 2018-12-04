@@ -252,71 +252,104 @@ function Test-OneShellSystemConnection
     {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     }
-    end
+    process
     {
-        try
+        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
+        switch ($serviceObject.UsePSRemoting)
         {
-            $ServiceSession = @(Get-OneShellSystemPSSession -serviceObject $serviceObject -ErrorAction Stop)
-        }
-        catch
-        {
-            Write-OneShellLog -Message $_.tostring() -ErrorLog
-        }
-        switch ($ServiceSession.Count)
-        {
-            1
+            #Since UsePSRemoting is true for this system, look for an existing PSSession
+            $true
             {
-                $ServiceSession = $ServiceSession[0]
-                $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
-                #Write-OneShellLog -Message $message -EntryType Notification
-                #Test the Session functionality
-                if ($ServiceSession.state -ne 'Opened')
+                try
                 {
-                    Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
-                    $false
-                    break
+                    $ServiceSession = @(Get-OneShellSystemPSSession -serviceObject $serviceObject -ErrorAction Stop)
                 }
-                else
+                catch
                 {
-                    #Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                    Write-OneShellLog -Message $_.tostring() -ErrorLog
                 }
-                #Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
-                $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
-                if ($null -ne $ServiceTypeDefinition.SessionTestCmdlet)
+                switch ($ServiceSession.Count)
                 {
-                    $testCommand = $ServiceTypeDefinition.SessionTestCmdlet
-                    $TestCommandParams = @{
-                        ErrorAction = 'Stop'
-                    }
-                    #$testCommandParams.WarningAction = 'SilentlyContinue' #don't add because in constrained PSSessions this might not be allowed
-                    if ($null -ne $ServiceTypeDefinition.SessionTestCmdletParameters -and $ServiceTypeDefinition.SessionTestCmdletParameters.count -ge 1)
+                    1
                     {
-                        foreach ($p in $ServiceTypeDefinition.SessionTestCmdletParameters)
+                        $ServiceSession = $ServiceSession[0]
+                        $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
+                        #Write-OneShellLog -Message $message -EntryType Notification
+                        #Test the Session functionality
+                        if ($ServiceSession.state -ne 'Opened')
                         {
-                            $value = $(
-                                switch ($p.ValueType)
-                                {
-                                    'Static'
-                                    {$p.Value}
-                                    'ScriptBlock'
-                                    {
-                                        $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
-                                        &$ValueGeneratingScriptBlock
-                                    }
-                                }
-                            )
-                            $TestCommandParams.$($p.name) = $value
+                            Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is not in state 'Opened'." -EntryType Notification
+                            #no existing PSSession found so we aren't connected to this system. Output $false
+                            $false
+                            break
                         }
-
+                        else
+                        {
+                            #Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
+                        }
+                        #Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
+                        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
                     }
-                    #Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
-                    $message = "Run $testCommand in $($serviceSession.name) PSSession"
+                    0
+                    {
+                        $message = "Found No PSSession for service $($serviceObject.Name)."
+                        Write-OneShellLog -Message $message -EntryType Notification
+                        $false
+                    }
+                    Default
+                    {
+                        $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                        $false
+                    }
+                }
+                if ($ReturnSession)
+                {$ServiceSession}
+            }
+            $false
+            {
+                #nothing to do here for DirectConnect systems
+            }
+        }
+        if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand)
+        {
+            $TestCommand = $ServiceTypeDefinition.ConnectionTestCommand.Command
+            Write-Verbose -message "Test Command is $TestCommand"
+            $TestCommandParams = @{
+                ErrorAction = 'Stop'
+            }
+            #$testCommandParams.WarningAction = 'SilentlyContinue' #don't add because in constrained PSSessions this might not be allowed
+            if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.Parameters -and $ServiceTypeDefinition.ConnectionTestCommand.Parameters.count -ge 1)
+            {
+                foreach ($p in $ServiceTypeDefinition.ConnectionTestCommand.Parameters)
+                {
+                    $value = $(
+                        switch ($p.ValueType)
+                        {
+                            'Static'
+                            {$p.Value}
+                            'ScriptBlock'
+                            {
+                                $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
+                                &$ValueGeneratingScriptBlock
+                            }
+                        }
+                    )
+                    $TestCommandParams.$($p.name) = $value
+                }
+            }
+            #Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+            switch ($ServiceObject.UsePSRemoting)
+            {
+                #determine whether to run the ConnectionTestCommand in Session or directly
+                $true
+                {
+                    $message = "Run $TestCommand in $($serviceSession.name) PSSession"
                     try
                     {
                         #Write-OneShellLog -Message $message -EntryType Attempting
-                        [void](invoke-command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop)
+                        $ConnectionTestCommandOutput = Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
                         #Write-OneShellLog -Message $message -EntryType Succeeded
-                        $true
                     }
                     catch
                     {
@@ -326,28 +359,73 @@ function Test-OneShellSystemConnection
                         $false
                         break
                     }
-                }#end if
+                }
+                $false
+                {
+                    $message = "Run $TestCommand for System $($ServiceObject.Name)."
+                    try
+                    {
+                        #Write-OneShellLog -Message $message -EntryType Attempting
+                        $ConnectionTestCommandOutput = Invoke-Command -ScriptBlock {&$TestCommand @TestCommandParams} -ErrorAction Stop
+                        #Write-OneShellLog -Message $message -EntryType Succeeded
+                    }
+                    catch
+                    {
+                        $myerror = $_
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                        Write-OneShellLog -message $myerror.tostring() -ErrorLog
+                        $false
+                        break
+                    }
+                }
+            }
+            if ($null -ne $ConnectionTestCommandOutput)
+            {
+                if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.Validation -and $ServiceTypeDefinition.ConnectionTestCommand.Validation.Count -ge 1)
+                {
+                    $Validations = @(
+                        foreach ($v in $ServiceTypeDefinition.ConnectionTestCommand.Validation)
+                        {
+                            $Value = $(
+                                switch ($v.ValueType)
+                                {
+                                    'Static'
+                                    {$v.Value}
+                                    'ScriptBlock'
+                                    {
+                                        $ValueGeneratingScriptBlock = [scriptblock]::Create($v.Value)
+                                        &$ValueGeneratingScriptBlock
+                                    }
+                                }
+                            )
+                            if ($null -ne $value)
+                            {
+                                Invoke-Expression -Command $("'$($ConnectionTestCommandOutput.$($v.name))' $($v.Operator) '$Value'")
+                            }
+                            else {
+                                $false
+                            }
+                        }
+                    )
+                    if ($Validations -contains $false) {$false} else {$true}
+                }
                 else
                 {
-                    #Write-OneShellLog "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
+                    #No Validation is specified and ConnectionTestCommandOutput is not null so we pass the connection test and output $true
                     $true
                 }
             }
-            0
+            else
             {
-                $message = "Found No PSSession for service $($serviceObject.Name)."
-                Write-OneShellLog -Message $message -EntryType Notification
+                #$ConnectionTestCommandOutput was NULL so test fails and output $false
                 $false
             }
-            Default
-            {
-                $message = "Found multiple PSSessions $($ServiceSession.name -join ',') for service $($serviceObject.Name). Please delete one or more sessions then try again."
-                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
-                $false
-            }
+        }#end if
+        else
+        {
+            #Write-OneShellLog "No Service Type Command to use for Service Testing is specified for ServiceType $($ServiceObject.ServiceType)."
+            $true
         }
-        if ($ReturnSession)
-        {$ServiceSession}
     }
 }
 #end function Test-OneShellSystemConnection
