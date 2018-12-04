@@ -449,7 +449,7 @@ function Get-OneShellSystemEndpointPSSessionParameter
             $NewPSSessionParams.Credential = $ServiceObject.Credentials.PSSession
         }
         #Apply Service Type Defaults
-        foreach ($p in $ServiceTypeDefinition.PSRemotingSettings.Parameters)
+        foreach ($p in $ServiceTypeDefinition.PSRemotingSettings.ConnectCommand.Parameters)
         {
             $Value = $(
                 switch ($p.ValueType)
@@ -647,9 +647,9 @@ Function Connect-OneShellSystem
                                 $NewPSSessionCmdlet = 'New-PSSession'
                                 try
                                 {
-                                    if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.Command)
+                                    if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.ConnectCommand.Command)
                                     {
-                                        $NewPSSessionCmdlet = $ServiceTypeDefinition.PSRemotingSettings.Command
+                                        $NewPSSessionCmdlet = $ServiceTypeDefinition.PSRemotingSettings.ConnectCommand.Command
                                     }
                                     $message = "Create PsSession using command $NewPSsessionCmdlet with name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
                                     Write-OneShellLog -Message $message -EntryType Attempting
