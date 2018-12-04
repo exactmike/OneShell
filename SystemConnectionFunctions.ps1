@@ -245,8 +245,6 @@ function Test-OneShellSystemConnection
     param
     (
         $serviceObject
-        ,
-        [switch]$ReturnSession
     )
     begin
     {
@@ -262,6 +260,7 @@ function Test-OneShellSystemConnection
             {
                 try
                 {
+                    Write-Verbose -Message "Getting Service PSSession for $($serviceObject.Name)."
                     $ServiceSession = @(Get-OneShellSystemPSSession -serviceObject $serviceObject -ErrorAction Stop)
                 }
                 catch
@@ -303,8 +302,6 @@ function Test-OneShellSystemConnection
                         $false
                     }
                 }
-                if ($ReturnSession)
-                {$ServiceSession}
             }
             $false
             {
@@ -404,6 +401,7 @@ function Test-OneShellSystemConnection
                             }
                             else {
                                 $false
+                                break
                             }
                         }
                     )
@@ -419,6 +417,7 @@ function Test-OneShellSystemConnection
             {
                 #$ConnectionTestCommandOutput was NULL so test fails and output $false
                 $false
+                break
             }
         }#end if
         else
@@ -454,9 +453,9 @@ function Get-OneShellSystemEndpointPSSessionParameter
             $NewPSSessionParams.Credential = $ServiceObject.Credentials.PSSession
         }
         #Apply Service Type Defaults
-        foreach ($p in $ServiceTypeDefinition.PSSessionParameters)
+        foreach ($p in $ServiceTypeDefinition.PSRemotingSettings.Parameters)
         {
-            $value = $(
+            $Value = $(
                 switch ($p.ValueType)
                 {
                     'Static'
@@ -467,7 +466,7 @@ function Get-OneShellSystemEndpointPSSessionParameter
                     }
                 }
             )
-            $NewPSSessionParams.$($p.name) = $value
+            $NewPSSessionParams.$($p.Name) = $Value
         }
         #Apply ServiceObject Defaults or their endpoint overrides
         if ($ServiceObject.defaults.ProxyEnabled -eq $true -or $Endpoint.ProxyEnabled -eq $true)
@@ -545,14 +544,15 @@ Function Connect-OneShellSystem
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -errorAction Stop
             #Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
             #Test for an existing connection
+            $ExistingConnectionIsValid = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop
             switch ($ServiceObject.defaults.UsePSRemoting -or $true)
             {
                 $true
                 {
-                    $ExistingConnectionIsValid, $ExistingSession = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop -ReturnSession
                     #check results of the test for an existing session
                     if ($ExistingConnectionIsValid)
                     {
+                        $ExistingSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
                         #Write-OneShellLog -Message "Existing Session $($ExistingSession.name) for Service $($serviceObject.Name) is valid."
                         #nothing further to do since existing connection is valid
                         #add logic for preferred endpoint/specified endpoint checking?
@@ -651,9 +651,9 @@ Function Connect-OneShellSystem
                                 $NewPSSessionCmdlet = 'New-PSSession'
                                 try
                                 {
-                                    if ($null -ne $ServiceTypeDefinition.PSSessionCmdlet)
+                                    if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.Command)
                                     {
-                                        $NewPSSessionCmdlet = $ServiceTypeDefinition.PSSessionCmdlet
+                                        $NewPSSessionCmdlet = $ServiceTypeDefinition.PSRemotingSettings.Command
                                     }
                                     $message = "Create PsSession using command $NewPSsessionCmdlet with name $($NewPSSessionParams.Name) for Service $($serviceObject.Name)"
                                     Write-OneShellLog -Message $message -EntryType Attempting
@@ -883,12 +883,12 @@ function Initialize-OneShellSystemPSSession
     )
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-    switch ($null -ne $ServiceTypeDefinition.PSSessionSettings.Initialization.$Phase -and ($ServiceTypeDefinition.PSSessionSettings.Initialization.$Phase).count -ge 1)
+    switch ($null -ne $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.$Phase -and ($ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.$Phase).count -ge 1)
     {
         $true
         {
             $InitializationCommandsResults = @(
-                foreach ($cmd in $ServiceTypeDefinition.PSSessionSettings.Initialization.$phase)
+                foreach ($cmd in $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.$phase)
                 {
                     $conditionResults = @(
                         foreach ($c in $cmd.conditions)
