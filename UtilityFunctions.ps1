@@ -2,7 +2,7 @@
 {
     [CmdletBinding()]
     param(
-        [parameter(ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateScript({Test-Path -Path $_ })]
         [string[]]$Path
     )
@@ -29,7 +29,7 @@
                             $item
                         }
                     }
-                }    
+                }
             }
         )
     }
@@ -42,7 +42,7 @@
             }
         )
     }
-    
+
 }
 function Remove-Member
 {
@@ -1575,10 +1575,10 @@ function Add-RequiredMember
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory,Position=1)]
+        [Parameter(Mandatory, Position = 1)]
         [string[]]$RequiredMember
         ,
-        [Parameter(Mandatory,ValueFromPipeline,Position=2)]
+        [Parameter(Mandatory, ValueFromPipeline, Position = 2)]
         [psobject[]]$InputObject
     )
     Process
@@ -1592,9 +1592,26 @@ function Add-RequiredMember
                     if (-not (Test-Member -InputObject $io -Name $rm))
                     {
                         Add-Member -InputObject $io -MemberType NoteProperty -Name $rm -Value $null
-                    }    
+                    }
                 }
             }
         }
     }
+}
+function Get-MicrosoftAzureADTenantID
+{
+    [cmdletbinding()]
+    param(
+        [parameter(Mandatory, Position = 1)]
+        [string]$TenantSubdomain
+    )
+    if ($TenantSubdomain -like '*.onmicrosoft.com')
+    {$TenantSubdomainFragment = $TenantSubdomain.Split('.')[0]}
+    elseif ([char[]]$TenantSubdomain -notcontains '.')
+    {$TenantSubdomainFragment = $TenantSubdomain}
+    else
+    {throw("Unexpected value provided for $TenantSubdomain")}
+    Write-Verbose -Message "Calculated URI: $URI"
+    $URI = 'https://login.windows.net/' + $TenantSubdomainFragment + '.onmicrosoft.com' + '/.well-known/openid-configuration'
+    (Invoke-WebRequest -Uri $URI | ConvertFrom-Json).token_endpoint.Split('/')[3]
 }
