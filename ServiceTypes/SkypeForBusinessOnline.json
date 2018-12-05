@@ -1,43 +1,64 @@
 {
     "Name":  "SkypeForBusinessOnline",
-    "SessionTestCmdlet":  "Get-Command",
-    "SessionTestCmdletParameters":  [
-                                        {
-                                            "Name":  "Name",
-                                            "ValueType":  "Static",
-                                            "Value":  "Get-Command"
-                                        }
-                                    ],
+    "ConnectionTestCommand":{
+        "Command":"Get-CSTenant",
+        "Parameters":[],
+        "Validation":[
+            {
+                "Name":  "TenantID",
+                "ValueType":  "ScriptBlock",
+                "Value":  "$ServiceObject.ServiceTypeAttributes.TenantID",
+                "Operator":"-eq"
+            }
+        ]
+    },
     "OrgSystemServiceTypeAttributes":  [
-
-                                       ],
+        {
+            "Name":  "TenantSubDomain",
+            "Type":  "string",
+            "Mandatory":  true,
+            "Value":  ""
+        },
+        {
+            "Name":  "TenantID",
+            "Type":  "string",
+            "Mandatory":  true,
+            "Value":  ""
+        }
+    ],
     "DefaultsToWellKnownEndPoint":  true,
     "WellKnownEndPointURI":  null,
     "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
-    "PSSessionConnectRequiredModule":  [
-                                           {
-                                               "name":  "SkypeOnlineConnector"
-                                           }
-                                       ],
-    "PSSessionCmdlet":  "New-SkypeOnlinePSSession",
-    "PSSessionConstrained":  true,
-    "PSSessionParameters":  [
-
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-
-                                                                             ],
-                                                     "Phase3":  [
-
-                                                                ]
-                                                 }
-                          }
+    "EndPointServiceTypeAttributes":  [],
+    "DirectConnectSettings": {
+        "Supported": false,
+        "RequiredLocalModule": [],
+        "ConnectCommand":{
+            "Command":  null,
+            "Parameters":  []
+        }
+    },
+    "PSRemotingSettings":{
+        "Supported": true,
+        "RequiredLocalModule":[
+            {
+                "name":  "SkypeOnlineConnector"
+            }
+        ],
+        "ConnectCommand":{
+            "Command":"New-SkypeOnlinePSSession",
+            "Parameters":[]
+        },
+        "ExpectConstrainedSession": true,
+        "SessionInitialization":
+        {
+            "Phase1_PreModuleImport":  [],
+            "Phase2_ModuleImport":  [],
+            "Phase3":  []
+        },
+        "Import":{
+            "ModulesAndCommands":[],
+            "ArbitraryCommands":[]
+        }
+    }
 }

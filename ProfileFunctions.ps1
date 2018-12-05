@@ -780,7 +780,14 @@ function New-OneShellOrgProfileSystem
         {
             foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
             {
-                $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.mandatory -DPDictionary $dictionary
+                $newDynamicParameterParams = @{
+                    Name = $a.name
+                    Type = $($a.type -as [type])
+                    Mandatory = $a.mandatory
+                    DPDictionary = $dictionary
+                }
+                if ($true -eq $a.Value) {$newDynamicParameterParams.ValidateSet = $a.Value}
+                $dictionary = New-DynamicParameter @newDynamicParameterParams
             }
         }
         $dictionary
@@ -844,6 +851,9 @@ function Set-OneShellOrgProfileSystem
         [parameter(ValueFromPipelineByPropertyName)]
         [string]$Description
         ,
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [string]$ServiceType
+        ,
         [parameter(ValueFromPipelineByPropertyName)]
         [validateset($true, $false)]
         [bool]$ProxyEnabled
@@ -873,9 +883,33 @@ function Set-OneShellOrgProfileSystem
         [ValidateScript( {Test-DirectoryPath -path $_})]
         [string[]]$Path = $Script:OneShellOrgProfilePath
     )#end param
+    DynamicParam
+    {
+        #build any service type specific parameters that may be needed
+        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
+        if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+        {
+            foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+            {
+                $newDynamicParameterParams = @{
+                    Name = $a.name
+                    Type = $($a.type -as [type])
+                    Mandatory = $a.mandatory
+                    DPDictionary = $dictionary
+                }
+                if ($true -eq $a.Value) {$newDynamicParameterParams.ValidateSet = $a.Value}
+                $dictionary = New-DynamicParameter @newDynamicParameterParams
+            }
+        }
+        $dictionary
+    }#End DynamicParam
     Begin
     {
         $PotentialOrgProfiles = @(GetPotentialOrgProfiles -path $Path)
+        if ($null -ne $dictionary)
+        {
+            Set-DynamicParameterVariable -dictionary $dictionary
+        }
     }
     Process
     {
@@ -927,12 +961,20 @@ function Set-OneShellOrgProfileSystemServiceTypeAttribute
     )#end param
     DynamicParam
     {
+        #build any service type specific parameters that may be needed
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
         if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
         {
             foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
             {
-                $dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $false -DPDictionary $dictionary -ValueFromPipelineByPropertyName $true
+                $newDynamicParameterParams = @{
+                    Name = $a.name
+                    Type = $($a.type -as [type])
+                    Mandatory = $a.mandatory
+                    DPDictionary = $dictionary
+                }
+                if ($true -eq $a.Value) {$newDynamicParameterParams.ValidateSet = $a.Value}
+                $dictionary = New-DynamicParameter @newDynamicParameterParams
             }
         }
         $dictionary
@@ -2039,7 +2081,6 @@ Function Set-OneShellUserProfileSystem
     }#end Process
 }
 #end function Set-OneShellUserProfileSystem
-
 Function Set-OneShellUserProfileSystemCredential
 {
     [cmdletbinding()]

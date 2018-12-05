@@ -29,7 +29,12 @@
             "Name": "AzureEnvironmentName",
             "Type": "string",
             "Mandatory": false,
-            "Value": ""
+            "Value": [
+                "AzureCloud",
+                "AzureChinaCloud",
+                "AzureUSGovernment",
+                "AzureGermanyCloud"
+            ]
         }
     ],
     "DefaultsToWellKnownEndPoint": false,
