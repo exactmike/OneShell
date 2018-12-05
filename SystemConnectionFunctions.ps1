@@ -542,6 +542,7 @@ Function Connect-OneShellSystem
             #Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
             #Test for an existing connection
             $ExistingConnectionIsValid = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop
+            $UsePSRemoting = $($serviceObject.UsePSRemoting;$serviceObject.defaults.UsePSRemoting) | Where-Object -FilterScript {$null -ne $_} | Select-Object -First 1
             switch ($UsePSRemoting)
             {
                 $true
