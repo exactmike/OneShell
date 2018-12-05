@@ -253,7 +253,8 @@ function Test-OneShellSystemConnection
     process
     {
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
-        switch ($serviceObject.UsePSRemoting)
+        $UsePSRemoting = $($serviceObject.UsePSRemoting;$serviceObject.defaults.UsePSRemoting) | Where-Object -FilterScript {$null -ne $_} | Select-Object -First 1
+        switch ($UsePSRemoting)
         {
             #Since UsePSRemoting is true for this system, look for an existing PSSession
             $true
@@ -336,7 +337,7 @@ function Test-OneShellSystemConnection
                 }
             }
             #Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
-            switch ($ServiceObject.UsePSRemoting)
+            switch ($UsePSRemoting)
             {
                 #determine whether to run the ConnectionTestCommand in Session or directly
                 $true
@@ -541,7 +542,7 @@ Function Connect-OneShellSystem
             #Write-Verbose -Message "Using ServiceTypeDefinition: $($serviceTypeDefinition.Name)"
             #Test for an existing connection
             $ExistingConnectionIsValid = Test-OneShellSystemConnection -serviceObject $ServiceObject -ErrorAction Stop
-            switch ($ServiceObject.defaults.UsePSRemoting -or $true)
+            switch ($UsePSRemoting)
             {
                 $true
                 {
@@ -555,6 +556,7 @@ Function Connect-OneShellSystem
                     }#end if
                     else
                     {
+                        $ExistingSession = Get-OneShellSystemPSSession -serviceObject $ServiceObject -ErrorAction Stop
                         if ($null -ne $ExistingSession)
                         {
                             $message = "Remove Existing Invalid Session $($ExistingSession.name) for Service $($serviceObject.name)."
