@@ -84,6 +84,7 @@
         'Get-OneShellUserProfileSystem'
         'Get-OneShellVariable'
         'Get-OneShellVariableValue'
+        'Get-MicrosoftAzureADTenantID'
         'Import-OneShellSystemPSSession'
         'New-OneShellOrgProfile'
         'New-OneShellOrgProfileSystem'
