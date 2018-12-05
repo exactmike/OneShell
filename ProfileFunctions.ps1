@@ -760,6 +760,10 @@ function New-OneShellOrgProfileSystem
         [bool]$UseTLS
         ,
         [parameter(ValueFromPipelineByPropertyName)]
+        [validateset($true, $false)]
+        [bool]$UsePSRemoting
+        ,
+        [parameter(ValueFromPipelineByPropertyName)]
         [ValidateSet('Basic', 'Kerberos', 'Integrated')]
         $AuthMethod
         ,
@@ -815,7 +819,7 @@ function New-OneShellOrgProfileSystem
         #set the default System Attributes
         foreach ($vp in $AllValuedParameters)
         {
-            if ($vp.name -in 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod')
+            if ($vp.name -in 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod','UsePSRemoting')
             {$GenericSystemObject.defaults.$($vp.name) = $($vp.value)}
         }
         $addServiceTypeAttributesParams = @{
@@ -932,6 +936,15 @@ function Set-OneShellOrgProfileSystem
             {
                 if ($vp.name -in 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod','UsePSRemoting')
                 {$System.defaults.$($vp.name) = $($vp.value)}
+            }
+            #set the ServiceType Attributes
+            #make sure they exist on the object
+            $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $System.ServiceType
+            Add-RequiredMember -RequiredMember $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name -InputObject $System.ServiceTypeAttributes
+            foreach ($vp in $AllValuedParameters)
+            {
+                if ($vp.name -in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
+                {$System.ServiceTypeAttributes.$($vp.name) = $($vp.value)}
             }
             #update the system entry in the org profile
             $OrgProfile = Update-ExistingObjectFromMultivaluedAttribute -ParentObject $OrgProfile -ChildObject $System -MultiValuedAttributeName Systems -IdentityAttributeName Identity

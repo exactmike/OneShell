@@ -2,12 +2,12 @@
 
 ## In Progress And Help Wanted
 
-- [ ] Add Non-PSRemoting Service Attribute and Connection support
-- [ ] Re-Work Connect-OneShellSystem -reconnect for DirectConnect systems.
+- [ ] Add Exchange 2007 ServiceType support - in progress (will likely depend on Non-PSRemoting support for service connections)
+- [ ] Add Required Local Module checking for PSRemoting and DirectConnect systems (see SkypeForBusinessOnline as an example of a service type that really needs this)
 - [ ] Add Connect-OneShellSystem -autoconnect for autoconnecting all autoconnect systems in the current profile
 - [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
-- [ ] Add Exchange 2007 ServiceType support - in progress (will likely depend on Non-PSRemoting support for service connections)
 - [ ] Add [OutputType([void])] to functions that don't return output and appropriate OutputType to other functions
+- [ ] Build out connection tracking for PSRemoting and DirectConnect systems to enable disconnect/cleanup at module unload and/or profile changes
 
 ## Pending and Help Wanted
 
@@ -83,3 +83,5 @@
 - [x] Functionalize repeated code in DynamicParam blocks across ProfileFunctions and ConnectionFunctions and/or REPLACE DynamicParams with Register-ArgumentCompleter . . .
 - [x] add parameters to Set-OneShellUserProfile to allow setting of ExportData,LogFolder, and InputFiles independently of the ProfileFolder
 - [x] replace code in New-OneShellOrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
+- [x] Add Non-PSRemoting Service Attribute and Connection support
+- [x] Re-Work Connect-OneShellSystem -reconnect for DirectConnect systems.
