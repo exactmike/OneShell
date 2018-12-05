@@ -1,40 +1,66 @@
 {
     "Name": "Exchange2007",
-    "SessionTestCmdlet": "Get-OrganizationConfig",
-    "SessionTestCmdletParameters": {
-        "ErrorAction": "Stop",
-        "WarningAction": "SilentlyContinue"
+    "ConnectionTestCommand":{
+        "Command":"Get-OrganizationConfig",
+        "Parameters":[],
+        "Validation":[]
     },
     "OrgSystemServiceTypeAttributes": [],
     "DefaultsToWellKnownEndPoint": false,
     "WellKnownEndPointURI": null,
     "WellKnownEndPointAuthMethod": null,
     "EndPointServiceTypeAttributes": [],
-    "PSSessionConnectRequiredModule": [],
-    "PSSessionCmdlet": null,
-    "PSSessionConstrained": true,
-    "PSSessionParameters": [
-        {
-            "name": "ComputerName",
-            "ValueType": "ScriptBlock",
-            "Value": "$Endpoint.Address"
-        },
-        {
-            "name": "ConfigurationName",
-            "ValueType": "Static",
-            "Value": "Microsoft.Powershell"
+    "DirectConnectSettings": {
+        "Supported": true,
+        "RequiredLocalModule": [
+            {
+                "Name":"Microsoft.Exchange.Management.PowerShell.Admin",
+                "Version":null
+            }
+        ],
+        "ConnectCommand":{
+            "Command":  null,
+            "Parameters":  []
         }
-    ],
-    "PSSessionSettings": {
-        "Initialization": {
-            "Phase1_PreModuleImport": [],
-            "Phase2_ModuleImport": [
+    },
+    "PSRemotingSettings":{
+        "Supported": false,
+        "RequiredLocalModule":[],
+        "ConnectCommand":{
+            "Command":null,
+            "Parameters":[
+                {
+                    "Name":  "ComputerName",
+                    "ValueType":  "ScriptBlock",
+                    "Value":  "$Endpoint.Address"
+                },
+                {
+                    "Name":  "ConfigurationName",
+                    "ValueType":  "Static",
+                    "Value":  "Microsoft.Powershell"
+                }
+            ]
+        },
+        "ExpectConstrainedSession": false,
+        "SessionInitialization":
+        {
+            "Phase1_PreModuleImport":  [],
+            "Phase2_ModuleImport":  [
                 {
                     "name": "Microsoft.Exchange.Management.PowerShell.Admin",
                     "type": "PSSnapIn"
                 }
             ],
-            "Phase3": []
+            "Phase3":  []
+        },
+        "Import":{
+            "ModulesAndCommands":[
+                {
+                    "Name":"Microsoft.Exchange.Management.PowerShell.Admin",
+                    "Type":"Module"
+                }
+            ],
+            "ArbitraryCommands":[]
         }
     }
 }

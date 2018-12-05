@@ -37,6 +37,7 @@
     "WellKnownEndPointAuthMethod":  null,
     "EndPointServiceTypeAttributes":  [],
     "DirectConnectSettings": {
+        "Supported": true,
         "RequiredLocalModule": [
             {
                 "Name":"AzureAD",
@@ -55,6 +56,7 @@
         }
     },
     "PSRemotingSettings":{
+        "Supported": true,
         "RequiredLocalModule":[],
         "ConnectCommand":{
             "Command":null,

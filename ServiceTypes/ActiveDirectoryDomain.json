@@ -55,6 +55,7 @@
     "WellKnownEndPointAuthMethod":  null,
     "EndPointServiceTypeAttributes":  [],
     "DirectConnectSettings": {
+        "Supported": true,
         "RequiredLocalModule": [
             {
                 "Name":"ActiveDirectory",
@@ -120,6 +121,7 @@
         }
     },
     "PSRemotingSettings": {
+        "Supported": true,
         "RequiredLocalModule":[],
         "ConnectCommand":{
             "Command": null,

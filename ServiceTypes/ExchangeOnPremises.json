@@ -1,7 +1,10 @@
 {
     "Name": "ExchangeOnPremises",
-    "SessionTestCmdlet": "Get-OrganizationConfig",
-    "SessionTestCmdletParameters": [],
+    "ConnectionTestCommand":{
+        "Command":"Get-OrganizationConfig",
+        "Parameters":[],
+        "Validation":[]
+    },
     "OrgSystemServiceTypeAttributes": [],
     "DefaultsToWellKnownEndPoint": false,
     "WellKnownEndPointURI": null,
@@ -14,28 +17,39 @@
             "Value": []
         }
     ],
-    "PSSessionConnectRequiredModule": [],
-    "PSSessionCmdlet": null,
-    "PSSessionConstrained": true,
-    "PSSessionParameters": [
-        {
-            "name": "ConnectionURI",
-            "ValueType": "ScriptBlock",
-            "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
-        },
-        {
-            "name": "ConfigurationName",
-            "ValueType": "Static",
-            "Value": "Microsoft.Exchange"
-        },
-        {
-            "name": "Authentication",
-            "ValueType": "Static",
-            "Value": "Kerberos"
+    "DirectConnectSettings": {
+        "Supported": false,
+        "RequiredLocalModule": [],
+        "ConnectCommand":{
+            "Command": null,
+            "Parameters": []
         }
-    ],
-    "PSSessionSettings": {
-        "Initialization": {
+    },
+    "PSRemotingSettings":{
+        "Supported": true,
+        "RequiredLocalModule":[],
+        "ConnectCommand":{
+            "Command":null,
+            "Parameters":[
+                {
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
+                    "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
+                },
+                {
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
+                },
+                {
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Kerberos"
+                }
+            ]
+        },
+        "ExpectConstrainedSession": true,
+        "SessionInitialization":{
             "Phase1_PreModuleImport": [],
             "Phase2_ModuleImport": [],
             "Phase3": [
@@ -67,6 +81,10 @@
                     ]
                 }
             ]
+        }
+        "Import":{
+            "ModulesAndCommands":[],
+            "ArbitraryCommands":[]
         }
     }
 }
