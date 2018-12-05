@@ -1,57 +1,75 @@
 {
-    "Name":  "PowerShell32",
-    "SessionTestCmdlet":  "Get-Command",
-    "SessionTestCmdletParameters":  [
-                                        {
-                                            "Name":  "Name",
-                                            "ValueType":  "Static",
-                                            "Value":  "Get-Command"
-                                        }
-                                    ],
-    "OrgSystemServiceTypeAttributes":  [
-                                           {
-                                               "name":  "SessionManagementGroups",
-                                               "type":  "string[]",
-                                               "mandatory":  false,
-                                               "value":  [
-
-                                                         ]
-                                           }
-                                       ],
-    "DefaultsToWellKnownEndPoint":  false,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
-    "PSSessionConnectRequiredModule":  [
-
-                                       ],
-    "PSSessionCmdlet":  null,
-    "PSSessionConstrained":  false,
-    "PSSessionParameters":  [
-                                {
-                                    "name":  "ComputerName",
-                                    "ValueType":  "ScriptBlock",
-                                    "Value":  "$Endpoint.Address"
-                                },
-                                {
-                                    "name":  "ConfigurationName",
-                                    "ValueType":  "Static",
-                                    "Value":  "Microsoft.Powershell32"
-                                }
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-
-                                                                             ],
-                                                     "Phase3":  [
-
-                                                                ]
-                                                 }
-                          }
+    "Name": "PowerShell32",
+    "ConnectionTestCommand": {
+        "Command": "Get-Variable",
+        "Parameters": [
+            {
+                "Name": "Name",
+                "ValueType": "Static",
+                "Value": "PSVersionTable"
+            },
+            {
+                "Name": "ValueOnly",
+                "ValueType": "Static",
+                "Value": "$True"
+            }
+        ],
+        "Validation": [
+            {
+                "Name": "PSVersion",
+                "ValueType": "Static",
+                "Value": 2,
+                "Operator": "-ge"
+            }
+        ]
+    },
+    "OrgSystemServiceTypeAttributes": [
+        {
+            "name": "SessionManagementGroups",
+            "type": "string[]",
+            "mandatory": false,
+            "value": []
+        }
+    ],
+    "DefaultsToWellKnownEndPoint": false,
+    "WellKnownEndPointURI": null,
+    "WellKnownEndPointAuthMethod": null,
+    "EndPointServiceTypeAttributes": [],
+    "DirectConnectSettings": {
+        "Supported": false,
+        "RequiredLocalModule": [],
+        "ConnectCommand": {
+            "Command": null,
+            "Parameters": []
+        }
+    },
+    "PSRemotingSettings": {
+        "Supported": true,
+        "RequiredLocalModule": [],
+        "ConnectCommand": {
+            "Command": null,
+            "Parameters": [
+                {
+                    "Name": "ComputerName",
+                    "ValueType": "ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "Name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell32"
+                }
+            ]
+        },
+        "ExpectConstrainedSession": false,
+        "SessionInitialization": {
+            "Phase1_PreModuleImport": [],
+            "Phase2_ModuleImport": [],
+            "Phase3": []
+        },
+        "Import": {
+            "ModulesAndCommands": [],
+            "ArbitraryCommands": []
+        }
+    }
 }
