@@ -873,38 +873,6 @@ Function Connect-OneShellSystem
                             Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                             #Remove Module(s)?
                         }
-                        if ($null -ne $ServiceTypeDefinition.DirectConnectSettings.RequiredLocalModule -and $ServiceTypeDefinition.DirectConnectSettings.RequiredLocalModule.count -ge 1)
-                        {
-                            #add prefixing to below
-                            foreach ($m in $ServiceTypeDefinition.DirectConnectSettings.RequiredLocalModule)
-                            {
-                                Import-Module -Name $m.name -Global -Force -ErrorAction Stop
-                            }
-                        }
-                        $DirectConnectParams = @{
-                            ErrorAction = 'Stop'
-                        }
-                        $DirectConnectCommand = $ServiceTypeDefinition.DirectConnectSettings.ConnectCommand.Command
-                        foreach ($p in $ServiceTypeDefinition.DirectConnectSettings.ConnectCommand.Parameters)
-                        {
-                            $value = $(
-                                switch ($p.ValueType)
-                                {
-                                    'Static'
-                                    {$p.Value}
-                                    'ScriptBlock'
-                                    {
-                                        $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
-                                        &$ValueGeneratingScriptBlock
-                                    }
-                                }
-                            )
-                            if ($null -ne $value)
-                            {
-                                $DirectConnectParams.$($p.name) = $value
-                            }
-                        }
-                        Invoke-Command -ScriptBlock {&$DirectConnectCommand @DirectConnectParams} -ErrorAction Stop
                     }
                 }#end $false
             }#end Switch
