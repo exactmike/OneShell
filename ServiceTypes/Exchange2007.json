@@ -18,9 +18,16 @@
                 "Version":null
             }
         ],
-        "ConnectCommand":{
-            "Command":  null,
-            "Parameters":  []
+        "SessionInitialization":
+        {
+            "Phase1_PreModuleImport":  [],
+            "Phase2_ModuleImport":  [
+                {
+                    "name": "Microsoft.Exchange.Management.PowerShell.Admin",
+                    "type": "PSSnapIn"
+                }
+            ],
+            "Phase3":  []
         }
     },
     "PSRemotingSettings":{

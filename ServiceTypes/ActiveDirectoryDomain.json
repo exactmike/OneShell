@@ -62,60 +62,71 @@
                 "Version":null
             }
         ],
-        "SessionInitialization": [
-            {
-                "Command":  "New-Item",
-                "parameters":  [
-                    {
-                        "Name":  "Path",
-                        "ValueType":  "Static",
-                        "Value":  "Env:\\"
-                    },
-                    {
-                        "Name":  "Name",
-                        "ValueType":  "Static",
-                        "Value":  "ADPS_LoadDefaultDrive"
-                    },
-                    {
-                        "Name":  "Value",
-                        "ValueType":  "Static",
-                        "Value":  0
-                    }
-                ]
-            }
-        ],
-        "ConnectCommand":{
-            "Command":  "New-PSDrive",
-            "Parameters":  [
+        "SessionInitialization": {
+            "Phase1_PreModuleImport":  [
                 {
-                    "Name":  "Name",
-                    "ValueType":  "scriptblock",
-                    "Value":  "$ServiceObject.ServiceTypeAttributes.PSDriveName"
-                },
+                    "conditions":  [],
+                    "Command":  "New-Item",
+                    "parameters":  [
+                        {
+                            "Name":  "Path",
+                            "ValueType":  "Static",
+                            "Value":  "Env:\\"
+                        },
+                        {
+                            "Name":  "Name",
+                            "ValueType":  "Static",
+                            "Value":  "ADPS_LoadDefaultDrive"
+                        },
+                        {
+                            "Name":  "Value",
+                            "ValueType":  "Static",
+                            "Value":  0
+                        }
+                    ]
+                }
+            ],
+            "Phase2_ModuleImport":  [
                 {
-                    "Name":  "Server",
-                    "ValueType":  "ScriptBlock",
-                    "Value":  "$ServiceObject.ServiceTypeAttributes.ADDomainFQDN"
-                },
+                    "name":  "ActiveDirectory"
+                }
+            ],
+            "Phase3":  [
                 {
-                    "Name":  "Root",
-                    "ValueType":  "Static",
-                    "Value":  "//RootDSE/"
-                },
-                {
-                    "Name":  "Scope",
-                    "ValueType":  "Static",
-                    "Value":  "Global"
-                },
-                {
-                    "Name":  "PSProvider",
-                    "ValueType":  "Static",
-                    "Value":  "ActiveDirectory"
-                },
-                {
-                    "Name":  "Credential",
-                    "ValueType":  "ScriptBlock",
-                    "Value":  "$ServiceObject.Credentials.Service"
+                    "conditions":  [],
+                    "command":  "New-PSDrive",
+                    "parameters":  [
+                        {
+                            "Name":  "Name",
+                            "ValueType":  "scriptblock",
+                            "Value":  "$ServiceObject.ServiceTypeAttributes.PSDriveName"
+                        },
+                        {
+                            "Name":  "Server",
+                            "ValueType":  "ScriptBlock",
+                            "Value":  "$ServiceObject.ServiceTypeAttributes.ADDomainFQDN"
+                        },
+                        {
+                            "Name":  "Root",
+                            "ValueType":  "Static",
+                            "Value":  "//RootDSE/"
+                        },
+                        {
+                            "Name":  "Scope",
+                            "ValueType":  "Static",
+                            "Value":  "Global"
+                        },
+                        {
+                            "Name":  "PSProvider",
+                            "ValueType":  "Static",
+                            "Value":  "ActiveDirectory"
+                        },
+                        {
+                            "Name":  "Credential",
+                            "ValueType":  "ScriptBlock",
+                            "Value":  "$ServiceObject.Credentials.Service"
+                        }
+                    ]
                 }
             ]
         }
@@ -123,6 +134,9 @@
     "PSRemotingSettings": {
         "Supported": true,
         "RequiredLocalModule":[],
+        "RequiredRemoteModule":[
+            "ActiveDirectory"
+        ],
         "ConnectCommand":{
             "Command": null,
             "Parameters":[
@@ -217,7 +231,7 @@
                 }
             ]
         },
-        "Imoprt":{
+        "Import":{
             "ModulesAndCommands":[
                 {
                     "Name":"ActiveDirectory",

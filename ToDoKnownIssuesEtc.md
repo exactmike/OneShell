@@ -2,7 +2,7 @@
 
 ## In Progress And Help Wanted
 
-- [ ] Add Exchange 2007 ServiceType support - in progress (will likely depend on Non-PSRemoting support for service connections)
+- [ ] Add Exchange 2007 ServiceType support - need to add configuration of AdminSessionADSettings variable - ViewEntireForest = $true
 - [ ] Add Required Local Module checking for PSRemoting and DirectConnect systems (see SkypeForBusinessOnline as an example of a service type that really needs this)
 - [ ] Add Connect-OneShellSystem -autoconnect for autoconnecting all autoconnect systems in the current profile
 - [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands

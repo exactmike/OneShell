@@ -675,7 +675,7 @@ Function Connect-OneShellSystem
                                         try
                                         {
                                             Write-OneShellLog -Message $message -EntryType Attempting
-                                            Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
+                                            Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                             Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
@@ -698,7 +698,7 @@ Function Connect-OneShellSystem
                                         {
                                             $message = "Import Required Module(s) into PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                             Write-OneShellLog -Message $message -EntryType Attempting
-                                            Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop
+                                            Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                             Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
@@ -721,7 +721,7 @@ Function Connect-OneShellSystem
                                         {
                                             $message = "Perform Phase 3 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                             Write-OneShellLog -Message $message -EntryType Attempting
-                                            Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop
+                                            Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                             Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
@@ -795,6 +795,84 @@ Function Connect-OneShellSystem
                 {
                     if ($false -eq $ExistingConnectionIsValid)
                     {
+                        $ConnectionReady = $false #we switch this to true when a system is connected and initialized with required modules and settings
+                        $Phase1InitializationCompleted = $(
+                                $message = "Perform Phase 1 Initilization of Local Session for $($serviceObject.Name)"
+                                try
+                                {
+                                    Write-OneShellLog -Message $message -EntryType Attempting
+                                    Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                    Write-OneShellLog -Message $message -EntryType Succeeded
+                                }
+                                catch
+                                {
+                                    $myerror = $_
+                                    Write-OneShellLog -Message $message -EntryType Failed
+                                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
+                                    $false
+                                }
+                        )
+                        $Phase2InitializationCompleted = $(
+                            if ($Phase1InitializationCompleted -ne $false)
+                            {
+                                try
+                                {
+                                    $message = "Import Required Module(s) into Local Session for $($serviceObject.Name)"
+                                    Write-OneShellLog -Message $message -EntryType Attempting
+                                    Import-ModuleInOneShellSystemPSSession -ServiceObject $ServiceObject -ServiceSession $ServiceSession -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                    Write-OneShellLog -Message $message -EntryType Succeeded
+                                }
+                                catch
+                                {
+                                    $myerror = $_
+                                    Write-OneShellLog -Message $message -EntryType Failed
+                                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
+                                    $false
+                                }
+                            }
+                            else
+                            {
+                                $false
+                            }
+                        )
+                        $Phase3InitializationCompleted = $(
+                            if ($Phase2InitializationCompleted -ne $false)
+                            {
+                                try
+                                {
+                                    $message = "Perform Phase 3 Initilization of Local Session for $($serviceObject.Name)"
+                                    Write-OneShellLog -Message $message -EntryType Attempting
+                                    Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                    Write-OneShellLog -Message $message -EntryType Succeeded
+                                }
+                                catch
+                                {
+                                    $myerror = $_
+                                    Write-OneShellLog -Message $message -EntryType Failed
+                                    Write-OneShellLog -Message $myerror.tostring() -ErrorLog
+                                    $false
+                                }
+                                #determine if the session needs further initialization
+                            }#end if
+                            else
+                            {
+                                $false
+                            }
+                        )
+                        $message = "Connection and Initialization of PSSession $($serviceSession.name) for $($serviceobject.name)"
+                        if (@($Phase1InitializationCompleted, $Phase2InitializationCompleted, $Phase3InitializationCompleted) -notcontains $false)
+                        {
+                            Write-OneShellLog -Message $message -EntryType Succeeded
+                            if ($(Test-OneShellSystemConnection -serviceObject $ServiceObject))
+                            {
+                                $ConnectionReady = $true
+                            }
+                        }
+                        else
+                        {
+                            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                            #Remove Module(s)?
+                        }
                         if ($null -ne $ServiceTypeDefinition.DirectConnectSettings.RequiredLocalModule -and $ServiceTypeDefinition.DirectConnectSettings.RequiredLocalModule.count -ge 1)
                         {
                             #add prefixing to below
@@ -844,13 +922,28 @@ function Import-ModuleInOneShellSystemPSSession
         ,
         [parameter(Mandatory)]
         $ServiceSession
+        ,
+        [parameter(Mandatory)]
+        [bool]$UsePSRemoting
     )
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-    $ModuleImportResults = @(
-        if ($null -ne $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport -and $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport.count -ge 1)
+    $serviceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    switch ($UsePSRemoting)
+    {
+        $true
         {
-            foreach ($m in $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport)
+            $Phase2Modules = $serviceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport
+        }
+        $false
+        {
+            $Phase2Modules = $serviceTypeDefinition.DirectConnectSettings.SessionInitialization.Phase2_ModuleImport
+        }
+    }
+    $ModuleImportResults = @(
+        if ($null -ne $Phase2Modules -and $Phase2Modules.count -ge 1)
+        {
+            foreach ($m in $Phase2Modules)
             {
                 $ModuleName = $m.name
                 $ImportModuleParams = @{
@@ -870,9 +963,21 @@ function Import-ModuleInOneShellSystemPSSession
                 }
                 try
                 {
-                    $message = "import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name)."
-                    Write-OneShellLog -Message $message -EntryType Attempting
-                    Invoke-Command -session $ServiceSession -ScriptBlock {&$using:ImportCommand @using:ImportModuleParams} -ErrorAction Stop
+                    switch ($UsePSRemoting)
+                    {
+                        $true
+                        {
+                            $message = "import required module $ModuleName into PSSession $($ServiceSession.name) for System $($serviceObject.Name)."
+                            Write-OneShellLog -Message $message -EntryType Attempting
+                            Invoke-Command -session $ServiceSession -ScriptBlock {&$using:ImportCommand @using:ImportModuleParams} -ErrorAction Stop
+                        }
+                        $false
+                        {
+                            $message = "import required module $ModuleName into Local Session for System $($serviceObject.Name)."
+                            Write-OneShellLog -Message $message -EntryType Attempting
+                            Invoke-Command -ScriptBlock {&$ImportCommand @ImportModuleParams} -ErrorAction Stop
+                        }
+                    }
                     Write-OneShellLog -Message $message -EntryType Succeeded
                     $ModuleImported = $true
                 }
@@ -915,15 +1020,29 @@ function Initialize-OneShellSystemPSSession
         [parameter(Mandatory)]
         [ValidateSet('Phase1_PreModuleImport', 'Phase3')]
         $Phase
+        ,
+        [parameter(Mandatory)]
+        [bool]$UsePSRemoting
     )
     Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-    switch ($null -ne $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.$Phase -and ($ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.$Phase).count -ge 1)
+    $serviceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
+    switch ($UsePSRemoting)
+    {
+        $true
+        {
+            $PhaseCommands = $serviceTypeDefinition.PSRemotingSettings.SessionInitialization.$Phase
+        }
+        $false
+        {
+            $PhaseCommands = $serviceTypeDefinition.DirectConnectSettings.SessionInitialization.$Phase
+        }
+    }
+    switch ($null -ne $PhaseCommands -and ($PhaseCommands).count -ge 1)
     {
         $true
         {
             $InitializationCommandsResults = @(
-                foreach ($cmd in $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.$phase)
+                foreach ($cmd in $PhaseCommands)
                 {
                     $conditionResults = @(
                         foreach ($c in $cmd.conditions)
@@ -970,7 +1089,17 @@ function Initialize-OneShellSystemPSSession
                             }
                             Try
                             {
-                                [void](Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:cmd).command) @using:CmdParams} -ErrorAction Stop)
+                                switch ($UsePSRemoting)
+                                {
+                                    $true
+                                    {
+                                        [void](Invoke-Command -Session $serviceSession -ScriptBlock {& $(($Using:cmd).command) @using:CmdParams} -ErrorAction Stop)
+                                    }
+                                    $false
+                                    {
+                                        [void](Invoke-Command -ScriptBlock {& $(($cmd).command) @CmdParams} -ErrorAction Stop)
+                                    }
+                                }
                                 $true
                             }#end Try
                             Catch

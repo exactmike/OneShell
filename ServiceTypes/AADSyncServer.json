@@ -25,9 +25,14 @@
                 "Version":null
             }
         ],
-        "ConnectCommand":{
-            "Command":  null,
-            "Parameters":  []
+        "SessionInitialization":  {
+            "Phase1_PreModuleImport":  [],
+            "Phase2_ModuleImport":  [
+                {
+                    "name":  "ADSync"
+                }
+            ],
+            "Phase3":  [ ]
         }
     },
     "PSRemotingSettings":{

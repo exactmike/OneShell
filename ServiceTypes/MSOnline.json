@@ -49,13 +49,24 @@
                 "Version": null
             }
         ],
-        "ConnectCommand": {
-            "Command": "Connect-MsolService",
-            "Parameters": [
+        "SessionInitialization": {
+            "Phase1_PreModuleImport": [],
+            "Phase2_ModuleImport": [
                 {
-                    "Name": "Credential",
-                    "ValueType": "ScriptBlock",
-                    "Value": "$ServiceObject.Credentials.Service"
+                    "Name": "MSOnline",
+                    "Version": null
+                }
+            ],
+            "Phase3": [
+                {
+                    "Command": "Connect-MSOLService",
+                    "Parameters": [
+                        {
+                            "Name": "Credential",
+                            "ValueType": "ScriptBlock",
+                            "Value": "$ServiceObject.Credentials.Service"
+                        }
+                    ]
                 }
             ]
         }

@@ -49,13 +49,25 @@
                 "Version":null
             }
         ],
-        "ConnectCommand":{
-            "Command":  "Connect-AzureAD",
-            "Parameters":  [
+        "SessionInitialization":
+        {
+            "Phase1_PreModuleImport":  [],
+            "Phase2_ModuleImport":  [
                 {
-                    "Name":  "Credential",
-                    "ValueType":  "ScriptBlock",
-                    "Value":  "$ServiceObject.Credentials.Service"
+                    "Name":  "AzureAD",
+                    "Version": null
+                }
+            ],
+            "Phase3":  [
+                {
+                    "Command":  "Connect-AzureAD",
+                    "Parameters": [
+                        {
+                            "Name":  "Credential",
+                            "ValueType":  "ScriptBlock",
+                            "Value":  "$ServiceObject.Credentials.Service"
+                        }
+                    ]
                 }
             ]
         }
@@ -63,6 +75,9 @@
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],
+        "RequiredRemoteModule":[
+            "AzureAD"
+        ],
         "ConnectCommand":{
             "Command":null,
             "Parameters":[
