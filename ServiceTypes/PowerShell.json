@@ -11,7 +11,7 @@
             {
                 "Name": "ValueOnly",
                 "ValueType": "Static",
-                "Value": "$True"
+                "Value": true
             }
         ],
         "Validation": [
