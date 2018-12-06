@@ -746,6 +746,14 @@ Function Connect-OneShellSystem
                                     {
                                         $ConnectionReady = $true
                                     }
+                                    else
+                                    {
+                                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                                        if ($null -ne $ServiceSession)
+                                        {
+                                            Remove-PSSession -Session $ServiceSession -ErrorAction Stop
+                                        }
+                                    }
                                 }
                                 else
                                 {
