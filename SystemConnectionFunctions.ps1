@@ -394,8 +394,9 @@ function Test-OneShellSystemConnection
                             )
                             if ($null -ne $value)
                             {
-                                Write-OneShellLog -Message "Testing Expression: '$($ConnectionTestCommandOutput.$($v.name))' $($v.Operator) '$Value'"
-                                Invoke-Expression -Command $("'$($ConnectionTestCommandOutput.$($v.name))' $($v.Operator) '$Value'")
+                                $ValueToTest = $ConnectionTestCommandOutput.$($v.Name)
+                                Write-OneShellLog -Message "Testing Expression: '$ValueToTest' $($v.Operator) '$Value'"
+                                Invoke-Expression -Command $("'$ValueToTest' $($v.Operator) '$Value'")
                             }
                             else {
                                 $false
