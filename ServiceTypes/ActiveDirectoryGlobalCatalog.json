@@ -5,7 +5,7 @@
         "Parameters":  [],
         "Validation":[
             {
-                "Name": "highestCommitedUSN",
+                "Name": "highestCommittedUSN",
                 "ValueType":"Static",
                 "Value": 1,
                 "Operator": "-gt"
