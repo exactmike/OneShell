@@ -274,7 +274,7 @@ function Test-OneShellSystemConnection
                     {
                         $ServiceSession = $ServiceSession[0]
                         $message = "Found PSSession $($ServiceSession.name) for service $($serviceObject.Name)."
-                        #Write-OneShellLog -Message $message -EntryType Notification
+                        Write-OneShellLog -Message $message -EntryType Notification
                         #Test the Session functionality
                         if ($ServiceSession.state -ne 'Opened')
                         {
@@ -287,8 +287,6 @@ function Test-OneShellSystemConnection
                         {
                             Write-OneShellLog -Message "PSSession $($ServiceSession.name) for service $($serviceObject.Name) is in state 'Opened'." -EntryType Notification
                         }
-                        #Write-OneShellLog -Message "Getting Service Type Session Test Commands" -EntryType Notification
-                        $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
                     }
                     0
                     {
@@ -336,7 +334,7 @@ function Test-OneShellSystemConnection
                     $TestCommandParams.$($p.name) = $value
                 }
             }
-            #Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+            Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
             switch ($UsePSRemoting)
             {
                 #determine whether to run the ConnectionTestCommand in Session or directly
@@ -345,9 +343,9 @@ function Test-OneShellSystemConnection
                     $message = "Run $TestCommand in $($serviceSession.name) PSSession"
                     try
                     {
-                        #Write-OneShellLog -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         $ConnectionTestCommandOutput = Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
-                        #Write-OneShellLog -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
@@ -362,9 +360,9 @@ function Test-OneShellSystemConnection
                     $message = "Run $TestCommand for System $($ServiceObject.Name)."
                     try
                     {
-                        #Write-OneShellLog -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         $ConnectionTestCommandOutput = Invoke-Command -ScriptBlock {&$TestCommand @TestCommandParams} -ErrorAction Stop
-                        #Write-OneShellLog -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
@@ -396,6 +394,7 @@ function Test-OneShellSystemConnection
                             )
                             if ($null -ne $value)
                             {
+                                Write-OneShellLog -Message "Testing Expression: '$($ConnectionTestCommandOutput.$($v.name))' $($v.Operator) '$Value'"
                                 Invoke-Expression -Command $("'$($ConnectionTestCommandOutput.$($v.name))' $($v.Operator) '$Value'")
                             }
                             else {
