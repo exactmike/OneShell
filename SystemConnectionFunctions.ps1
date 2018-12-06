@@ -394,7 +394,7 @@ function Test-OneShellSystemConnection
                             )
                             if ($null -ne $value)
                             {
-                                $ValueToTest = $ConnectionTestCommandOutput.$($v.Name)
+                                $ValueToTest = $ConnectionTestCommandOutput | Select-Object -ExpandProperty $v.Name
                                 Write-OneShellLog -Message "Testing Expression: '$ValueToTest' $($v.Operator) '$Value'"
                                 Invoke-Expression -Command $("'$ValueToTest' $($v.Operator) '$Value'")
                             }
