@@ -859,7 +859,7 @@ Function Connect-OneShellSystem
                                 $false
                             }
                         )
-                        $message = "Connection and Initialization of PSSession $($serviceSession.name) for $($serviceobject.name)"
+                        $message = "Connection and Initialization of Local Session for $($serviceobject.name)"
                         if (@($Phase1InitializationCompleted, $Phase2InitializationCompleted, $Phase3InitializationCompleted) -notcontains $false)
                         {
                             Write-OneShellLog -Message $message -EntryType Succeeded
