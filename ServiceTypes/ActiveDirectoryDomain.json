@@ -4,12 +4,7 @@
         "Command":  "Get-ADRootDSE",
         "Parameters":  [],
         "Validation":[
-            {
-                "Name": "highestCommitedUSN",
-                "ValueType":"Static",
-                "Value": 1,
-                "Operator": "-gt"
-            }
+
         ]
     },
     "OrgSystemServiceTypeAttributes":  [
