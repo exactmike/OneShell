@@ -5,10 +5,10 @@
         "Parameters":  [],
         "Validation":[
             {
-                "Name": "highestCommittedUSN",
-                "ValueType":"Static",
-                "Value": 1,
-                "Operator": "-gt"
+                "Name": "defaultNamingContext",
+                "ValueType":"ScriptBlock",
+                "Value": "$ServiceObject.ServiceTypeAttributes.ADDomainDN",
+                "Operator": "-eq"
             }
         ]
     },
@@ -39,6 +39,12 @@
         },
         {
             "Name":  "ADDomainFQDN",
+            "type":  "string",
+            "mandatory":  true,
+            "value":  ""
+        },
+        {
+            "Name":  "ADDomainDN",
             "type":  "string",
             "mandatory":  true,
             "value":  ""
