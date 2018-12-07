@@ -1615,3 +1615,18 @@ function Get-MicrosoftAzureADTenantID
     $URI = 'https://login.windows.net/' + $TenantSubdomainFragment + '.onmicrosoft.com' + '/.well-known/openid-configuration'
     (Invoke-WebRequest -Uri $URI | ConvertFrom-Json).token_endpoint.Split('/')[3]
 }
+function ConvertFrom-FQDN
+{
+    [cmdletbinding()]
+    param(
+        [parameter(Mandatory)]
+        [string[]]$FQDN
+    )
+    process
+    {
+        foreach ($f in $FQDN)
+        {
+            “DC=$($f.replace(“.”, “,DC=”))”
+        }
+    }
+}
