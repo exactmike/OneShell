@@ -6,6 +6,7 @@ function SetOneShellVariables
     [cmdletbinding()]
     Param()
     #Write-OneShellLog -message 'Setting OneShell Module Variables'
+    $Script:PSModuleAutoloadingPreference = 'none'
     $Script:OneShellModuleFolderPath = $PSScriptRoot #Split-Path $((Get-Module -ListAvailable -Name OneShell).Path)
     GetOneShellOrgProfileDirectory
     GetOneShellUserProfileDirectory
