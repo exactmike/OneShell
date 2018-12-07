@@ -364,15 +364,16 @@ function Test-OneShellSystemConnection
                     try
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
-                        Invoke-Command -ScriptBlock {$Global:Original_PSModuleAutoLoadingPreference = $Global:PSModuleAutoLoadingPreference; $PSModuleAutoLoadingPreference = 'none'}
+                        $Global:Original_PSModuleAutoLoadingPreference = $Global:PSModuleAutoLoadingPreference
+                        $PSModuleAutoLoadingPreference = 'none'
                         $ConnectionTestCommandOutput = Invoke-Command -ScriptBlock {&$TestCommand @TestCommandParams} -ErrorAction Stop
-                        Invoke-Command -ScriptBlock {$Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference}
+                        $Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference
                         Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
-                        Invoke-Command -ScriptBlock {$Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference}
+                        $Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
                         return $false
