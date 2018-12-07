@@ -898,7 +898,7 @@ function Set-OneShellOrgProfileSystem
                 $newDynamicParameterParams = @{
                     Name = $a.name
                     Type = $($a.type -as [type])
-                    Mandatory = $a.mandatory
+                    Mandatory = $false #$a.mandatory
                     DPDictionary = $dictionary
                 }
                 if ($true -eq $a.Value) {$newDynamicParameterParams.ValidateSet = $a.Value}
