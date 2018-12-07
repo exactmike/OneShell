@@ -307,34 +307,36 @@ function Test-OneShellSystemConnection
                 #nothing to do here for DirectConnect systems
             }
         }
-        if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand)
+        if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.command)
         {
             $TestCommand = $ServiceTypeDefinition.ConnectionTestCommand.Command
             Write-Verbose -message "Test Command is $TestCommand"
-            $TestCommandParams = @{
-                ErrorAction = 'Stop'
-            }
-            #$testCommandParams.WarningAction = 'SilentlyContinue' #don't add because in constrained PSSessions this might not be allowed
-            if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.Parameters -and $ServiceTypeDefinition.ConnectionTestCommand.Parameters.count -ge 1)
-            {
-                foreach ($p in $ServiceTypeDefinition.ConnectionTestCommand.Parameters)
-                {
-                    $value = $(
-                        switch ($p.ValueType)
-                        {
-                            'Static'
-                            {$p.Value}
-                            'ScriptBlock'
-                            {
-                                $ValueGeneratingScriptBlock = [scriptblock]::Create($p.Value)
-                                &$ValueGeneratingScriptBlock
-                            }
-                        }
-                    )
-                    $TestCommandParams.$($p.name) = $value
-                }
-            }
+            $TestCommandParams = Get-ParameterSplatFromDefinition -ParameterDefinition $ServiceTypeDefinition.ConnectionTestCommand.Parameters -ValueForErrorAction 'Stop'
             Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
+            $PreTestCommands = @(
+                if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.PreTestCommands -and $ServiceTypeDefinition.ConnectionTestCommand.PreTestCommands.count -ge 1)
+                {
+                    foreach ($ptc in $ServiceTypeDefinition.ConnectionTestCommand.PreTestCommands)
+                    {
+                        [pscustomobject]@{
+                            Command = $ptc.Command
+                            Parameters = Get-ParameterSplatFromDefinition -ParameterDefinition $ptc.parameters -ValueForErrorAction 'Stop'
+                        }
+                    }
+                }
+            )
+            $PostTestCommands = @(
+                if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.PostTestCommands -and $ServiceTypeDefinition.ConnectionTestCommand.PostTestCommands.count -ge 1)
+                {
+                    foreach ($ptc in $ServiceTypeDefinition.ConnectionTestCommand.PostTestCommands)
+                    {
+                        [pscustomobject]@{
+                            Command = $ptc.Command
+                            Parameters = Get-ParameterSplatFromDefinition -ParameterDefinition $ptc.parameters -ValueForErrorAction 'Stop'
+                        }
+                    }
+                }
+            )
             switch ($UsePSRemoting)
             {
                 #determine whether to run the ConnectionTestCommand in Session or directly
@@ -345,14 +347,41 @@ function Test-OneShellSystemConnection
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
                         Invoke-Command -Session $ServiceSession -ScriptBlock {$Original_PSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference; $PSModuleAutoLoadingPreference = 'none'}
+                        if ($PreTestCommands.Count -ge 1)
+                        {
+                            foreach ($ptc in $PreTestCommands)
+                            {
+                                $ptcommand = $ptc.Command
+                                $ptcparams = $ptc.Parameters
+                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                            }
+                        }
                         $ConnectionTestCommandOutput = Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
                         Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
+                        if ($PostTestCommands.Count -ge 1)
+                        {
+                            foreach ($ptc in $PostTestCommands)
+                            {
+                                $ptcommand = $ptc.Command
+                                $ptcparams = $ptc.Parameters
+                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                            }
+                        }
                         Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
                         Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
+                        if ($PostTestCommands.Count -ge 1)
+                        {
+                            foreach ($ptc in $PostTestCommands)
+                            {
+                                $ptcommand = $ptc.Command
+                                $ptcparams = $ptc.Parameters
+                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                            }
+                        }
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
                         return $false
@@ -366,14 +395,41 @@ function Test-OneShellSystemConnection
                         Write-OneShellLog -Message $message -EntryType Attempting
                         $Global:Original_PSModuleAutoLoadingPreference = $Global:PSModuleAutoLoadingPreference
                         $Global:PSModuleAutoLoadingPreference = 'none'
+                        if ($PreTestCommands.Count -ge 1)
+                        {
+                            foreach ($ptc in $PreTestCommands)
+                            {
+                                $ptcommand = $ptc.Command
+                                $ptcparams = $ptc.Parameters
+                                Invoke-Command -ScriptBlock {&$ptcommand @ptcparams} -ErrorAction Stop
+                            }
+                        }
                         $ConnectionTestCommandOutput = Invoke-Command -ScriptBlock {&$TestCommand @TestCommandParams} -ErrorAction Stop
                         $Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference
+                        if ($PostTestCommands.Count -ge 1)
+                        {
+                            foreach ($ptc in $PostTestCommands)
+                            {
+                                $ptcommand = $ptc.Command
+                                $ptcparams = $ptc.Parameters
+                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                            }
+                        }
                         Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
                         $Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference
+                        if ($PostTestCommands.Count -ge 1)
+                        {
+                            foreach ($ptc in $PostTestCommands)
+                            {
+                                $ptcommand = $ptc.Command
+                                $ptcparams = $ptc.Parameters
+                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                            }
+                        }
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
                         return $false

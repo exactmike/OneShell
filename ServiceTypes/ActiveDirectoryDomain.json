@@ -1,6 +1,24 @@
 {
     "Name":  "ActiveDirectoryDomain",
     "ConnectionTestCommand":{
+        "PreTestCommands":[
+            {
+                "conditions":  [],
+                "Command":  "Push-Location",
+                "parameters":  []
+            },
+            {
+                "conditions":  [],
+                "Command":  "Set-Location",
+                "parameters":  [
+                    {
+                        "Name":  "Path",
+                        "ValueType":  "ScriptBlock",
+                        "Value":  "$($ServiceObject.ServiceTypeAttributes.PSDriveName + \u0027:\u0027)"
+                    }
+                ]
+            }
+        ],
         "Command":  "Get-ADRootDSE",
         "Parameters":  [],
         "Validation":[
@@ -9,6 +27,13 @@
                 "ValueType":"ScriptBlock",
                 "Value": "$ServiceObject.ServiceTypeAttributes.ADDomainDN",
                 "Operator": "-eq"
+            }
+        ],
+        "PostTestCommands":[
+            {
+                "conditions":  [],
+                "Command":  "Pop-Location",
+                "parameters":  []
             }
         ]
     },
