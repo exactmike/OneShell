@@ -365,7 +365,7 @@ function Test-OneShellSystemConnection
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
                         $Global:Original_PSModuleAutoLoadingPreference = $Global:PSModuleAutoLoadingPreference
-                        $PSModuleAutoLoadingPreference = 'none'
+                        $Global:PSModuleAutoLoadingPreference = 'none'
                         $ConnectionTestCommandOutput = Invoke-Command -ScriptBlock {&$TestCommand @TestCommandParams} -ErrorAction Stop
                         $Global:PSModuleAutoLoadingPreference = $Global:Original_PSModuleAutoLoadingPreference
                         Write-OneShellLog -Message $message -EntryType Succeeded
