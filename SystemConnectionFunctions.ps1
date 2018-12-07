@@ -344,12 +344,15 @@ function Test-OneShellSystemConnection
                     try
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
+                        Invoke-Command -Session $ServiceSession -ScriptBlock {$Original_PSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference; $PSModuleAutoLoadingPreference = 'none'}
                         $ConnectionTestCommandOutput = Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
+                        Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
                         Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
+                        Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
                         return $false
@@ -361,12 +364,15 @@ function Test-OneShellSystemConnection
                     try
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
+                        Invoke-Command -Session $ServiceSession -ScriptBlock {$Original_PSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference; $PSModuleAutoLoadingPreference = 'none'}
                         $ConnectionTestCommandOutput = Invoke-Command -ScriptBlock {&$TestCommand @TestCommandParams} -ErrorAction Stop
+                        Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
                         Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
+                        Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
                         Write-OneShellLog -message $myerror.tostring() -ErrorLog
                         return $false
