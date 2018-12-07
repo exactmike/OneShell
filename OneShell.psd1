@@ -69,6 +69,7 @@
     #FunctionsToExport = '*'
     FunctionsToExport = @(
         'Connect-OneShellSystem'
+        'ConvertFrom-FQDN'
         'Export-OneShellData'
         'Export-OneShellOrgProfile'
         'Export-OneShellUserProfile'
