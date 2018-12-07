@@ -1638,6 +1638,7 @@ function Get-ParameterSplatFromDefinition
         [parameter(Mandatory,ValueFromPipeline)]
         [AllowNull()]
         [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [psobject[]]$ParameterDefinition
         ,
         [parameter()]
