@@ -252,7 +252,10 @@ Function New-DynamicParameter
     if (-not $null -eq $DPDictionary)
     {
         Write-Verbose -Message "Using Existing DPDictionary"
-        $DPDictionary.Add($Name, $Parameter)
+        if (-not $DPDictionary.ContainsKey($Name))
+        {
+            $DPDictionary.Add($Name, $Parameter)
+        }
         $DPDictionary
     }
     else
