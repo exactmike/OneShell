@@ -412,7 +412,7 @@ function Test-OneShellSystemConnection
                             {
                                 $ptcommand = $ptc.Command
                                 $ptcparams = $ptc.Parameters
-                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                                Invoke-Command -ScriptBlock {&$ptcommand @ptcparams} -ErrorAction Stop
                             }
                         }
                         Write-OneShellLog -Message $message -EntryType Succeeded
@@ -427,7 +427,7 @@ function Test-OneShellSystemConnection
                             {
                                 $ptcommand = $ptc.Command
                                 $ptcparams = $ptc.Parameters
-                                Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:ptcommand @using:ptcparams} -ErrorAction Stop
+                                Invoke-Command -ScriptBlock {&$ptcommand @ptcparams} -ErrorAction Stop
                             }
                         }
                         Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
