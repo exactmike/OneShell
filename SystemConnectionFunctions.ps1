@@ -346,7 +346,10 @@ function Test-OneShellSystemConnection
                     try
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
-                        Invoke-Command -Session $ServiceSession -ScriptBlock {$Original_PSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference; $PSModuleAutoLoadingPreference = 'none'}
+                        if ($false -eq $ServiceTypeDefinition.PSRemotingSettings.ExpectConstrainedSession)
+                        {
+                            Invoke-Command -Session $ServiceSession -ScriptBlock {$Original_PSModuleAutoLoadingPreference = $PSModuleAutoLoadingPreference; $PSModuleAutoLoadingPreference = 'none'}
+                        }
                         if ($PreTestCommands.Count -ge 1)
                         {
                             foreach ($ptc in $PreTestCommands)
@@ -357,7 +360,10 @@ function Test-OneShellSystemConnection
                             }
                         }
                         $ConnectionTestCommandOutput = Invoke-Command -Session $ServiceSession -ScriptBlock {&$Using:TestCommand @using:TestCommandParams} -ErrorAction Stop
-                        Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
+                        if ($false -eq $ServiceTypeDefinition.PSRemotingSettings.ExpectConstrainedSession)
+                        {
+                            Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
+                        }
                         if ($PostTestCommands.Count -ge 1)
                         {
                             foreach ($ptc in $PostTestCommands)
@@ -372,7 +378,10 @@ function Test-OneShellSystemConnection
                     catch
                     {
                         $myerror = $_
-                        Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
+                        if ($false -eq $ServiceTypeDefinition.PSRemotingSettings.ExpectConstrainedSession)
+                        {
+                            Invoke-Command -Session $serviceSession -ScriptBlock {$PSModuleAutoLoadingPreference = $Original_PSModuleAutoLoadingPreference}
+                        }
                         if ($PostTestCommands.Count -ge 1)
                         {
                             foreach ($ptc in $PostTestCommands)
