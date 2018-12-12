@@ -1,15 +1,12 @@
 {
     "Name": "ExchangeOnline",
-    "ConnectionTestCommand":{
+    "ServiceTypeAttributes": [],
+    "ConnectionTest":{
         "Command":"Get-OrganizationConfig",
         "Parameters":[],
         "Validation":[]
     },
-    "OrgSystemServiceTypeAttributes": [],
-    "DefaultsToWellKnownEndPoint": true,
-    "WellKnownEndPointURI": "https://outlook.office365.com/powershell-liveid/",
-    "WellKnownEndPointAuthMethod": "Basic",
-    "EndPointServiceTypeAttributes": [],
+    "Disconnect":[]
     "DirectConnectSettings": {
         "Supported":false,
         "RequiredLocalModule": [],
@@ -18,6 +15,9 @@
             "Parameters":  []
         }
     },
+    "DefaultsToWellKnownEndPoint": true,
+    "WellKnownEndPointURI": "https://outlook.office365.com/powershell-liveid/",
+    "WellKnownEndPointAuthMethod": "Basic",
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],
@@ -49,9 +49,9 @@
         "ExpectConstrainedSession": true,
         "SessionInitialization":
         {
-            "Phase1_PreModuleImport":  [],
-            "Phase2_ModuleImport":  [],
-            "Phase3":  []
+            "PreModuleImport":  [],
+            "ModuleImport":  [],
+            "PostModuleImport":  []
         },
         "Import":{
             "ModulesAndCommands":[],

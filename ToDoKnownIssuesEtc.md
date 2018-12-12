@@ -2,13 +2,13 @@
 
 ## In Progress And Help Wanted
 
+- [ ] Build out connection tracking for PSRemoting and DirectConnect systems to enable disconnect/cleanup at module unload and/or profile changes
 - [ ] Add Exchange 2007 ServiceType support - need to add configuration of AdminSessionADSettings variable - ViewEntireForest = $true
 - [ ] Add Required Local Module checking for PSRemoting and DirectConnect systems (see SkypeForBusinessOnline as an example of a service type that really needs this)
 - [ ] Add checking for 'Supported' for switching / setting systems to UsePSRemoting to prevent misconfiguration
 - [ ] Add Connect-OneShellSystem -autoconnect for autoconnecting all autoconnect systems in the current profile
-- [ ] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands
 - [ ] Add [OutputType([void])] to functions that don't return output and appropriate OutputType to other functions
-- [ ] Build out connection tracking for PSRemoting and DirectConnect systems to enable disconnect/cleanup at module unload and/or profile changes
+- [ ] Add parameters for UsePsRemoting and DirectConnect to Connect-OneShellSystem
 
 ## Pending and Help Wanted
 
@@ -86,3 +86,4 @@
 - [x] replace code in New-OneShellOrgProfileSystemEndpoint that refers specifically to ExchangeOnline and ExchangeOnlineComplianceCenter and instead base the code on the ServiceTypeDefinition having a well known endpoint configured. This will (theoretically) allow for other users to  more easily seemlessly extend OneShell ServiceType support without code changes.
 - [x] Add Non-PSRemoting Service Attribute and Connection support
 - [x] Re-Work Connect-OneShellSystem -reconnect for DirectConnect systems.
+- [x] add select-profile prompting anytime a user doesn't specify identity with the set-*profile* commands

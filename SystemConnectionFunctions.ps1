@@ -307,16 +307,16 @@ function Test-OneShellSystemConnection
                 #nothing to do here for DirectConnect systems
             }
         }
-        if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.command)
+        if ($null -ne $serviceTypeDefinition.ConnectionTest.command)
         {
-            $TestCommand = $ServiceTypeDefinition.ConnectionTestCommand.Command
+            $TestCommand = $serviceTypeDefinition.ConnectionTest.Command
             Write-Verbose -message "Test Command is $TestCommand"
-            $TestCommandParams = Get-ParameterSplatFromDefinition -ParameterDefinition $ServiceTypeDefinition.ConnectionTestCommand.Parameters -ValueForErrorAction 'Stop'
+            $TestCommandParams = Get-ParameterSplatFromDefinition -ParameterDefinition $serviceTypeDefinition.ConnectionTest.Parameters -ValueForErrorAction 'Stop'
             Write-OneShellLog -Message "Found Service Type Command to use for $($serviceObject.ServiceType): $testCommand" -EntryType Notification
             $PreTestCommands = @(
-                if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.PreTestCommands -and $ServiceTypeDefinition.ConnectionTestCommand.PreTestCommands.count -ge 1)
+                if ($null -ne $serviceTypeDefinition.ConnectionTest.PreTestCommands -and $serviceTypeDefinition.ConnectionTest.PreTestCommands.count -ge 1)
                 {
-                    foreach ($ptc in $ServiceTypeDefinition.ConnectionTestCommand.PreTestCommands)
+                    foreach ($ptc in $serviceTypeDefinition.ConnectionTest.PreTestCommands)
                     {
                         [pscustomobject]@{
                             Command = $ptc.Command
@@ -326,9 +326,9 @@ function Test-OneShellSystemConnection
                 }
             )
             $PostTestCommands = @(
-                if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.PostTestCommands -and $ServiceTypeDefinition.ConnectionTestCommand.PostTestCommands.count -ge 1)
+                if ($null -ne $serviceTypeDefinition.ConnectionTest.PostTestCommands -and $serviceTypeDefinition.ConnectionTest.PostTestCommands.count -ge 1)
                 {
-                    foreach ($ptc in $ServiceTypeDefinition.ConnectionTestCommand.PostTestCommands)
+                    foreach ($ptc in $serviceTypeDefinition.ConnectionTest.PostTestCommands)
                     {
                         [pscustomobject]@{
                             Command = $ptc.Command
@@ -339,7 +339,7 @@ function Test-OneShellSystemConnection
             )
             switch ($UsePSRemoting)
             {
-                #determine whether to run the ConnectionTestCommand in Session or directly
+                #determine whether to run the Connection Test in Session or directly
                 $true
                 {
                     $message = "Run $TestCommand in $($serviceSession.name) PSSession"
@@ -447,10 +447,10 @@ function Test-OneShellSystemConnection
             }
             if ($null -ne $ConnectionTestCommandOutput)
             {
-                if ($null -ne $ServiceTypeDefinition.ConnectionTestCommand.Validation -and $ServiceTypeDefinition.ConnectionTestCommand.Validation.Count -ge 1)
+                if ($null -ne $serviceTypeDefinition.ConnectionTest.Validation -and $serviceTypeDefinition.ConnectionTest.Validation.Count -ge 1)
                 {
                     $Validations = @(
-                        foreach ($v in $ServiceTypeDefinition.ConnectionTestCommand.Validation)
+                        foreach ($v in $serviceTypeDefinition.ConnectionTest.Validation)
                         {
                             $Value = $(
                                 switch ($v.ValueType)
@@ -747,7 +747,7 @@ Function Connect-OneShellSystem
                                         try
                                         {
                                             Write-OneShellLog -Message $message -EntryType Attempting
-                                            Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                            Initialize-OneShellSystemPSSession -Phase PreModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                             Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
@@ -793,7 +793,7 @@ Function Connect-OneShellSystem
                                         {
                                             $message = "Perform Phase 3 Initilization of PSSession $($serviceSession.Name) for $($serviceObject.Name)"
                                             Write-OneShellLog -Message $message -EntryType Attempting
-                                            Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                            Initialize-OneShellSystemPSSession -Phase PostModuleImport -ServiceObject $ServiceObject -ServiceSession $ServiceSession -endpoint $e -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                             Write-OneShellLog -Message $message -EntryType Succeeded
                                         }
                                         catch
@@ -881,7 +881,7 @@ Function Connect-OneShellSystem
                                 try
                                 {
                                     Write-OneShellLog -Message $message -EntryType Attempting
-                                    Initialize-OneShellSystemPSSession -Phase Phase1_PreModuleImport -ServiceObject $ServiceObject -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                    Initialize-OneShellSystemPSSession -Phase PreModuleImport -ServiceObject $ServiceObject -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                     Write-OneShellLog -Message $message -EntryType Succeeded
                                 }
                                 catch
@@ -922,7 +922,7 @@ Function Connect-OneShellSystem
                                 {
                                     $message = "Perform Phase 3 Initilization of Local Session for $($serviceObject.Name)"
                                     Write-OneShellLog -Message $message -EntryType Attempting
-                                    Initialize-OneShellSystemPSSession -Phase Phase3 -ServiceObject $ServiceObject -ErrorAction Stop -UsePSRemoting $UsePSRemoting
+                                    Initialize-OneShellSystemPSSession -Phase PostModuleImport -ServiceObject $ServiceObject -ErrorAction Stop -UsePSRemoting $UsePSRemoting
                                     Write-OneShellLog -Message $message -EntryType Succeeded
                                 }
                                 catch
@@ -981,11 +981,11 @@ function Import-ModuleInOneShellSystemPSSession
     {
         $true
         {
-            $Phase2Modules = $serviceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport
+            $Phase2Modules = $serviceTypeDefinition.PSRemotingSettings.SessionInitialization.ModuleImport
         }
         $false
         {
-            $Phase2Modules = $serviceTypeDefinition.DirectConnectSettings.SessionInitialization.Phase2_ModuleImport
+            $Phase2Modules = $serviceTypeDefinition.DirectConnectSettings.SessionInitialization.ModuleImport
         }
     }
     $ModuleImportResults = @(
@@ -1066,7 +1066,7 @@ function Initialize-OneShellSystemPSSession
         $endpoint
         ,
         [parameter(Mandatory)]
-        [ValidateSet('Phase1_PreModuleImport', 'Phase3')]
+        [ValidateSet('PreModuleImport', 'PostModuleImport')]
         $Phase
         ,
         [parameter(Mandatory)]
@@ -1447,13 +1447,13 @@ Function ImportOneShellSystemPSSession
     }
     else
     {
-        switch ($ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport.count)
+        switch ($ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.ModuleImport.count)
         {
             $null
             {}
             {$_ -ge 1}
             {
-                $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.Phase2_ModuleImport.Name
+                $ImportPSSessionParams.Module = $ServiceTypeDefinition.PSRemotingSettings.SessionInitialization.ModuleImport.Name
             }
         }
     }

@@ -140,9 +140,9 @@ function AddServiceTypeAttributesToGenericOrgSystemObject
     }
     $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
     Write-Verbose -Message "Using ServiceTypeDefinition $($ServiceTypeDefinition.name)"
-    if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+    if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.System -and $ServiceTypeDefinition.ServiceTypeAttributes.System.count -ge 1)
     {
-        foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.name)
+        foreach ($a in $ServiceTypeDefinition.ServiceTypeAttributes.System.name)
         {
             $Value = $(Get-Variable -Name $a -Scope Local).Value
             Write-Verbose -Message "Value for $a is $($value -join ',')"
@@ -780,9 +780,9 @@ function New-OneShellOrgProfileSystem
     {
         #build any service type specific parameters that may be needed
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-        if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.System -and $ServiceTypeDefinition.ServiceTypeAttributes.System.count -ge 1)
         {
-            foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+            foreach ($a in $ServiceTypeDefinition.ServiceTypeAttributes.System)
             {
                 $newDynamicParameterParams = @{
                     Name = $a.name
@@ -891,9 +891,9 @@ function Set-OneShellOrgProfileSystem
     {
         #build any service type specific parameters that may be needed
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-        if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.System -and $ServiceTypeDefinition.ServiceTypeAttributes.System.count -ge 1)
         {
-            foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+            foreach ($a in $ServiceTypeDefinition.ServiceTypeAttributes.System)
             {
                 $newDynamicParameterParams = @{
                     Name = $a.name
@@ -940,10 +940,10 @@ function Set-OneShellOrgProfileSystem
             #set the ServiceType Attributes
             #make sure they exist on the object
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $System.ServiceType
-            Add-RequiredMember -RequiredMember $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name -InputObject $System.ServiceTypeAttributes
+            Add-RequiredMember -RequiredMember $ServiceTypeDefinition.ServiceTypeAttributes.System.Name -InputObject $System.ServiceTypeAttributes
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
+                if ($vp.name -in $ServiceTypeDefinition.ServiceTypeAttributes.System.Name)
                 {$System.ServiceTypeAttributes.$($vp.name) = $($vp.value)}
             }
             #update the system entry in the org profile
@@ -976,9 +976,9 @@ function Set-OneShellOrgProfileSystemServiceTypeAttribute
     {
         #build any service type specific parameters that may be needed
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-        if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.System -and $ServiceTypeDefinition.ServiceTypeAttributes.System.count -ge 1)
         {
-            foreach ($a in $ServiceTypeDefinition.OrgSystemServiceTypeAttributes)
+            foreach ($a in $ServiceTypeDefinition.ServiceTypeAttributes.System)
             {
                 $newDynamicParameterParams = @{
                     Name = $a.name
@@ -1010,9 +1010,9 @@ function Set-OneShellOrgProfileSystemServiceTypeAttribute
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             #Set the ServiceType Specific System Attributes
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-            if ($null -ne $serviceTypeDefinition.OrgSystemServiceTypeAttributes -and $serviceTypeDefinition.OrgSystemServiceTypeAttributes.count -ge 1)
+            if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.System -and $ServiceTypeDefinition.ServiceTypeAttributes.System.count -ge 1)
             {
-                $ServiceTypeAttributeNames = @($ServiceTypeDefinition.OrgSystemServiceTypeAttributes.Name)
+                $ServiceTypeAttributeNames = @($ServiceTypeDefinition.ServiceTypeAttributes.System.Name)
             }
             foreach ($vp in $AllValuedParameters)
             {
@@ -1187,9 +1187,9 @@ function New-OneShellOrgProfileSystemEndpoint
     DynamicParam
     {
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-        if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint -and $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint.count -ge 1)
         {
-            foreach ($a in $ServiceTypeDefinition.EndpointServiceTypeAttributes)
+            foreach ($a in $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint)
             {
                 $Dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.Mandatory -DPDictionary $Dictionary
             }
@@ -1223,9 +1223,9 @@ function New-OneShellOrgProfileSystemEndpoint
             #Add any servicetype specific attributes that were specified
             ###########################################################
             $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-            if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
+            if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint -and $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint.count -ge 1)
             {
-                $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
+                $ServiceTypeAttributeNames = @($ServiceTypeDefinition.ServiceTypeAttributes.Endpoint.Name)
                 foreach ($n in $ServiceTypeAttributeNames)
                 {
                     $GenericEndpointObject.ServiceTypeAttributes | Add-Member -Name $n -Value $null -MemberType NoteProperty
@@ -1364,9 +1364,9 @@ function Set-OneShellOrgProfileSystemEndpoint
     DynamicParam
     {
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceType
-        if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint -and $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint.count -ge 1)
         {
-            foreach ($a in $ServiceTypeDefinition.EndpointServiceTypeAttributes)
+            foreach ($a in $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint)
             {
                 $Dictionary = New-DynamicParameter -Name $a.name -Type $($a.type -as [type]) -Mandatory $a.Mandatory -DPDictionary $Dictionary
             }
@@ -1403,9 +1403,9 @@ function Set-OneShellOrgProfileSystemEndpoint
             }
         }
         #Set any servicetype specific attributes that were specified
-        if ($null -ne $serviceTypeDefinition.EndpointServiceTypeAttributes -and $serviceTypeDefinition.EndpointServiceTypeAttributes.count -ge 1)
+        if ($null -ne $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint -and $ServiceTypeDefinition.ServiceTypeAttributes.Endpoint.count -ge 1)
         {
-            $ServiceTypeAttributeNames = @($ServiceTypeDefinition.EndpointServiceTypeAttributes.Name)
+            $ServiceTypeAttributeNames = @($ServiceTypeDefinition.ServiceTypeAttributes.Endpoint.Name)
         }
         foreach ($vp in $AllValuedParameters)
         {

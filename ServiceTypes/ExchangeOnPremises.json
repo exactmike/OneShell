@@ -1,22 +1,21 @@
 {
     "Name": "ExchangeOnPremises",
-    "ConnectionTestCommand":{
+    "ServiceTypeAttributes": {
+        "EndPoint": [
+            {
+                "Name": "PreferredDomainControllers",
+                "type": "string[]",
+                "Mandatory": false,
+                "Value": []
+            }
+        ]
+    },
+    "ConnectionTest":{
         "Command":"Get-OrganizationConfig",
         "Parameters":[],
         "Validation":[]
     },
-    "OrgSystemServiceTypeAttributes": [],
-    "DefaultsToWellKnownEndPoint": false,
-    "WellKnownEndPointURI": null,
-    "WellKnownEndPointAuthMethod": null,
-    "EndPointServiceTypeAttributes": [
-        {
-            "Name": "PreferredDomainControllers",
-            "type": "string[]",
-            "Mandatory": false,
-            "Value": []
-        }
-    ],
+    "Disconnect":[],
     "DirectConnectSettings": {
         "Supported": false,
         "RequiredLocalModule": [],
@@ -25,6 +24,9 @@
             "Parameters": []
         }
     },
+    "DefaultsToWellKnownEndPoint": false,
+    "WellKnownEndPointURI": null,
+    "WellKnownEndPointAuthMethod": null,
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],
@@ -50,9 +52,9 @@
         },
         "ExpectConstrainedSession": true,
         "SessionInitialization":{
-            "Phase1_PreModuleImport": [],
-            "Phase2_ModuleImport": [],
-            "Phase3": [
+            "PreModuleImport": [],
+            "ModuleImport": [],
+            "PostModuleImport": [
                 {
                     "conditions": [
                         {

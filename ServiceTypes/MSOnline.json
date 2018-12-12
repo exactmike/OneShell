@@ -1,6 +1,33 @@
 {
     "Name": "MSOnline",
-    "ConnectionTestCommand": {
+    "ServiceTypeAttributes": {
+        "System":[
+            {
+                "Name": "TenantSubDomain",
+                "Type": "string",
+                "Mandatory": true,
+                "Value": ""
+            },
+            {
+                "Name": "TenantID",
+                "Type": "string",
+                "Mandatory": true,
+                "Value": ""
+            },
+            {
+                "Name": "AzureEnvironmentName",
+                "Type": "string",
+                "Mandatory": false,
+                "Value": [
+                    "AzureCloud",
+                    "AzureChinaCloud",
+                    "AzureUSGovernment",
+                    "AzureGermanyCloud"
+                ]
+            }
+        ]
+    },
+    "ConnectionTest": {
         "Command": "Get-MsolCompanyInformation",
         "Parameters": [],
         "Validation": [
@@ -12,35 +39,8 @@
             }
         ]
     },
-    "OrgSystemServiceTypeAttributes": [
-        {
-            "Name": "TenantSubDomain",
-            "Type": "string",
-            "Mandatory": true,
-            "Value": ""
-        },
-        {
-            "Name": "TenantID",
-            "Type": "string",
-            "Mandatory": true,
-            "Value": ""
-        },
-        {
-            "Name": "AzureEnvironmentName",
-            "Type": "string",
-            "Mandatory": false,
-            "Value": [
-                "AzureCloud",
-                "AzureChinaCloud",
-                "AzureUSGovernment",
-                "AzureGermanyCloud"
-            ]
-        }
-    ],
-    "DefaultsToWellKnownEndPoint": false,
-    "WellKnownEndPointURI": null,
-    "WellKnownEndPointAuthMethod": null,
-    "EndPointServiceTypeAttributes": [],
+    "Disconnect":[],
+
     "DirectConnectSettings": {
         "Supported": true,
         "RequiredLocalModule": [
@@ -50,14 +50,14 @@
             }
         ],
         "SessionInitialization": {
-            "Phase1_PreModuleImport": [],
-            "Phase2_ModuleImport": [
+            "PreModuleImport": [],
+            "ModuleImport": [
                 {
                     "Name": "MSOnline",
                     "Version": null
                 }
             ],
-            "Phase3": [
+            "PostModuleImport": [
                 {
                     "Command": "Connect-MSOLService",
                     "Parameters": [
@@ -71,6 +71,9 @@
             ]
         }
     },
+    "DefaultsToWellKnownEndPoint": false,
+    "WellKnownEndPointURI": null,
+    "WellKnownEndPointAuthMethod": null,
     "PSRemotingSettings": {
         "Supported": true,
         "RequiredLocalModule": [],
@@ -91,14 +94,14 @@
         },
         "ExpectConstrainedSession": false,
         "SessionInitialization": {
-            "Phase1_PreModuleImport": [],
-            "Phase2_ModuleImport": [
+            "PreModuleImport": [],
+            "ModuleImport": [
                 {
                     "Name": "MSOnline",
                     "Version": null
                 }
             ],
-            "Phase3": [
+            "PostModuleImport": [
                 {
                     "Command": "Connect-MSOLService",
                     "Parameters": [

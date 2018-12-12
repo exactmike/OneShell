@@ -1,6 +1,7 @@
 {
     "Name":  "AADSyncServer",
-    "ConnectionTestCommand":{
+    "ServiceTypeAttributes":  {},
+    "ConnectionTest":{
         "Command": "Get-ADSyncGlobalSettings",
         "Parameters":  [],
         "Validation":[
@@ -12,11 +13,7 @@
             }
         ]
     },
-    "OrgSystemServiceTypeAttributes":  [],
-    "DefaultsToWellKnownEndPoint":  false,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [],
+    "Disconnect":[]
     "DirectConnectSettings": {
         "Supported": true,
         "RequiredLocalModule": [
@@ -26,15 +23,18 @@
             }
         ],
         "SessionInitialization":  {
-            "Phase1_PreModuleImport":  [],
-            "Phase2_ModuleImport":  [
+            "PreModuleImport":  [],
+            "ModuleImport":  [
                 {
                     "name":  "ADSync"
                 }
             ],
-            "Phase3":  [ ]
+            "PostModuleImport":  [ ]
         }
     },
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],
@@ -55,13 +55,13 @@
         },
         "ExpectConstrainedSession": false,
         "SessionInitialization":  {
-            "Phase1_PreModuleImport":  [],
-            "Phase2_ModuleImport":  [
+            "PreModuleImport":  [],
+            "ModuleImport":  [
                 {
                     "name":  "ADSync"
                 }
             ],
-            "Phase3":  [ ]
+            "PostModuleImport":  [ ]
         },
         "Import":{
             "ModulesAndCommands":[

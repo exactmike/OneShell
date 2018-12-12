@@ -1,6 +1,34 @@
 {
     "Name":  "AzureAD",
-    "ConnectionTestCommand":{
+    "ServiceTypeAttributes":  {
+        "System":[
+            {
+                "Name":  "TenantSubDomain",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            },
+            {
+                "Name":  "TenantID",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            },
+            {
+                "Name":  "AzureEnvironmentName",
+                "Type":  "string",
+                "Mandatory":  false,
+                "Value": [
+                    "AzureCloud",
+                    "AzureChinaCloud",
+                    "AzureUSGovernment",
+                    "AzureGermanyCloud"
+                ]
+            }
+        ],
+        "Endpoint":[]
+    },
+    "ConnectionTest":{
         "Command":"Get-AzureADTenantDetail",
         "Parameters":[],
         "Validation":[
@@ -12,35 +40,12 @@
             }
         ]
     },
-    "OrgSystemServiceTypeAttributes":  [
+    "Disconnect":[
         {
-            "Name":  "TenantSubDomain",
-            "Type":  "string",
-            "Mandatory":  true,
-            "Value":  ""
-        },
-        {
-            "Name":  "TenantID",
-            "Type":  "string",
-            "Mandatory":  true,
-            "Value":  ""
-        },
-        {
-            "Name":  "AzureEnvironmentName",
-            "Type":  "string",
-            "Mandatory":  false,
-            "Value": [
-                "AzureCloud",
-                "AzureChinaCloud",
-                "AzureUSGovernment",
-                "AzureGermanyCloud"
-            ]
+            "Command":  "Disconnect-AzureAD",
+            "Parameters": []
         }
-        ],
-    "DefaultsToWellKnownEndPoint":  false,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [],
+    ],
     "DirectConnectSettings": {
         "Supported": true,
         "RequiredLocalModule": [
@@ -51,14 +56,14 @@
         ],
         "SessionInitialization":
         {
-            "Phase1_PreModuleImport":  [],
-            "Phase2_ModuleImport":  [
+            "PreModuleImport":  [],
+            "ModuleImport":  [
                 {
                     "Name":  "AzureAD",
                     "Version": null
                 }
             ],
-            "Phase3":  [
+            "PostModuleImport":  [
                 {
                     "Command":  "Connect-AzureAD",
                     "Parameters": [
@@ -72,6 +77,9 @@
             ]
         }
     },
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],
@@ -96,14 +104,14 @@
         "ExpectConstrainedSession": false,
         "SessionInitialization":
         {
-            "Phase1_PreModuleImport":  [],
-            "Phase2_ModuleImport":  [
+            "PreModuleImport":  [],
+            "ModuleImport":  [
                 {
                     "Name":  "AzureAD",
                     "Version": null
                 }
             ],
-            "Phase3":  [
+            "PostModuleImport":  [
                 {
                     "Command":  "Connect-AzureAD",
                     "Parameters": [

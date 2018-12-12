@@ -1,6 +1,46 @@
 {
     "Name":  "ActiveDirectoryGlobalCatalog",
-    "ConnectionTestCommand":{
+    "ServiceTypeAttributes":  {
+        "System": [
+            {
+                "Name":  "ADUserAttributes",
+                "type":  "string[]",
+                "mandatory":  false,
+                "value":  []
+            },
+            {
+                "name":  "ADGroupAttributes",
+                "type":  "string[]",
+                "mandatory":  false,
+                "value":  []
+            },
+            {
+                "Name":  "ADContactAttributes",
+                "type":  "string[]",
+                "mandatory":  false,
+                "value":  []
+            },
+            {
+                "Name":  "ADForestFQDN",
+                "type":  "string",
+                "mandatory":  true,
+                "value":  ""
+            },
+            {
+                "Name":  "ADForestDN",
+                "type":  "string",
+                "mandatory":  true,
+                "value":  ""
+            },
+            {
+                "Name":  "PSDriveName",
+                "type":  "string",
+                "mandatory":  true,
+                "value":  ""
+            }
+        ]
+    },
+    "ConnectionTest":{
         "PreTestCommands":[
             {
                 "conditions":  [],
@@ -37,54 +77,28 @@
             }
         ]
     },
-    "OrgSystemServiceTypeAttributes":  [
+    "Disconnect":[
         {
-            "Name":  "ADUserAttributes",
-            "type":  "string[]",
-            "mandatory":  false,
-            "value":  [
-
-                        ]
+            "command":  "Set-Location",
+            "parameters":  [
+                {
+                    "Name":  "Path",
+                    "ValueType":  "ScriptBlock",
+                    "Value":  "$Home"
+                }
+            ]
         },
         {
-            "name":  "ADGroupAttributes",
-            "type":  "string[]",
-            "mandatory":  false,
-            "value":  [
-
-                        ]
-        },
-        {
-            "Name":  "ADContactAttributes",
-            "type":  "string[]",
-            "mandatory":  false,
-            "value":  [
-
-                        ]
-        },
-        {
-            "Name":  "ADForestFQDN",
-            "type":  "string",
-            "mandatory":  true,
-            "value":  ""
-        },
-        {
-            "Name":  "ADForestDN",
-            "type":  "string",
-            "mandatory":  true,
-            "value":  ""
-        },
-        {
-            "Name":  "PSDriveName",
-            "type":  "string",
-            "mandatory":  true,
-            "value":  ""
+            "command":  "Remove-PSDrive",
+            "parameters":  [
+                {
+                    "Name":  "Name",
+                    "ValueType":  "scriptblock",
+                    "Value":  "$ServiceObject.ServiceTypeAttributes.PSDriveName"
+                }
+            ]
         }
     ],
-    "DefaultsToWellKnownEndPoint":  false,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [],
     "DirectConnectSettings": {
         "Supported": true,
         "RequiredLocalModule": [
@@ -94,7 +108,7 @@
             }
         ],
         "SessionInitialization": {
-            "Phase1_PreModuleImport":  [
+            "PreModuleImport":  [
                 {
                     "conditions":  [],
                     "Command":  "New-Item",
@@ -122,12 +136,12 @@
                     ]
                 }
             ],
-            "Phase2_ModuleImport":  [
+            "ModuleImport":  [
                 {
                     "name":  "ActiveDirectory"
                 }
             ],
-            "Phase3":  [
+            "PostModuleImport":  [
                 {
                     "conditions":  [],
                     "command":  "New-PSDrive",
@@ -167,6 +181,9 @@
             ]
         }
     },
+    "DefaultsToWellKnownEndPoint":  false,
+    "WellKnownEndPointURI":  null,
+    "WellKnownEndPointAuthMethod":  null,
     "PSRemotingSettings": {
         "Supported": true,
         "RequiredLocalModule":[],
@@ -187,7 +204,7 @@
         },
         "ExpectConstrainedSession": false,
         "SessionInitialization":  {
-            "Phase1_PreModuleImport":  [
+            "PreModuleImport":  [
                 {
                     "Command":  "New-Item",
                     "parameters":  [
@@ -209,12 +226,12 @@
                     ]
                 }
             ],
-            "Phase2_ModuleImport":  [
+            "ModuleImport":  [
                 {
                     "name":  "ActiveDirectory"
                 }
             ],
-            "Phase3":  [
+            "PostModuleImport":  [
                 {
                     "conditions":  [],
                     "command":  "New-PSDrive",

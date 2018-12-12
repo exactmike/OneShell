@@ -1,6 +1,6 @@
 {
     "Name":  "SkypeForBusinessOnline",
-    "ConnectionTestCommand":{
+    "ConnectionTest":{
         "Command":"Get-CSTenant",
         "Parameters":[],
         "Validation":[
@@ -12,20 +12,22 @@
             }
         ]
     },
-    "OrgSystemServiceTypeAttributes":  [
-        {
-            "Name":  "TenantSubDomain",
-            "Type":  "string",
-            "Mandatory":  true,
-            "Value":  ""
-        },
-        {
-            "Name":  "TenantID",
-            "Type":  "string",
-            "Mandatory":  true,
-            "Value":  ""
-        }
-    ],
+    "ServiceTypeAttributes":  {
+        "System":[
+            {
+                "Name":  "TenantSubDomain",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            },
+            {
+                "Name":  "TenantID",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            }
+        ]
+    },
     "DefaultsToWellKnownEndPoint":  true,
     "WellKnownEndPointURI":  null,
     "WellKnownEndPointAuthMethod":  null,
@@ -52,9 +54,9 @@
         "ExpectConstrainedSession": true,
         "SessionInitialization":
         {
-            "Phase1_PreModuleImport":  [],
-            "Phase2_ModuleImport":  [],
-            "Phase3":  []
+            "PreModuleImport":  [],
+            "ModuleImport":  [],
+            "PostModuleImport":  []
         },
         "Import":{
             "ModulesAndCommands":[],

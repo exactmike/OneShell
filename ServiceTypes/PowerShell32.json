@@ -1,6 +1,16 @@
 {
     "Name": "PowerShell32",
-    "ConnectionTestCommand": {
+    "ServiceTypeAttributes": {
+        "System":[
+            {
+                "name": "SessionManagementGroups",
+                "type": "string[]",
+                "mandatory": false,
+                "value": []
+            }
+        ]
+    },
+    "ConnectionTest": {
         "Command": "Get-Variable",
         "Parameters": [
             {
@@ -23,18 +33,7 @@
             }
         ]
     },
-    "OrgSystemServiceTypeAttributes": [
-        {
-            "name": "SessionManagementGroups",
-            "type": "string[]",
-            "mandatory": false,
-            "value": []
-        }
-    ],
-    "DefaultsToWellKnownEndPoint": false,
-    "WellKnownEndPointURI": null,
-    "WellKnownEndPointAuthMethod": null,
-    "EndPointServiceTypeAttributes": [],
+    "Disconnect":[],
     "DirectConnectSettings": {
         "Supported": false,
         "RequiredLocalModule": [],
@@ -43,6 +42,9 @@
             "Parameters": []
         }
     },
+    "DefaultsToWellKnownEndPoint": false,
+    "WellKnownEndPointURI": null,
+    "WellKnownEndPointAuthMethod": null,
     "PSRemotingSettings": {
         "Supported": true,
         "RequiredLocalModule": [],
@@ -63,9 +65,9 @@
         },
         "ExpectConstrainedSession": false,
         "SessionInitialization": {
-            "Phase1_PreModuleImport": [],
-            "Phase2_ModuleImport": [],
-            "Phase3": []
+            "PreModuleImport": [],
+            "ModuleImport": [],
+            "PostModuleImport": []
         },
         "Import": {
             "ModulesAndCommands": [],
