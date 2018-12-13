@@ -13,6 +13,10 @@
 . $(Join-Path $PSScriptRoot 'LoggingFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'VariableFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'RegisterArgumentCompleter.ps1')
+
+$FunctionsPath = $(Join-Path -Path $PSScriptRoot -ChildPath 'Functions')
+$FunctionFiles = Get-ChildItem -Recurse -File -Path $FunctionsPath
+foreach ($ff in $FunctionFiles) {. $ff.fullname}
 ##########################################################################################################
 #Initialization
 ##########################################################################################################

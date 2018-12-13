@@ -1,4 +1,4 @@
-function Find-EndpointToUse
+function FindEndpointToUse
 {
     [cmdletbinding()]
     param
