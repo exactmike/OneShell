@@ -2,10 +2,8 @@
 ##########################################################################################################
 #Import functions from included ps1 files
 ##########################################################################################################
-#. $(Join-Path $PSScriptRoot 'ProfileWizardFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'UtilityFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'UserInputFunctions.ps1')
-#. $(Join-Path $PSScriptRoot 'SystemConnectionFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'ProfileFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'TestFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'SkypeOnline.ps1')
@@ -14,8 +12,7 @@
 . $(Join-Path $PSScriptRoot 'VariableFunctions.ps1')
 . $(Join-Path $PSScriptRoot 'RegisterArgumentCompleter.ps1')
 
-$FunctionsPath = $(Join-Path -Path $PSScriptRoot -ChildPath 'Functions')
-$FunctionFiles = Get-ChildItem -Recurse -File -Path $FunctionsPath
+$FunctionFiles = Get-ChildItem -Recurse -File -Path $(Join-Path -Path $PSScriptRoot -ChildPath 'Functions')
 foreach ($ff in $FunctionFiles) {. $ff.fullname}
 ##########################################################################################################
 #Initialization
