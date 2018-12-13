@@ -1,117 +1,6 @@
 ##########################################################################################################
 #Remote System Connection Functions
 ##########################################################################################################
-function Find-EndPointToUse
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter()]
-        [AllowNull()]
-        $EndPointIdentity
-        ,
-        $ServiceObject
-        ,
-        $EndPointGroup
-        ,
-        [parameter()]
-        [ValidateSet('Admin', 'MRS')]
-        $EndPointType = 'Admin'
-    )
-    $FilteredEndpoints = @(
-        switch ($null -eq $EndPointIdentity)
-        {
-            $false
-            {
-                #Write-verbose -Message "Endpoint Identity was specified.  Return only that endpoint."
-                if ($EndPointIdentity -notin $ServiceObject.EndPoints.Identity)
-                {throw("Invalid EndPoint Identity $EndPointIdentity was specified. System $($ServiceObject.Identity) has no such endpoint.")}
-                else
-                {
-                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.Identity -eq $EndPointIdentity}
-                }
-            }
-            $true
-            {
-                #Write-verbose -message "Endpoint Identity was not specified.  Return all applicable endpoints, with preferred first if specified."
-                switch ($null -eq $ServiceObject.PreferredEndpoint)
-                {
-                    $false
-                    {
-                        #Write-Verbose -Message "Preferred Endpoint is specified."
-                        $PreEndpoints = @(
-                            switch ($null -eq $EndPointGroup)
-                            {
-                                $true
-                                {
-                                    #Write-Verbose -message 'EndPointGroup was not specified'
-                                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType} | Sort-Object -Property Precedence
-                                }#end false
-                                $false
-                                {
-                                    #Write-Verbose -message 'EndPointGroup was specified'
-                                    $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType -and $_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
-                                }#end true
-                            }#end switch
-                        )
-                        $PreEndpoints | Where-Object {$_.Identity -eq $ServiceObject.PreferredEndpoint} | ForEach-Object {$_.Precedence = -1}
-                        $PreEndpoints
-                    }#end false
-                    $true
-                    {
-                        #Write-Verbose -Message "Preferred Endpoint is not specified."
-                        switch ($null -eq $EndPointGroup)
-                        {
-                            $true
-                            {
-                                #Write-Verbose -message 'EndPointGroup was not specified'
-                                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType} | Sort-Object -Property Precedence
-                            }#end false
-                            #EndPointGroup was specified
-                            $false
-                            {
-                                #Write-Verbose -message 'EndPointGroup was specified'
-                                $ServiceObject.EndPoints | Where-Object -FilterScript {$_.EndpointType -eq $EndpointType -and $_.EndPointGroup -eq $EndPointGroup} | Sort-Object -Property Precedence
-                            }#end true
-                        }#end switch
-                    }#end true
-                }#end switch
-            }#end $true
-        }#end switch
-    )
-    $GroupedEndpoints = @($FilteredEndpoints | Group-Object -Property Precedence)
-    $GroupedEndpoints
-}
-#end function Find-EndPointToUse
-function Get-WellKnownEndPoint
-{
-    [cmdletbinding()]
-    param
-    (
-        $ServiceObject
-    )
-    $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType
-    @(
-        [PSCustomObject]@{
-            Identity               = $ServiceObject.ServiceType + '-WellKnownEndPoint'
-            AddressType            = 'URL'
-            Address                = $ServiceTypeDefinition.WellKnownEndPointURI
-            ServicePort            = $null
-            UseTLS                 = $false
-            ProxyEnabled           = $ServiceObject.Defaults.ProxyEnabled
-            CommandPrefix          = $ServiceObject.Defaults.CommandPrefix
-            AuthenticationRequired = $true
-            AuthMethod             = $ServiceTypeDefinition.WellKnownEndPointAuthMethod
-            EndPointGroup          = $null
-            EndPointType           = 'Admin'
-            ServiceTypeAttributes  = $null
-            ServiceType            = $ServiceObject.ServiceType
-            Precedence             = -1
-            PSRemoting             = $true
-        }
-    ) | Group-Object
-}
-#end function Find-ExchangeOnlineEndpointToUse
 function Find-CommandPrefixToUse
 {
     [CmdletBinding()]
@@ -562,7 +451,7 @@ function Get-OneShellSystemEndpointPSSessionParameter
         $NewPSSessionParams
     }#end end
 }
-#end function Get-EndPointPSSessionParameter
+#end function Get-EndpointPSSessionParameter
 Function Connect-OneShellSystem
 {
     [cmdletbinding(DefaultParameterSetName = 'Default')]
@@ -572,13 +461,13 @@ Function Connect-OneShellSystem
         [parameter(ParameterSetName = 'Reconnect', ValueFromPipelineByPropertyName, ValueFromPipeline)]
         [string[]]$Identity
         ,
-        [parameter(ParameterSetName = 'EndPointIdentity')]
+        [parameter(ParameterSetName = 'EndpointIdentity')]
         [ValidateNotNullOrEmpty()]
-        [string]$EndPointIdentity #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
+        [string]$EndpointIdentity #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
         ,
-        [parameter(ParameterSetName = 'EndPointGroup')]
+        [parameter(ParameterSetName = 'EndpointGroup')]
         [ValidateNotNullOrEmpty()]
-        [string]$EndPointGroup #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
+        [string]$EndpointGroup #An endpoint identity from existing endpoints configure for this system. Overrides the otherwise specified endpoint.
         ,
         [parameter()]
         [ValidateScript( {($_.length -ge 2 -and $_.length -le 5) -or [string]::isnullorempty($_)})]
@@ -676,18 +565,18 @@ Function Connect-OneShellSystem
                         }#end if
                         Write-OneShellLog -Message "No Existing Valid Session found for $($ServiceObject.name)" -EntryType Notification
                         #create and test the new session
-                        $EndPointGroups = @(
+                        $EndpointGroups = @(
                             #Write-Verbose -Message "Selecting an Endpoint"
-                            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndPoint -and ($null -eq $EndPointIdentity -or (Test-IsNullOrWhiteSpace -String $EndPointIdentity)))
+                            switch ($ServiceTypeDefinition.DefaultsToWellKnownEndpoint -and ($null -eq $EndpointIdentity -or (Test-IsNullOrWhiteSpace -String $EndpointIdentity)))
                             {
                                 $true
                                 {
                                     #Write-Verbose -Message "Get Well Known Endpoint(s)."
-                                    Get-WellKnownEndPoint -ServiceObject $ServiceObject -ErrorAction Stop
+                                    Get-WellKnownEndpoint -ServiceObject $ServiceObject -ErrorAction Stop
                                 }
                                 Default
                                 {
-                                    $FindEndPointToUseParams = @{
+                                    $FindEndpointToUseParams = @{
                                         ErrorAction   = 'Stop'
                                         ServiceObject = $ServiceObject
                                     }
@@ -695,22 +584,22 @@ Function Connect-OneShellSystem
                                     {
                                         'Default'
                                         {}
-                                        'EndPointIdentity'
-                                        {$FindEndPointToUseParams.EndPointIdentity = $EndPointIdentity}
-                                        'EndPointGroup'
-                                        {$FindEndPointToUseParams.EndPointGroup = $EndPointGroup}
+                                        'EndpointIdentity'
+                                        {$FindEndpointToUseParams.EndpointIdentity = $EndpointIdentity}
+                                        'EndpointGroup'
+                                        {$FindEndpointToUseParams.EndpointGroup = $EndpointGroup}
                                         Default
                                         {}
                                     }
-                                    Find-EndPointToUse @FindEndPointToUseParams
+                                    Find-EndpointToUse @FindEndpointToUseParams
                                 }
                             }
                         )
-                        if ($null -eq $EndPointGroups -or $EndPointGroups.Count -eq 0)
+                        if ($null -eq $EndpointGroups -or $EndpointGroups.Count -eq 0)
                         {throw("No endpoint found for system $($serviceObject.Name), $($serviceObject.Identity)")}
                         $ConnectionReady = $false #we switch this to true when a session is connected and initialized with required modules and settings
                         #Work through the endpoint groups to try connecting in order of precedence
-                        for ($i = 0; $i -lt $EndPointGroups.count -and $ConnectionReady -eq $false; $i++)
+                        for ($i = 0; $i -lt $EndpointGroups.count -and $ConnectionReady -eq $false; $i++)
                         {
                             #get the first endpoint group and randomly order them, then work through them one at a time until successfully connected
                             $g = $endPointGroups[$i]

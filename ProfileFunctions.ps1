@@ -166,9 +166,9 @@ function NewGenericSystemEndpointObject
         CommandPrefix          = $null
         AuthenticationRequired = $null
         AuthMethod             = $null
-        EndPointGroup          = $null
+        EndpointGroup          = $null
         Precedence             = $null
-        EndPointType           = $null
+        EndpointType           = $null
         ServiceTypeAttributes  = [PSCustomObject]@{}
         ServiceType            = $null
         PSRemoting             = $null
@@ -1171,14 +1171,14 @@ function New-OneShellOrgProfileSystemEndpoint
         $AuthMethod
         ,
         [parameter()]
-        [string]$EndPointGroup
+        [string]$EndpointGroup
         ,
         [parameter()]
         [int16]$Precedence
         ,
         [parameter()]
         [ValidateSet('Admin', 'MRSProxyServer')]
-        [string]$EndPointType = 'Admin'
+        [string]$EndpointType = 'Admin'
         ,
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -path $_})]
@@ -1217,7 +1217,7 @@ function New-OneShellOrgProfileSystemEndpoint
             $AllValuedParameters = Get-AllParametersWithAValue -BoundParameters $PSBoundParameters -AllParameters $MyInvocation.MyCommand.Parameters
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'AddressType', 'Address', 'ServicePort', 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod', 'EndPointGroup', 'EndPointType', 'ServiceType', 'Precedence')
+                if ($vp.name -in 'AddressType', 'Address', 'ServicePort', 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod', 'EndpointGroup', 'EndpointType', 'ServiceType', 'Precedence')
                 {$GenericEndpointObject.$($vp.name) = $($vp.value)}
             }
             #Add any servicetype specific attributes that were specified
@@ -1348,14 +1348,14 @@ function Set-OneShellOrgProfileSystemEndpoint
         $AuthMethod
         ,
         [parameter()]
-        $EndPointGroup
+        $EndpointGroup
         ,
         [parameter()]
         [int16]$Precedence
         ,
         [parameter()]
         [ValidateSet('Admin', 'MRSProxyServer')]
-        [string]$EndPointType = 'Admin'
+        [string]$EndpointType = 'Admin'
         ,
         [parameter()]
         [ValidateScript( {Test-DirectoryPath -path $_})]
@@ -1398,7 +1398,7 @@ function Set-OneShellOrgProfileSystemEndpoint
             #Set the new endpoint object attributes
             foreach ($vp in $AllValuedParameters)
             {
-                if ($vp.name -in 'AddressType', 'Address', 'ServicePort', 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod', 'EndPointGroup', 'EndPointType', 'ServiceType', 'Precedence')
+                if ($vp.name -in 'AddressType', 'Address', 'ServicePort', 'UseTLS', 'ProxyEnabled', 'CommandPrefix', 'AuthenticationRequired', 'AuthMethod', 'EndpointGroup', 'EndpointType', 'ServiceType', 'Precedence')
                 {$endpoint.$($vp.name) = $($vp.value)}
             }
         }
@@ -1442,10 +1442,10 @@ function Get-OneShellOrgProfileSystemEndpoint
     {
         #Get the System
         $System = Get-OneShellOrgProfileSystem -Identity $SystemIdentity -Path $Path -ErrorAction Stop -ProfileIdentity $ProfileIdentity
-        $EndPoints = @(
+        $Endpoints = @(
             $System.endpoints | Where-Object  -FilterScript {$_.Identity -in $identity -or $_.Address -in $Identity -or (Test-IsNullOrWhiteSpace -String $identity)}
         )
-        $EndPoints
+        $Endpoints
     }
 }
 #end function Get-OneShellOrgProfileSystemEndpoint
@@ -2599,17 +2599,17 @@ function Select-OneShellOrgProfileSystemEndpoint
     param
     (
         [parameter(Mandatory)]
-        $EndPoints
+        $Endpoints
         ,
         [parameter(Mandatory)]
         [ValidateSet('Remove', 'Edit', 'Associate')]
         [string]$Operation
     )
     $message = "Select endpoint to $Operation"
-    $Choices = @(foreach ($i in $EndPoints) {"$($i.ServiceType):$($i.address):$($i.Identity)"})
+    $Choices = @(foreach ($i in $Endpoints) {"$($i.ServiceType):$($i.address):$($i.Identity)"})
     #$whichone = Read-Choice -Message $message -Choices $Choices -DefaultChoice 0 -Title $message -Numbered -Vertical
     $whichone = Read-PromptForChoice -Message $message -Choices $Choices -DefaultChoice 0 -Numbered
-    $EndPoints[$whichone]
+    $Endpoints[$whichone]
 }
 #end function Select-OneShellOrgProfileSystemEndpoint
 function Select-OneShellUserProfileCredential

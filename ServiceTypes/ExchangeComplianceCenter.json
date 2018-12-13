@@ -15,9 +15,9 @@
             "Parameters":  []
         }
     },
-    "DefaultsToWellKnownEndPoint": true,
-    "WellKnownEndPointURI":  "https://ps.compliance.protection.outlook.com/powershell-liveid/",
-    "WellKnownEndPointAuthMethod": "Basic",
+    "DefaultsToWellKnownEndpoint": true,
+    "WellKnownEndpointURI":  "https://ps.compliance.protection.outlook.com/powershell-liveid/",
+    "WellKnownEndpointAuthMethod": "Basic",
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],

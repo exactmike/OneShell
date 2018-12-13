@@ -15,9 +15,9 @@
             "Parameters":  []
         }
     },
-    "DefaultsToWellKnownEndPoint": true,
-    "WellKnownEndPointURI": "https://outlook.office365.com/powershell-liveid/",
-    "WellKnownEndPointAuthMethod": "Basic",
+    "DefaultsToWellKnownEndpoint": true,
+    "WellKnownEndpointURI": "https://outlook.office365.com/powershell-liveid/",
+    "WellKnownEndpointAuthMethod": "Basic",
     "PSRemotingSettings":{
         "Supported": true,
         "RequiredLocalModule":[],

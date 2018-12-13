@@ -27,9 +27,9 @@
             "PostModuleImport":  []
         }
     },
-    "DefaultsToWellKnownEndPoint": false,
-    "WellKnownEndPointURI": null,
-    "WellKnownEndPointAuthMethod": null,
+    "DefaultsToWellKnownEndpoint": false,
+    "WellKnownEndpointURI": null,
+    "WellKnownEndpointAuthMethod": null,
     "PSRemotingSettings":{
         "Supported": false,
         "RequiredLocalModule":[],

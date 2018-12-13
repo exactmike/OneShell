@@ -28,10 +28,10 @@
             }
         ]
     },
-    "DefaultsToWellKnownEndPoint":  true,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [],
+    "DefaultsToWellKnownEndpoint":  true,
+    "WellKnownEndpointURI":  null,
+    "WellKnownEndpointAuthMethod":  null,
+    "EndpointServiceTypeAttributes":  [],
     "DirectConnectSettings": {
         "Supported": false,
         "RequiredLocalModule": [],
