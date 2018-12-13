@@ -40,7 +40,6 @@
         ]
     },
     "Disconnect":[],
-
     "DirectConnectSettings": {
         "Supported": true,
         "RequiredLocalModule": [

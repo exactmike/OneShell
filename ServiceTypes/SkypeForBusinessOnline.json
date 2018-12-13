@@ -1,17 +1,5 @@
 {
     "Name":  "SkypeForBusinessOnline",
-    "ConnectionTest":{
-        "Command":"Get-CSTenant",
-        "Parameters":[],
-        "Validation":[
-            {
-                "Name":  "TenantID",
-                "ValueType":  "ScriptBlock",
-                "Value":  "$ServiceObject.ServiceTypeAttributes.TenantID",
-                "Operator":"-eq"
-            }
-        ]
-    },
     "ServiceTypeAttributes":  {
         "System":[
             {
@@ -28,6 +16,19 @@
             }
         ]
     },
+    "ConnectionTest":{
+        "Command":"Get-CSTenant",
+        "Parameters":[],
+        "Validation":[
+            {
+                "Name":  "TenantID",
+                "ValueType":  "ScriptBlock",
+                "Value":  "$ServiceObject.ServiceTypeAttributes.TenantID",
+                "Operator":"-eq"
+            }
+        ]
+    },
+    "Disconnect":[],
     "DefaultsToWellKnownEndpoint":  true,
     "WellKnownEndpointURI":  null,
     "WellKnownEndpointAuthMethod":  null,

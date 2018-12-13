@@ -6,7 +6,7 @@
         "Parameters":[],
         "Validation":[]
     },
-    "Disconnect":[]
+    "Disconnect":[],
     "DirectConnectSettings": {
         "Supported":false,
         "RequiredLocalModule": [],
