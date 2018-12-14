@@ -97,7 +97,8 @@ function SetOneShellVariables
     $Script:Stamp = GetTimeStamp
     $Script:UserProfileTypeLatestVersion = 1.4
     $script:OrgProfileTypeLatestVersion = 1.2
-    $script:ManagedConnections = @{}
+    $script:ManagedConnections = @()
+    $script:ManagedConnectionID = 0
     if (-not (Test-Path -Path variable:Script:ImportedSessionModules))
     {
         New-Variable -Name 'ImportedSessionModules' -Value @{} -Description 'Modules Imported From OneShell Sessions' -Scope Script
