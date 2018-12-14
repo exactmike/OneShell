@@ -17,6 +17,8 @@
 
 ## Pending and Help Wanted
 
+- [ ] Add function(s) to facilitate building a ServiceType
+- [ ] Test (thoroughly) on PowerShell (Core) and implement ssh remoting options. Document any ServiceType module dependencies that would hinder connection to that ServiceType from Core.
 - [ ] fix Set-OneShellUserProfile* functions so that path is preserved for user profiles when editing in a non-default location
 - [ ] call update-OneShellUserProfilesystem in every set-OneShellUserProfile* cmdlet to catch recently added orgprofilesystems
 - [ ] if Set-OneShellUserProfile* functions are used against the current user profile then automatically run use-oneshelluserprofile to update the active profile
