@@ -27,6 +27,9 @@ Function Connect-OneShellSystem
         ,
         [parameter(Mandatory, ParameterSetName = 'Reconnect')]
         [switch]$Reconnect
+        ,
+        [parameter(Mandatory, ParameterSetName = 'AutoConnect')]
+        [switch]$AutoConnect
     )
     begin
     {
@@ -40,6 +43,10 @@ Function Connect-OneShellSystem
             {
                 $Identity = @(Get-Pssession | Where-Object {$_.State -eq 'Broken'} | ForEach-Object {$_.name.split('%')[0]} | Where-Object {$_ -in $script:CurrentSystems.Identity})
             }
+        }
+        if ($PSCmdlet.ParameterSetName -eq 'AutoConnect')
+        {
+            $Identity = @(Get-OneShellSystem | Where-Object -FilterScript {$_.AutoConnect -eq $true} | Select-Object -ExpandProperty Identity)
         }
         foreach ($id in $Identity)
         {
