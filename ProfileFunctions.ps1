@@ -2807,6 +2807,18 @@ function Set-OneShellUserProfileDirectory
 
     if (-not $PSBoundParameters.ContainsKey('DoNotPersist'))
     {
+        if (-not (Test-Path -Path $DefaultPath -PathType Container))
+        {
+            Write-Verbose -Message "Creating Directory $DefaultPath" -Verbose
+            try
+            {
+                [void](New-Item -Path $DefaultPath -ItemType Directory -ErrorAction Stop)
+            }
+            catch
+            {
+                throw($_)
+            }
+        }
         $PersistObject = [PSCustomObject]@{
             UserProfilePath = $Path
         }
@@ -2814,7 +2826,6 @@ function Set-OneShellUserProfileDirectory
         $PersistFilePath = Join-Path -Path $DefaultPath -ChildPath $PersistFileName
         if ((Test-IsWriteableDirectory -path $DefaultPath))
         {
-
             $PersistObject | ConvertTo-Json | Out-File -Encoding utf8 -FilePath $PersistFilePath
         }
         else
