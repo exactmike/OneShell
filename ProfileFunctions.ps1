@@ -720,7 +720,7 @@ function New-OneShellOrgProfileSystem
         ,
         [parameter(ValueFromPipelineByPropertyName)]
         [validateset($true, $false)]
-        [bool]$UsePSRemoting
+        [bool]$UsePSRemoting = $true
         ,
         [parameter(ValueFromPipelineByPropertyName)]
         [ValidateSet('Basic', 'Kerberos', 'Integrated')]

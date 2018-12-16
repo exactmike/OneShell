@@ -65,8 +65,8 @@
             {
                 "Name": "defaultNamingContext",
                 "ValueType":"ScriptBlock",
-                "Value": "$ServiceObject.ServiceTypeAttributes.ADForestDN",
-                "Operator": "-eq"
+                "Value": "*$ServiceObject.ServiceTypeAttributes.ADForestDN",
+                "Operator": "-like"
             }
         ],
         "PostTestCommands":[
