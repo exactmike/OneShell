@@ -1576,6 +1576,8 @@ function Add-RequiredMember
     [CmdletBinding()]
     param(
         [Parameter(Mandatory, Position = 1)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
         [string[]]$RequiredMember
         ,
         [Parameter(Mandatory, ValueFromPipeline, Position = 2)]

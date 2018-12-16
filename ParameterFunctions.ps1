@@ -333,7 +333,7 @@ function Get-AllParametersWithAValue
         {
             try
             {
-                Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {$null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)}
+                Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {($null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)) -or $BoundParameters.ContainsKey($k)}
             }
             catch
             {

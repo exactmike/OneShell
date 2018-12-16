@@ -55,10 +55,10 @@
 - [ ] Need to add explicit loading of required module to establish PSSession for special cases (like SkypeForBusinessOnline)
 - [ ] Connection to MSOnline system types can fail when a different credential than the logged on user is used.  This may be isolated to SSO/Federation scenarios but the scope is currently unclear. This does not affect connections to other AzureAD system types or Exchange Online.
 - [ ] If you remove a credential from an User Profile the references to that credential in individual systems are left behind.  They have to be updated by usage of Set-OneShellUserProfileSystemCredential.
-- [ ] Get-AllParametersWithAValue leaves out bound parameters that intentially include a $null value.  Need to add an override switch OR exempt bound parameters from this logic.
 
 ## Completed Items
 
+- [x] Get-AllParametersWithAValue leaves out bound parameters that intentially include a $null value.  Need to add an override switch OR exempt bound parameters from this logic.
 - [x] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
 - [x] fix user provided User Profile folder path if they include a trailing \
 - [x] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead(From Joe S)
