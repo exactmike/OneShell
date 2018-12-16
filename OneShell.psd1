@@ -12,7 +12,7 @@
     RootModule        = 'OneShell.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '2.2.6'
+    ModuleVersion     = '2.2.7'
 
     # ID used to uniquely identify this module
     GUID              = 'bd4390dc-a8ad-4bce-8d69-f53ccf8e4163'

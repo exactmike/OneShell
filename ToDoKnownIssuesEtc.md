@@ -28,7 +28,6 @@
 - [ ] Add support for [multi-geo in Exchange Online Systems]<https://docs.microsoft.com/en-us/office365/enterprise/multi-geo-capabilities-in-exchange-online>
 - [ ] Add Remove-* functions for OrgProfile, UserProfile, and related where they don't exist
 - [ ] $PSModuleAutoloadingPreference = 'none' when creating PSSessions for types of systems other than PowerShell Remoting Specific sessions
-- [ ] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
 - [ ] Write GUI/Wizard Functions and/or UniveralDashboard interface for Org and user Profile Creation
 - [ ] Add Clean Up Code for Sessions, imported modules, and the handful of global variables oneshell might create with the [module's onremove capability:] <https://stackoverflow.com/questions/24475572/restoring-a-powershell-alias-when-a-module-is-unloaded>
 - [ ] Add CommandPrefix validation for org and user profile systems new and set functions (check for duplicate prefixes or nulls across the same service type or overlapping service types)
@@ -39,6 +38,7 @@
 
 ## Help Wanted Service Types to Add
 
+- [ ] add SQLServer Service Type using dbatools module (dbatools needs a couple contributions to make this happen)
 - [ ] Add LotusNotesDatabase ServiceType support
 - [ ] Add MigrationWiz/BitTitan ServiceType Support
 - [ ] Add Azure AD RMS ServiceType Support <https://docs.microsoft.com/en-us/information-protection/deploy-use/install-powershell>
@@ -59,9 +59,9 @@
 
 ## Completed Items
 
-- [x] Finish SQL ServiceType support (initialization) - use dbatools module instead of the previously used POSH_ADO module? Yes, dbatools IN PROGRESS
+- [x] add filter to getpotential* functions for profiletype attribute to only return the right kind of profile(s)
 - [x] fix user provided User Profile folder path if they include a trailing \
-- [x] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead (in progress) (From Joe S)
+- [x] Endpoint prevented from being added to ComplianceCenter and ExchangeOnline types . . . ? no, but warn instead(From Joe S)
 - [x] Write Org Profile Creation/Editing Functions
 - [x] Write User Profile Creation/Editing Functions
 - [x] AD Properties/Schema info into AD systems in Org Profiles

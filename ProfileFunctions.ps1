@@ -27,7 +27,11 @@ function GetPotentialOrgProfiles
     Write-Verbose -Message "Found $($jsonProfiles.count) json Files"
     $PotentialOrgProfiles = @(
         foreach ($file in $JSONProfiles)
-        {Import-JSON -Path $file.fullname | Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru}
+        {
+            Import-JSON -Path $file.fullname |
+            Where-Object -FilterScript {$_.ProfileType -eq 'OneShellOrgProfile'} |
+            Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru
+        }
     )
     Write-Verbose -Message "Found $($PotentialOrgProfiles.count) Potential Org Profiles"
     if ($PotentialOrgProfiles.Count -lt 1)
@@ -62,7 +66,9 @@ function GetPotentialUserProfiles
     $PotentialUserProfiles = @(
         foreach ($file in $JSONProfiles)
         {
-            Get-Content -Path $file.fullname -Raw | ConvertFrom-Json
+            Import-JSON -Path $file.fullname |
+            Where-Object -FilterScript {$_.Profiletype -eq 'OneShellUserProfile'} |
+            Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru
         }
     )
     if ($PotentialUserProfiles.Count -lt 1)
