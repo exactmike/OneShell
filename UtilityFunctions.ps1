@@ -38,7 +38,7 @@
         $Script:ServiceTypes = @(
             foreach ($stf in $ServiceTypeFiles)
             {
-                import-JSON -Path $stf.fullname -ErrorAction Stop # need to add a uniqueness detection for overrides / prevention of duplicate types
+                Import-Json -Path $stf.fullname -ErrorAction Stop # need to add a uniqueness detection for overrides / prevention of duplicate types
             }
         )
     }
@@ -600,7 +600,7 @@ function Remove-ExistingObjectFromMultivaluedAttribute
     $ParentObject
 }
 #end function Remove-ExistingObjectFromMultivaluedAttribute
-function Import-JSON
+function Import-Json
 {
     [cmdletbinding()]
     param
@@ -643,7 +643,7 @@ function Import-JSON
         }
     }
 }
-#end function Import-JSON
+#end function Import-Json
 function Get-ArrayIndexForValue
 {
     [cmdletbinding()]

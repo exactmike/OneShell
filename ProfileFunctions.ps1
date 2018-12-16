@@ -20,7 +20,7 @@ function GetPotentialOrgProfiles
     $JSONProfiles = @(
         foreach ($p in $Path)
         {
-            Write-Verbose -Message "Getting JSON Files From $p"
+            Write-Verbose -Message "Getting json Files From $p"
             (Get-ChildItem -Path "$p\*" -Include '*.json' -Exclude 'OneShellSystemSettings.json')
         }
     )
@@ -28,7 +28,7 @@ function GetPotentialOrgProfiles
     $PotentialOrgProfiles = @(
         foreach ($file in $JSONProfiles)
         {
-            Import-JSON -Path $file.fullname |
+            Import-Json -Path $file.fullname |
             Where-Object -FilterScript {$_.ProfileType -eq 'OneShellOrgProfile'} |
             Add-Member -MemberType NoteProperty -Name DirectoryPath -Value $File.DirectoryName -PassThru
         }
@@ -1622,9 +1622,9 @@ Function Export-OneShellUserProfile
         $path = $script:OneShellUserProfilePath
     )
     if ($profile.Identity -is 'GUID')
-    {$name = $($profile.Identity.Guid) + '.JSON'}
+    {$name = $($profile.Identity.Guid) + '.json'}
     else
-    {$name = $($profile.Identity) + '.JSON'}
+    {$name = $($profile.Identity) + '.json'}
     $fullpath = Join-Path -Path $path -ChildPath $name
     $ConvertToJsonParams = @{
         InputObject = $profile
@@ -2754,13 +2754,13 @@ function GetOneShellOrgProfileDirectory
     $SystemFilePath = Join-Path -Path $SystemDirectory -ChildPath $PersistFileName
     if (Test-Path -Path $UserFilePath -PathType Leaf)
     {
-        $Script:OneShellOrgProfilePath = $(Import-JSON -Path $UserFilePath).OrgProfilePath
+        $Script:OneShellOrgProfilePath = $(Import-Json -Path $UserFilePath).OrgProfilePath
     }
     else
     {
         if (Test-Path -Path $SystemFilePath -PathType Leaf)
         {
-            $Script:OneShellOrgProfilePath = $(Import-JSON -Path $SystemFilePath).OrgProfilePath
+            $Script:OneShellOrgProfilePath = $(Import-Json -Path $SystemFilePath).OrgProfilePath
         }
     }
     if ([string]::IsNullOrWhiteSpace($Script:OneShellOrgProfilePath))
@@ -2852,7 +2852,7 @@ function GetOneShellUserProfileDirectory
     $UserFilePath = Join-Path -Path $UserDirectory -ChildPath $PersistFileName
     if (Test-Path -Path $UserFilePath -PathType Leaf)
     {
-        $Script:OneShellUserProfilePath = $(Import-JSON -Path $UserFilePath).UserProfilePath
+        $Script:OneShellUserProfilePath = $(Import-Json -Path $UserFilePath).UserProfilePath
     }
     if ([string]::IsNullOrWhiteSpace($Script:OneShellUserProfilePath))
     {
