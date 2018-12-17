@@ -1702,12 +1702,10 @@ function Set-OneShellUserProfile
                 {
                     if ($p.key -in 'ProfileFolder', 'LogFolder', 'ExportDataFolder', 'InputFilesFolder')
                     {
-                        if ($p.value -like '*\' -or $p.value -like '*/')
-                        {$ProfileFolder = join-path (split-path -path $p.value -Parent) (split-path -Path $p.value -Leaf)}
-                        if (-not (Test-Path -PathType Container -Path $ProfileFolder))
+                        if (-not (Test-Path -PathType Container -Path $p.Value))
                         {
-                            Write-Warning -Message "The specified ProfileFolder $ProfileFolder does not exist.  Attempting to Create it."
-                            [void](New-Item -Path $ProfileFolder -ItemType Directory)
+                            Write-Warning -Message "The specified ProfileFolder $($p.key) $ProfileFolder does not exist.  Attempting to Create it."
+                            [void](New-Item -Path $p.value -ItemType Directory)
                         }
                     }
                     $UserProfile.$($p.key) = $p.value
