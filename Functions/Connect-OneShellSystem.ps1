@@ -389,10 +389,15 @@ Function Connect-OneShellSystem
                             {
                                 $ConnectionReady = $true
                             }
+                            else
+                            {
+                                throw("Connection to $($serviceObject.Name) Failed. See Logs for Details.")
+                            }
                         }
                         else
                         {
                             Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                            throw("Connection to $($serviceObject.Name) Failed. See Logs for Details.")
                             #Remove Module(s)?
                         }
                     }
