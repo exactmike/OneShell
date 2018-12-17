@@ -1,9 +1,24 @@
 {
     "Name": "ExchangeOnline",
-    "ServiceTypeAttributes": [],
+    "ServiceTypeAttributes": {
+        "System":[
+            {
+                "Name":  "TenantSubDomain",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            }
+        ]
+    },
     "ConnectionTest":{
-        "Command":"Get-OrganizationConfig",
-        "Parameters":[],
+        "Command":"Get-AcceptedDomain",
+        "Parameters":[
+            {
+                "name": "Identity",
+                "ValueType": "ScriptBlock",
+                "Value":  "$ServiceObject.ServiceTypeAttributes.TenantSubDomain"
+            }
+        ],
         "Validation":[]
     },
     "Disconnect":[],
