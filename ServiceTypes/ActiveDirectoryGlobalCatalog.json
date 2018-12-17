@@ -65,7 +65,7 @@
             {
                 "Name": "defaultNamingContext",
                 "ValueType":"ScriptBlock",
-                "Value": "*$ServiceObject.ServiceTypeAttributes.ADForestDN",
+                "Value": "$('*') + $ServiceObject.ServiceTypeAttributes.ADForestDN",
                 "Operator": "-like"
             }
         ],
