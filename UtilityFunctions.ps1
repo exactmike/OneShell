@@ -345,12 +345,12 @@ function Join-Object
                     $ScriptString = $expression.tostring()
                     if ($ScriptString -notmatch 'param\(')
                     {
-                        Write-Verbose "Property '$HashName'`: Adding param(`$_) to scriptblock '$ScriptString'"
+                        #Write-Verbose "Property '$HashName'`: Adding param(`$_) to scriptblock '$ScriptString'"
                         $Expression = [ScriptBlock]::Create("param(`$_)`n $ScriptString")
                     }
 
                     $Output = @{Name = $HashName; Expression = $Expression }
-                    Write-Verbose "Found $Side property hash with name $($Output.Name), expression:`n$($Output.Expression | out-string)"
+                    #Write-Verbose "Found $Side property hash with name $($Output.Name), expression:`n$($Output.Expression | out-string)"
                     $Output
                 }
                 else
@@ -359,7 +359,7 @@ function Join-Object
                     {
                         if ($ThisProp.Name -like $Prop)
                         {
-                            Write-Verbose "Found $Side property '$($ThisProp.Name)'"
+                            #Write-Verbose "Found $Side property '$($ThisProp.Name)'"
                             $ThisProp.Name
                         }
                     }
@@ -493,7 +493,7 @@ function Join-Object
         {
             if (-not ($RightProp -as [Hashtable]))
             {
-                Write-Verbose "Transforming property $RightProp to $Prefix$RightProp$Suffix"
+                #Write-Verbose "Transforming property $RightProp to $Prefix$RightProp$Suffix"
                 @{
                     Name       = "$Prefix$RightProp$Suffix"
                     Expression = [scriptblock]::create("param(`$_) `$_.'$RightProp'")
@@ -502,7 +502,7 @@ function Join-Object
             }
             else
             {
-                Write-Verbose "Skipping transformation of calculated property with name $($RightProp.Name), expression:`n$($RightProp.Expression | out-string)"
+                #Write-Verbose "Skipping transformation of calculated property with name $($RightProp.Name), expression:`n$($RightProp.Expression | out-string)"
                 $AllProps += [string]$RightProp["Name"]
                 $RightProp
             }
@@ -510,7 +510,7 @@ function Join-Object
 
         $AllProps = $AllProps | Select-Object -Unique
 
-        Write-Verbose "Combined set of properties: $($AllProps -join ', ')"
+        #Write-Verbose "Combined set of properties: $($AllProps -join ', ')"
 
         foreach ( $entry in $leftHash.GetEnumerator() )
         {
