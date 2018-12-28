@@ -1361,9 +1361,12 @@ Function Get-OneShellUserProfile
         $outputprofiles
         foreach ($opp in $outputprofiles)
         {
-            if ($opp.ProfileTypeVersion -lt $script:UserProfileTypeLatestVersion)
+            if ($null -ne $opp)
             {
-                Write-Warning -Message "The Schema of User Profile $($opp.Name) is out of date. Run Update-OneShellUserProfileTypeVersion -Identity $($opp.Name) to update."
+                if ($opp.ProfileTypeVersion -lt $script:UserProfileTypeLatestVersion)
+                {
+                    Write-Warning -Message "The Schema of User Profile $($opp.Name) is out of date. Run Update-OneShellUserProfileTypeVersion -Identity $($opp.Name) to update."
+                }
             }
         }
     }#end End
