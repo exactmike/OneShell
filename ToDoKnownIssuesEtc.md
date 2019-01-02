@@ -3,16 +3,17 @@
 ## In Progress And Help Wanted
 
 - [ ] Build out connection tracking for PSRemoting and DirectConnect systems to enable disconnect/cleanup at module unload and/or profile changes
+- [ ] - [ ] Add parameters for UsePsRemoting and DirectConnect to Connect-OneShellSystem
+- [ ] Add Disconnect-OneShellSystem, Remove-OneShellSystemPSSession, Get-OneShellConnection
+- [ ] Need to implement SessionManagementGroups logic to create and update/manage the group variables (partially complete - need to integrate connection removals as well)
+- [ ] Clean up/Remove PSSessions when switching user or Org Profiles with Use-*Profile functions
+- [ ] Multiple OneShellSystem Connections for Jobs, parallel tasking, etc.
 - [ ] Add Exchange 2007 ServiceType support - need to add configuration of AdminSessionADSettings variable - ViewEntireForest = $true
 - [ ] Add Required Local Module checking for PSRemoting and DirectConnect systems (see SkypeForBusinessOnline as an example of a service type that really needs this)
 - [ ] Add checking for 'Supported' for switching / setting systems to UsePSRemoting to prevent misconfiguration
 - [x] Add Connect-OneShellSystem -autoconnect for autoconnecting all autoconnect systems in the current profile
 - [ ] Add [OutputType([void])] to functions that don't return output and appropriate OutputType to other functions
-- [ ] Add parameters for UsePsRemoting and DirectConnect to Connect-OneShellSystem
-- [ ] Add Disconnect-OneShellSystem, Remove-OneShellSystemPSSession, Get-OneShellConnection
-- [ ] Need to implement SessionManagementGroups logic to create and update/manage the group variables (partially complete - need to integrate connection removals as well)
-- [ ] Clean up/Remove PSSessions when switching user or Org Profiles with Use-*Profile functions
-- [ ] Multiple OneShellSystem Connections for Jobs, parallel tasking, etc.
+- [ ] Add Credential validation checking (for SecureStrings that can't be decyrpted) in/by Use-OneShellUserProfile
 - [ ] MFA support <https://techcommunity.microsoft.com/t5/Windows-PowerShell/Can-I-Connect-to-O365-Security-amp-Compliance-center-via/td-p/68898>
 
 ## Pending and Help Wanted
