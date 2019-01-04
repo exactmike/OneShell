@@ -35,6 +35,7 @@ function ImportModuleInOneShellSystemPSSession
                 $ImportModuleParams = @{
                     Name        = $ModuleName
                     ErrorAction = 'Stop'
+                    Scope = 'Global'
                 }
                 switch ($m.type)
                 {
