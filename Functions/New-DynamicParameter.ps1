@@ -1,5 +1,6 @@
-Function New-DynamicParameter
-{
+    Function New-DynamicParameter
+    {
+        
     <#
         .SYNOPSIS
             Helper function to simplify creating dynamic parameters
@@ -265,83 +266,6 @@ Function New-DynamicParameter
         $Dictionary.Add($Name, $Parameter)
         $Dictionary
     }
-}
-#end function New-DynamicParameter
-function Set-DynamicParameterVariable
-{
-    [cmdletbinding()]
-    param
-    (
-        [parameter(Mandatory)]
-        [System.Management.Automation.RuntimeDefinedParameterDictionary]$dictionary
-    )
-    foreach ($p in $Dictionary.Keys)
-    {
-        Set-Variable -Name $p -Value $Dictionary.$p.value -Scope 1
-        #Write-Verbose "Adding/Setting variable for dynamic parameter '$p' with value '$($PSBoundParameters.$p)'"
+
     }
-}
-#end function Set-DynamicParameterVariable
-Function Get-CommonParameter
-{
-    [cmdletbinding()]
-    param()
-    $MyInvocation.MyCommand.Parameters.Keys
-}
-#end function Get-CommonParameter
-function Get-AllParameter
-{
-    [cmdletbinding()]
-    param
-    (
-        $BoundParameters #$PSBoundParameters
-        ,
-        $AllParameters #$MyInvocation.MyCommand.Parameters
-        ,
-        [switch]$IncludeCommon
-    )
-    $AllKeys = $($AllParameters.Keys ; $BoundParameters.Keys)
-    $AllKeys = $AllKeys | Sort-Object -Unique
-    if ($IncludeCommon -ne $true)
-    {
-        $AllKeys = $AllKeys | Where-Object -FilterScript {$_ -notin @(Get-CommonParameter)}
-    }
-    $AllKeys
-}
-#end function Get-AllParameter
-function Get-AllParametersWithAValue
-{
-    [cmdletbinding()]
-    param
-    (
-        $BoundParameters #$PSBoundParameters
-        ,
-        $AllParameters #$MyInvocation.MyCommand.Parameters
-        ,
-        [switch]$IncludeCommon
-        ,
-        $Scope = 1
-    )
-    $getAllParameterParams = @{
-        BoundParameters = $BoundParameters
-        AllParameters   = $AllParameters
-    }
-    if ($IncludeCommon -eq $true) {$getAllParametersParams.IncludeCommon = $true}
-    $AllParameterKeys = Get-AllParameter @getAllParameterParams
-    $AllParametersWithAValue = @(
-        foreach ($k in $AllParameterKeys)
-        {
-            try
-            {
-                Get-Variable -Name $k -Scope $Scope -ErrorAction Stop | Where-Object -FilterScript {($null -ne $_.Value -and -not [string]::IsNullOrWhiteSpace($_.Value)) -or $BoundParameters.ContainsKey($k)}
-            }
-            catch
-            {
-                #don't care if a particular variable is not found
-                Write-Verbose -Message "$k was not found"
-            }
-        }
-    )
-    $AllParametersWithAValue
-}
-#end function Get-AllParametersWithAValue
+

@@ -120,7 +120,6 @@
         'Use-OneShellUserProfile'
         'Write-OneShellLog'
     )
-
     # Cmdlets to export from this module
     #CmdletsToExport = '*'
 

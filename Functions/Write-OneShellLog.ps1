@@ -1,5 +1,6 @@
-function Write-OneShellLog
-{
+    Function Write-OneShellLog
+    {
+        
     [cmdletbinding()]
     Param(
         [Parameter(Mandatory, Position = 0)]
@@ -83,22 +84,6 @@ function Write-OneShellLog
     }
     #Pass on the message to Write-Verbose if -Verbose was detected
     Write-Verbose -Message $Message
-}
-#end Function Write-OneShellLog
-function GetTimeStamp
-{
-    [string]$Stamp = Get-Date -Format yyyyMMdd-HHmmss
-    #$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToShortTimeString()) #check if this is faster to use than Get-Date
-    $Stamp
-}
-#End Function Get-TimeStamp
-Function Write-EndFunctionStatus
-{
-    param($CallingFunction)
-    Write-OneShellLog -Message "$CallingFunction completed." -EntryType Notification
-}
-Function Write-StartFunctionStatus
-{
-    param($CallingFunction)
-    Write-OneShellLog -Message "$CallingFunction starting." -EntryType Notification
-}
+
+    }
+

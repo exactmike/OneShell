@@ -1,5 +1,6 @@
-function New-SkypeOnlinePSSession
-{
+    Function New-SkypeOnlinePSSession
+    {
+        
     [cmdletbinding()]
     param
     (
@@ -22,4 +23,6 @@ function New-SkypeOnlinePSSession
     $Session = New-CsOnlineSession @newCSOnlineSessionParams
     $session.Name = $Name
     $Session
-}
+
+    }
+

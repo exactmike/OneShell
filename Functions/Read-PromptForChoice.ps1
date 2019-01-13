@@ -1,5 +1,6 @@
-function Read-PromptForChoice
-{
+    Function Read-PromptForChoice
+    {
+        
     [cmdletbinding(DefaultParameterSetName = 'StringChoices')]
     Param(
         [string]$Message
@@ -111,5 +112,6 @@ function Read-PromptForChoice
         }
     )
     $Host.UI.PromptForChoice($Title, $Message, $PossibleChoices, $DefaultChoice)
-}
-#End Function Read-PromptForChoice
+
+    }
+
