@@ -12,7 +12,7 @@ function Test-OneShellSystemConnection
     process
     {
         $ServiceTypeDefinition = Get-OneShellServiceTypeDefinition -ServiceType $ServiceObject.ServiceType -ErrorAction Stop
-        $UsePSRemoting = $($serviceObject.UsePSRemoting;$serviceObject.defaults.UsePSRemoting) | Where-Object -FilterScript {$null -ne $_} | Select-Object -First 1
+        $UsePSRemoting = $($serviceObject.UsePSRemoting; $serviceObject.defaults.UsePSRemoting) | Where-Object -FilterScript {$null -ne $_} | Select-Object -First 1
         switch ($UsePSRemoting)
         {
             #Since UsePSRemoting is true for this system, look for an existing PSSession
@@ -78,7 +78,7 @@ function Test-OneShellSystemConnection
                     foreach ($ptc in $serviceTypeDefinition.ConnectionTest.PreTestCommands)
                     {
                         [pscustomobject]@{
-                            Command = $ptc.Command
+                            Command    = $ptc.Command
                             Parameters = Get-ParameterSplatFromDefinition -ParameterDefinition $ptc.parameters -ValueForErrorAction 'Stop'
                         }
                     }
@@ -90,7 +90,7 @@ function Test-OneShellSystemConnection
                     foreach ($ptc in $serviceTypeDefinition.ConnectionTest.PostTestCommands)
                     {
                         [pscustomobject]@{
-                            Command = $ptc.Command
+                            Command    = $ptc.Command
                             Parameters = Get-ParameterSplatFromDefinition -ParameterDefinition $ptc.parameters -ValueForErrorAction 'Stop'
                         }
                     }
@@ -229,7 +229,8 @@ function Test-OneShellSystemConnection
                                 Write-OneShellLog -Message "Testing Expression: '$ValueToTest' $($v.Operator) '$Value'"
                                 Invoke-Expression -Command $("'$ValueToTest' $($v.Operator) '$Value'")
                             }
-                            else {
+                            else
+                            {
                                 $false
                             }
                         }
