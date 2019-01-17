@@ -1,15 +1,15 @@
     Function Update-OneShellServiceType
     {
-        
+
     [CmdletBinding()]
     param(
         [parameter(ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [ValidateScript({Test-Path -Path $_ })]
-        [string[]]$Path
+        [string[]]$Path = $Script:ServiceTypesDirectory
     )
     Begin
     {
-        $ServiceTypeFiles = @(Get-ChildItem -Path $Script:ServiceTypesDirectory -Filter '*.json' -Recurse)
+        $ServiceTypeFiles = @(Get-ChildItem -Path $Path -Filter '*.json' -Recurse)
     }
     Process
     {
@@ -46,4 +46,3 @@
 
 
     }
-

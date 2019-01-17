@@ -1,6 +1,6 @@
-    Function SetOneShellVariables
-    {
-        
+Function SetOneShellVariables
+{
+
     [cmdletbinding()]
     Param()
     #Write-OneShellLog -message 'Setting OneShell Module Variables'
@@ -89,8 +89,8 @@
     )#MultiValuedADAttributesToRetrieve
     $Script:ADUserAttributes = @($script:ScalarADAttributes + $Script:MultiValuedADAttributes)
     $Script:ADContactAttributes = @('CanonicalName', 'CN', 'Created', 'createTimeStamp', 'Deleted', 'Description', 'DisplayName', 'DistinguishedName', 'givenName', 'instanceType', 'internetEncoding', 'isDeleted', 'LastKnownParent', 'legacyExchangeDN', 'mail', 'mailNickname', 'mAPIRecipient', 'memberOf', 'Modified', 'modifyTimeStamp', 'msExchADCGlobalNames', 'msExchALObjectVersion', 'msExchPoliciesExcluded', 'Name', 'ObjectCategory', 'ObjectClass', 'ObjectGUID', 'ProtectedFromAccidentalDeletion', 'proxyAddresses', 'showInAddressBook', 'sn', 'targetAddress', 'textEncodedORAddress', 'uSNChanged', 'uSNCreated', 'whenChanged', 'whenCreated')
-    $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName','city','AccountExpirationDate','LastLogonDate')}
-    $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName','city','AccountExpirationDate','LastLogonDate')}
+    $Script:ADGroupAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName', 'city', 'AccountExpirationDate', 'LastLogonDate')}
+    $Script:ADPublicFolderAttributes = $Script:ADUserAttributes |  Where-Object {$_ -notin ('surName', 'country', 'homeMDB', 'homeMTA', 'msExchHomeServerName', 'city', 'AccountExpirationDate', 'LastLogonDate')}
     $Script:ADGroupAttributesWMembership = $Script:ADGroupAttributes + 'Members'
     $Script:Stamp = GetTimeStamp
     $Script:UserProfileTypeLatestVersion = 1.4
@@ -104,8 +104,6 @@
     ##########################################################################################################
     #Import settings from json files
     ##########################################################################################################
-    $Script:ServiceTypesDirectory = Join-Path $PSScriptRoot 'ServiceTypes'
+    $Script:ServiceTypesDirectory = Join-Path $($PSScriptRoot | Split-Path -Parent) 'ServiceTypes'
     Update-OneShellServiceType
-
-    }
-
+}
