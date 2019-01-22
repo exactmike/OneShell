@@ -117,6 +117,7 @@ Register-ArgumentCompleter -CommandName @(
     'Get-OneShellOrgProfile'
     'Set-OneShellOrgProfile'
     'Use-OneShellOrgProfile'
+    'Remove-OneShellOrgProfile'
 ) -ParameterName 'Identity' -ScriptBlock {
     param($commandName, $parameterName, $WordToComplete, $commandAst, $fakeBoundParameter)
     $OrgProfilePath = if ($null -eq $fakeBoundParameter.OrgProfilePath) {$script:OneShellOrgProfilePath} else {$fakeBoundParameter.OrgProfilePath}

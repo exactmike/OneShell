@@ -95,6 +95,7 @@
         'New-OneShellUserProfileCredential'
         'New-OneShellVariable'
         'Remove-OneShellAgedFile'
+        'Remove-OneShellOrgProfile'
         'Remove-OneShellOrgProfileSystem'
         'Remove-OneShellOrgProfileSystemEndpoint'
         'Remove-OneShellUserProfile'
