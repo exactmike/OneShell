@@ -16,19 +16,14 @@
             {
                 "Name": "Name",
                 "ValueType": "Static",
-                "Value": "PSVersionTable"
-            },
-            {
-                "Name": "ValueOnly",
-                "ValueType": "Static",
-                "Value": true
+                "Value": "PID"
             }
         ],
         "Validation": [
             {
-                "Name": "PSVersion",
+                "Name": "Value",
                 "ValueType": "Static",
-                "Value": 2,
+                "Value": 0,
                 "Operator": "-ge"
             }
         ]
@@ -66,7 +61,24 @@
         "ExpectConstrainedSession": false,
         "SessionInitialization": {
             "PreModuleImport": [],
-            "ModuleImport": [],
+            "ModuleImport": [
+                {
+                    "Name": "Microsoft.PowerShell.Diagnostics",
+                    "Version": null
+                },
+                {
+                    "Name": "Microsoft.PowerShell.Management",
+                    "Version": null
+                },
+                {
+                    "Name": "Microsoft.PowerShell.Utility",
+                    "Version": null
+                },
+                {
+                    "Name": "Microsoft.PowerShell.Security",
+                    "Version": null
+                }
+            ],
             "PostModuleImport": []
         },
         "Import": {

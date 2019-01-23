@@ -257,16 +257,20 @@ Function Connect-OneShellSystem
                                 if (@($Phase1InitializationCompleted, $Phase2InitializationCompleted, $Phase3InitializationCompleted) -notcontains $false)
                                 {
                                     Write-OneShellLog -Message $message -EntryType Succeeded
-                                    if ($(Test-OneShellSystemConnection -serviceObject $ServiceObject))
+                                    $TestResult = Test-OneShellSystemConnection -serviceObject $ServiceObject
+                                    switch ($TestResult)
                                     {
-                                        $ConnectionReady = $true
-                                    }
-                                    else
-                                    {
-                                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
-                                        if ($null -ne $ServiceSession)
+                                        $True
                                         {
-                                            Remove-PSSession -Session $ServiceSession -ErrorAction Stop
+                                            $ConnectionReady = $true
+                                        }
+                                        $false
+                                        {
+                                            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                                            if ($null -ne $ServiceSession)
+                                            {
+                                                Remove-PSSession -Session $ServiceSession -ErrorAction Stop
+                                            }
                                         }
                                     }
                                 }
