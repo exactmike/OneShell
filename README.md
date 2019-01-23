@@ -1,3 +1,5 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # What is OneShell
 
 A Framework for managing connections (credentials, connection modules, app modules, connection configuration details, initial connections, re-connections, etc.) to management endpoints for a diverse array of system/service types
