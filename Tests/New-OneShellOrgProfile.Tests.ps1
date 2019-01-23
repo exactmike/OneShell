@@ -24,4 +24,13 @@ Describe "$CommandName Integration Tests" -Tags "IntegrationTests" {
             $results.OrganizationSpecificModules | Should Contain 'ATest1OrgModule'
         }
     }
+    Context "Writes an Org Profile with the expected attributes and values to Disk" {
+        New-OneShellOrgProfile -Name 'Test1' -OrganizationSpecificModules 'ATest1OrgModule' -Path 'Testdrive:\'
+        It "Should Create the Org Profile on disk" {
+            {$script:profile = Get-OneShellOrgProfile -Identity 'Test1' -Path 'TestDrive:\'} | Should Not Throw
+        }
+        It "Should have the expected profile name" {
+            $script:profile.name | Should BeExactly 'Test1'
+        }
+    }
 }

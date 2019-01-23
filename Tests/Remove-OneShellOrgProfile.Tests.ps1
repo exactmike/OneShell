@@ -15,3 +15,12 @@ Describe "$CommandName Unit Tests" -Tag 'UnitTests' {
         }
     }
 }
+Describe "$CommandName Integration Tests" -Tags "IntegrationTests" {
+    Context "Removes an Org Profile from Disk" {
+        New-OneShellOrgProfile -Name 'Test1' -OrganizationSpecificModules 'ATest1OrgModule' -Path 'Testdrive:\'
+        It "Should remove the file from disk" {
+            {Remove-OneShellOrgProfile -Identity 'Test1' -Path 'testdrive:\'} | Should Not Throw
+            {Get-OneShellOrgProfile -Identity 'Test1' -Path 'TestDrive:\'} | Should Throw
+        }
+    }
+}
