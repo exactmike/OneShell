@@ -1,6 +1,5 @@
-    Function Export-OneShellData
-    {
-        
+Function Export-OneShellData
+{
     [cmdletbinding(DefaultParameterSetName = 'delimited')]
     param(
         $ExportFolderPath = $script:ExportDataPath
@@ -34,6 +33,12 @@
     if ($Append -eq $true -and $DataType -ne 'csv')
     {
         throw("-Append is not supported with data type $DataType.  It is only supported with data type 'csv'")
+    }
+    Function GetTimeStamp
+    {
+        [string]$Stamp = Get-Date -Format yyyyMMdd-HHmmss
+        #$([DateTime]::Now.ToShortDateString()) $([DateTime]::Now.ToShortTimeString()) #check if this is faster to use than Get-Date
+        $Stamp
     }
     $stamp = GetTimeStamp
     #Build the ExportFilePath value
@@ -135,5 +140,4 @@
         Write-OneShellLog -Message $_.tostring() -ErrorLog
     }#catch
 
-    }
-
+}
