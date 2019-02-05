@@ -1,6 +1,6 @@
     Function Set-OneShellUserProfileSystemCredential
     {
-        
+
     [cmdletbinding()]
     param
     (
@@ -11,10 +11,10 @@
         [parameter(ValueFromPipelineByPropertyName, ValueFromPipeline, Position = 2)]
         [string[]]$SystemIdentity
         ,
-        [parameter(ValueFromPipelineByPropertyName, Position = 3)]
+        [parameter(Position = 3)]
         [string]$Identity
         ,
-        [parameter(ValueFromPipelineByPropertyName)]
+        [parameter()]
         [ValidateSet('All', 'PSSession', 'Service')]
         $Purpose = 'All'
         ,
@@ -81,4 +81,3 @@
     }#end End
 
     }
-
