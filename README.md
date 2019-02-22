@@ -2,7 +2,7 @@
 
 # What is OneShell
 
-A Framework for managing connections (credentials, connection modules, app modules, connection configuration details, initial connections, re-connections, etc.) to management endpoints for a diverse array of system/service types
+A Connection Manager for PowerShell connections to cloud and on premises systems and services designed to be used interactively by administrators, consultants and developers.
 
 ## Overview
 
@@ -10,27 +10,23 @@ OneShell to rule them all . . .
 
 The world is messy - endpoints fail; connection methods vary; forests, tenants, and endpoints multiply; sessions go bad; credentials need updating.
 
-OneShell provides a framework for uniform and reliable connection and re-connection to varied system types for interactive or automated administration.
+OneShell provides a framework for uniform and reliable connection management to assist in your daily administration, automation, or development of solutions.
 
-OneShell is a (Windows, for now) PowerShell module designed for administration of cloud and on premises services (specifically, but not only, Office 365 workloads and supporting on premises infrastructure) in a single PowerShell session via reliable and easily re-connectable remote PSsessions or other connection types to those systems. OneShell provides administrators with a framework which allows for automation of connection/re-connection to these systems for interactive administration or for integration with functions, scheduled tasks and/or long-running operations. OneShell also provides a rich set of functionality via additional functions and helper modules that can be used in your own automation scripts for provisioning, maintenance, or reporting.
+OneShell is a PowerShell module designed for administration of cloud and on premises services (specifically, but not only, Office 365 workloads and supporting on premises infrastructure) in a single PowerShell session via reliable and easily re-connectable remote PSsessions or other connection types to those systems. OneShell provides administrators with a framework which allows for automation of connection/re-connection to these systems for interactive administration or for integration with functions, scheduled tasks and/or long-running operations. OneShell also provides a rich set of functionality via additional functions and helper modules that can be used in your own automation scripts for provisioning, maintenance, or reporting.
 
 OneShell's extensible ServiceType system currently supports the following system types (for each of which multiple, _simultaneous_ connections are supported, avoiding cmdlet 'clobber' issues by using prefixing or invoke-command per session):
 
 - Azure AD
-- Azure AD Preview
 - MSOnline (*-msol* cmdlets)
 - Exchange Online
 - Exchange On Premises (2010-2016)
 - Exchange Compliance Center
-- Exchange 2007
+- Exchange 2007 (untested)
 - Active Directory Domain
 - Active Directory Global Catalog (Forest)
-- Active Directory LDS
 - Skype for Business Online
-- Skype for Business On Premises
 - Windows PowerShell PSRemoting Servers (with optional x86 endpoint support)
 - Azure AD Sync/Azure AD Connect Servers
-- SMTP Relay Endpoints (for email notification delivery from your tasks/scripts/functions)
 
 The following additional ServiceTypes are in development (an earlier version of OneShell included each of these):
 
@@ -38,7 +34,7 @@ The following additional ServiceTypes are in development (an earlier version of 
 - SQL Server Databases
 - Azure AD RMS
 - MigrationWiz/BitTitan
-- *OneShell is designed to be easily extensible - what other system/service types do you want support for?*
+- *OneShell is designed to be easily extensible - add your own service type and or make a request.  What other system/service types do you want support for?*
 
 We hope to soon add support for SSH remoting and endpoints for heterogenous environments.
 
@@ -46,9 +42,9 @@ We hope to soon add support for SSH remoting and endpoints for heterogenous envi
 
 - Extensible ServiceType configuration.
 
-  You can add additional system types/service types usually without any modifications to OneShell code by adding a ServiceType json file to the ServiceTypes directory. See ServiceTypes.json for the current supported types and ServiceTypesTemplate.json for an example of the available options (ServiceTypesTemplate.json does not represent a working configuration but rather includes examples of the kinds of things you can specify in each attribute).
+  You can add additional system types/service types usually without any modifications to OneShell code by adding a ServiceType json file to the ServiceTypes directory. See the ServiceTypes folder (or run Get-OneShellServiceTypeName) for the current supported types.  Examine the individual .json files in ServiceTypes and/or run Get-OneShellServiceTypeDefinition to examing the Service Type definition objects in detail.
 
-- Org Profiles
+- 'Org' Profiles
   - Store General 'per organization' System/Service instances which can be shared among multiple administrators
   - Define endpoints and preferences
   - Each System/Service can be configured with multiple endpoints

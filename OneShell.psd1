@@ -12,7 +12,7 @@
     RootModule        = 'OneShell.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '2.2.5'
+    ModuleVersion     = '2.2.7'
 
     # ID used to uniquely identify this module
     GUID              = 'bd4390dc-a8ad-4bce-8d69-f53ccf8e4163'
@@ -69,6 +69,7 @@
     #FunctionsToExport = '*'
     FunctionsToExport = @(
         'Connect-OneShellSystem'
+        'ConvertFrom-FQDN'
         'Export-OneShellData'
         'Export-OneShellOrgProfile'
         'Export-OneShellUserProfile'
@@ -84,6 +85,7 @@
         'Get-OneShellUserProfileSystem'
         'Get-OneShellVariable'
         'Get-OneShellVariableValue'
+        'Get-MicrosoftAzureADTenantID'
         'Import-OneShellSystemPSSession'
         'New-OneShellOrgProfile'
         'New-OneShellOrgProfileSystem'
@@ -93,6 +95,7 @@
         'New-OneShellUserProfileCredential'
         'New-OneShellVariable'
         'Remove-OneShellAgedFile'
+        'Remove-OneShellOrgProfile'
         'Remove-OneShellOrgProfileSystem'
         'Remove-OneShellOrgProfileSystemEndpoint'
         'Remove-OneShellUserProfile'
@@ -118,7 +121,6 @@
         'Use-OneShellUserProfile'
         'Write-OneShellLog'
     )
-
     # Cmdlets to export from this module
     #CmdletsToExport = '*'
 

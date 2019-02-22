@@ -1,57 +1,89 @@
 {
-    "Name":  "PowerShell",
-    "SessionTestCmdlet":  "Get-Command",
-    "SessionTestCmdletParameters":  [
-                                        {
-                                            "Name":  "Name",
-                                            "ValueType":  "Static",
-                                            "Value":  "Get-Command"
-                                        }
-                                    ],
-    "OrgSystemServiceTypeAttributes":  [
-                                           {
-                                               "name":  "SessionManagementGroups",
-                                               "type":  "string[]",
-                                               "mandatory":  false,
-                                               "value":  [
-
-                                                         ]
-                                           }
-                                       ],
-    "DefaultsToWellKnownEndPoint":  false,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
-    "PSSessionConnectRequiredModule":  [
-
-                                       ],
-    "PSSessionCmdlet":  null,
-    "PSSessionConstrained":  false,
-    "PSSessionParameters":  [
-                                {
-                                    "name":  "ComputerName",
-                                    "ValueType":  "ScriptBlock",
-                                    "Value":  "$Endpoint.Address"
-                                },
-                                {
-                                    "name":  "ConfigurationName",
-                                    "ValueType":  "Static",
-                                    "Value":  "Microsoft.Powershell"
-                                }
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-
-                                                                             ],
-                                                     "Phase3":  [
-
-                                                                ]
-                                                 }
-                          }
+    "Name": "PowerShell",
+    "ServiceTypeAttributes": {
+        "System":[
+            {
+                "name": "SessionManagementGroups",
+                "type": "string[]",
+                "mandatory": false,
+                "value": []
+            }
+        ]
+    },
+    "ConnectionTest": {
+        "Command": "Get-Variable",
+        "Parameters": [
+            {
+                "Name": "Name",
+                "ValueType": "Static",
+                "Value": "PID"
+            }
+        ],
+        "Validation": [
+            {
+                "Name": "Value",
+                "ValueType": "Static",
+                "Value": 0,
+                "Operator": "-ge"
+            }
+        ]
+    },
+    "Disconnect":[],
+    "DirectConnectSettings": {
+        "Supported": false,
+        "RequiredLocalModule": [],
+        "ConnectCommand": {
+            "Command": null,
+            "Parameters": []
+        }
+    },
+    "DefaultsToWellKnownEndpoint": false,
+    "WellKnownEndpointURI": null,
+    "WellKnownEndpointAuthMethod": null,
+    "PSRemotingSettings": {
+        "Supported": true,
+        "RequiredLocalModule": [],
+        "ConnectCommand": {
+            "Command": null,
+            "Parameters": [
+                {
+                    "Name": "ComputerName",
+                    "ValueType": "ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "Name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Powershell"
+                }
+            ]
+        },
+        "ExpectConstrainedSession": false,
+        "SessionInitialization": {
+            "PreModuleImport": [],
+            "ModuleImport": [
+                {
+                    "Name": "Microsoft.PowerShell.Diagnostics",
+                    "Version": null
+                },
+                {
+                    "Name": "Microsoft.PowerShell.Management",
+                    "Version": null
+                },
+                {
+                    "Name": "Microsoft.PowerShell.Utility",
+                    "Version": null
+                },
+                {
+                    "Name": "Microsoft.PowerShell.Security",
+                    "Version": null
+                }
+            ],
+            "PostModuleImport": []
+        },
+        "Import": {
+            "ModulesAndCommands": [],
+            "ArbitraryCommands": []
+        }
+    }
 }

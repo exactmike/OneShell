@@ -1,44 +1,60 @@
 {
     "Name": "ExchangeOnPremises",
-    "SessionTestCmdlet": "Get-OrganizationConfig",
-    "SessionTestCmdletParameters": [],
-    "OrgSystemServiceTypeAttributes": [],
-    "DefaultsToWellKnownEndPoint": false,
-    "WellKnownEndPointURI": null,
-    "WellKnownEndPointAuthMethod": null,
-    "EndPointServiceTypeAttributes": [
-        {
-            "Name": "PreferredDomainControllers",
-            "type": "string[]",
-            "Mandatory": false,
-            "Value": []
+    "ServiceTypeAttributes": {
+        "Endpoint": [
+            {
+                "Name": "PreferredDomainControllers",
+                "type": "string[]",
+                "Mandatory": false,
+                "Value": []
+            }
+        ]
+    },
+    "ConnectionTest":{
+        "Command":"Get-OrganizationConfig",
+        "Parameters":[],
+        "Validation":[]
+    },
+    "Disconnect":[],
+    "DirectConnectSettings": {
+        "Supported": false,
+        "RequiredLocalModule": [],
+        "ConnectCommand":{
+            "Command": null,
+            "Parameters": []
         }
-    ],
-    "PSSessionConnectRequiredModule": [],
-    "PSSessionCmdlet": null,
-    "PSSessionConstrained": true,
-    "PSSessionParameters": [
-        {
-            "name": "ConnectionURI",
-            "ValueType": "ScriptBlock",
-            "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
+    },
+    "DefaultsToWellKnownEndpoint": false,
+    "WellKnownEndpointURI": null,
+    "WellKnownEndpointAuthMethod": null,
+    "PSRemotingSettings":{
+        "Supported": true,
+        "RequiredLocalModule":[],
+        "ConnectCommand":{
+            "Command":null,
+            "Parameters":[
+                {
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
+                    "Value": "'http://' + $Endpoint.Address + '/PowerShell/'"
+                },
+                {
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
+                },
+                {
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Kerberos"
+                }
+            ]
         },
-        {
-            "name": "ConfigurationName",
-            "ValueType": "Static",
-            "Value": "Microsoft.Exchange"
-        },
-        {
-            "name": "Authentication",
-            "ValueType": "Static",
-            "Value": "Kerberos"
-        }
-    ],
-    "PSSessionSettings": {
-        "Initialization": {
-            "Phase1_PreModuleImport": [],
-            "Phase2_ModuleImport": [],
-            "Phase3": [
+        "ExpectConstrainedSession": true,
+        "SessionInitialization":{
+            "PreModuleImport": [],
+            "ModuleImport": [],
+            "PostModuleImport": [
                 {
                     "conditions": [
                         {
@@ -67,6 +83,10 @@
                     ]
                 }
             ]
+        },
+        "Import":{
+            "ModulesAndCommands":[],
+            "ArbitraryCommands":[]
         }
     }
 }

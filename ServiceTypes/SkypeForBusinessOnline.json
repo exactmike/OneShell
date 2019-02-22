@@ -1,43 +1,67 @@
 {
     "Name":  "SkypeForBusinessOnline",
-    "SessionTestCmdlet":  "Get-Command",
-    "SessionTestCmdletParameters":  [
-                                        {
-                                            "Name":  "Name",
-                                            "ValueType":  "Static",
-                                            "Value":  "Get-Command"
-                                        }
-                                    ],
-    "OrgSystemServiceTypeAttributes":  [
-
-                                       ],
-    "DefaultsToWellKnownEndPoint":  true,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
-    "PSSessionConnectRequiredModule":  [
-                                           {
-                                               "name":  "SkypeOnlineConnector"
-                                           }
-                                       ],
-    "PSSessionCmdlet":  "New-SkypeOnlinePSSession",
-    "PSSessionConstrained":  true,
-    "PSSessionParameters":  [
-
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-
-                                                                             ],
-                                                     "Phase3":  [
-
-                                                                ]
-                                                 }
-                          }
+    "ServiceTypeAttributes":  {
+        "System":[
+            {
+                "Name":  "TenantSubDomain",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            },
+            {
+                "Name":  "TenantID",
+                "Type":  "string",
+                "Mandatory":  true,
+                "Value":  ""
+            }
+        ]
+    },
+    "ConnectionTest":{
+        "Command":"Get-CSTenant",
+        "Parameters":[],
+        "Validation":[
+            {
+                "Name":  "TenantID",
+                "ValueType":  "ScriptBlock",
+                "Value":  "$ServiceObject.ServiceTypeAttributes.TenantID",
+                "Operator":"-eq"
+            }
+        ]
+    },
+    "Disconnect":[],
+    "DefaultsToWellKnownEndpoint":  true,
+    "WellKnownEndpointURI":  null,
+    "WellKnownEndpointAuthMethod":  null,
+    "EndpointServiceTypeAttributes":  [],
+    "DirectConnectSettings": {
+        "Supported": false,
+        "RequiredLocalModule": [],
+        "ConnectCommand":{
+            "Command":  null,
+            "Parameters":  []
+        }
+    },
+    "PSRemotingSettings":{
+        "Supported": true,
+        "RequiredLocalModule":[
+            {
+                "name":  "SkypeOnlineConnector"
+            }
+        ],
+        "ConnectCommand":{
+            "Command":"New-SkypeOnlinePSSession",
+            "Parameters":[]
+        },
+        "ExpectConstrainedSession": true,
+        "SessionInitialization":
+        {
+            "PreModuleImport":  [],
+            "ModuleImport":  [],
+            "PostModuleImport":  []
+        },
+        "Import":{
+            "ModulesAndCommands":[],
+            "ArbitraryCommands":[]
+        }
+    }
 }

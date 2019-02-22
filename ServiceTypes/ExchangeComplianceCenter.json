@@ -1,56 +1,61 @@
 {
-    "Name":  "ExchangeComplianceCenter",
-    "SessionTestCmdlet":  "Get-AdminAuditLogConfig",
-    "SessionTestCmdletParameters":  [
-
-                                    ],
-    "OrgSystemServiceTypeAttributes":  [
-
-                                       ],
-    "DefaultsToWellKnownEndPoint":  true,
-    "WellKnownEndPointURI":  "https://ps.compliance.protection.outlook.com/powershell-liveid/",
-    "WellKnownEndPointAuthMethod":  "Basic",
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
-    "PSSessionConnectRequiredModule":  [
-
-                                       ],
-    "PSSessionCmdlet":  null,
-    "PSSessionConstrained":  true,
-    "PSSessionParameters":  [
-                                {
-                                    "name":  "ConnectionURI",
-                                    "ValueType":  "ScriptBlock",
-                                    "Value":  "$Endpoint.Address"
-                                },
-                                {
-                                    "name":  "ConfigurationName",
-                                    "ValueType":  "Static",
-                                    "Value":  "Microsoft.Exchange"
-                                },
-                                {
-                                    "name":  "Authentication",
-                                    "ValueType":  "Static",
-                                    "Value":  "Basic"
-                                },
-                                {
-                                    "name":  "AllowRedirection",
-                                    "ValueType":  "Static",
-                                    "Value":  true
-                                }
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-
-                                                                             ],
-                                                     "Phase3":  [
-
-                                                                ]
-                                                 }
-                          }
+    "Name": "ExchangeComplianceCenter",
+    "ServiceTypeAttributes": [],
+    "ConnectionTest":{
+        "Command":"Get-AdminAuditLogConfig",
+        "Parameters":[],
+        "Validation":[]
+    },
+    "Disconnect":[],
+    "DirectConnectSettings": {
+        "Supported":false,
+        "RequiredLocalModule": [],
+        "ConnectCommand":{
+            "Command":  null,
+            "Parameters":  []
+        }
+    },
+    "DefaultsToWellKnownEndpoint": true,
+    "WellKnownEndpointURI":  "https://ps.compliance.protection.outlook.com/powershell-liveid/",
+    "WellKnownEndpointAuthMethod": "Basic",
+    "PSRemotingSettings":{
+        "Supported": true,
+        "RequiredLocalModule":[],
+        "ConnectCommand":{
+            "Command":null,
+            "Parameters":[
+                {
+                    "name": "ConnectionURI",
+                    "ValueType": "ScriptBlock",
+                    "Value": "$Endpoint.Address"
+                },
+                {
+                    "name": "ConfigurationName",
+                    "ValueType": "Static",
+                    "Value": "Microsoft.Exchange"
+                },
+                {
+                    "name": "Authentication",
+                    "ValueType": "Static",
+                    "Value": "Basic"
+                },
+                {
+                    "name": "AllowRedirection",
+                    "ValueType": "Static",
+                    "Value": true
+                }
+            ]
+        },
+        "ExpectConstrainedSession": true,
+        "SessionInitialization":
+        {
+            "PreModuleImport":  [],
+            "ModuleImport":  [],
+            "PostModuleImport":  []
+        },
+        "Import":{
+            "ModulesAndCommands":[],
+            "ArbitraryCommands":[]
+        }
+    }
 }

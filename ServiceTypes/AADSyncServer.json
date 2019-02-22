@@ -1,52 +1,76 @@
 {
     "Name":  "AADSyncServer",
-    "SessionTestCmdlet":  "Get-Command",
-    "SessionTestCmdletParameters":  [
-                                        {
-                                            "Name":  "Name",
-                                            "ValueType":  "Static",
-                                            "Value":  "Get-Command"
-                                        }
-                                    ],
-    "OrgSystemServiceTypeAttributes":  [
-
-                                       ],
-    "DefaultsToWellKnownEndPoint":  false,
-    "WellKnownEndPointURI":  null,
-    "WellKnownEndPointAuthMethod":  null,
-    "EndPointServiceTypeAttributes":  [
-
-                                      ],
-    "PSSessionConnectRequiredModule":  [
-
-                                       ],
-    "PSSessionCmdlet":  null,
-    "PSSessionConstrained":  false,
-    "PSSessionParameters":  [
-                                {
-                                    "name":  "ComputerName",
-                                    "ValueType":  "ScriptBlock",
-                                    "Value":  "$Endpoint.Address"
-                                },
-                                {
-                                    "name":  "ConfigurationName",
-                                    "ValueType":  "Static",
-                                    "Value":  "Microsoft.Powershell"
-                                }
-                            ],
-    "PSSessionSettings":  {
-                              "Initialization":  {
-                                                     "Phase1_PreModuleImport":  [
-
-                                                                                ],
-                                                     "Phase2_ModuleImport":  [
-                                                                                 {
-                                                                                     "name":  "ADSync"
-                                                                                 }
-                                                                             ],
-                                                     "Phase3":  [
-
-                                                                ]
-                                                 }
-                          }
+    "ServiceTypeAttributes":  {},
+    "ConnectionTest":{
+        "Command": "Get-ADSyncGlobalSettings",
+        "Parameters":  [],
+        "Validation":[
+            {
+                "Name": "Version",
+                "ValueType":"Static",
+                "Value": 0,
+                "Operator": "-gt"
+            }
+        ]
+    },
+    "Disconnect":[],
+    "DirectConnectSettings": {
+        "Supported": true,
+        "RequiredLocalModule": [
+            {
+                "Name":"ADSync",
+                "Version":null
+            }
+        ],
+        "SessionInitialization":  {
+            "PreModuleImport":  [],
+            "ModuleImport":  [
+                {
+                    "name":  "ADSync"
+                }
+            ],
+            "PostModuleImport":  [ ]
+        }
+    },
+    "DefaultsToWellKnownEndpoint":  false,
+    "WellKnownEndpointURI":  null,
+    "WellKnownEndpointAuthMethod":  null,
+    "PSRemotingSettings":{
+        "Supported": true,
+        "RequiredLocalModule":[],
+        "ConnectCommand":{
+            "Command":null,
+            "Parameters":[
+                {
+                    "Name":  "ComputerName",
+                    "ValueType":  "ScriptBlock",
+                    "Value":  "$Endpoint.Address"
+                },
+                {
+                    "Name":  "ConfigurationName",
+                    "ValueType":  "Static",
+                    "Value":  "Microsoft.Powershell"
+                }
+            ]
+        },
+        "ExpectConstrainedSession": false,
+        "SessionInitialization":  {
+            "PreModuleImport":  [],
+            "ModuleImport":  [
+                {
+                    "name":  "ADSync"
+                }
+            ],
+            "PostModuleImport":  [ ]
+        },
+        "Import":{
+            "ModulesAndCommands":[
+                {
+                    "Name":"ADSync",
+                    "Type":"Module"
+                }
+            ],
+            "ArbitraryCommands":[]
+        }
+    }
 }
