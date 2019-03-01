@@ -1,6 +1,6 @@
     Function UpdateUserProfileObjectVersion
     {
-        
+
     [cmdletbinding()]
     param
     (
@@ -24,7 +24,7 @@
                 #UserName
                 if (-not (Test-Member -InputObject $UserProfile.General -Name User))
                 {
-                    $UserProfile.General | Add-Member -MemberType NoteProperty -Name User -Value $env:USERNAME
+                    $UserProfile.General | Add-Member -MemberType NoteProperty -Name User -Value [Environment]::UserName
                 }
                 #MailRelayEndpointToUse
                 if (-not (Test-Member -InputObject $UserProfile.General -Name MailRelayEndpointToUse))
@@ -140,4 +140,3 @@
     $UserProfile
 
     }
-

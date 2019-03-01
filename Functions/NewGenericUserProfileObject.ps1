@@ -1,6 +1,6 @@
     Function NewGenericUserProfileObject
     {
-        
+
     [cmdletbinding()]
     param
     (
@@ -10,9 +10,9 @@
         Identity            = [guid]::NewGuid()
         ProfileType         = 'OneShellUserProfile'
         ProfileTypeVersion  = 1.4
-        Name                = $targetOrgProfile.name + '-' + $env:USERNAME + '-' + $env:COMPUTERNAME
-        Host                = $env:COMPUTERNAME
-        User                = $env:USERNAME
+        Name                = $targetOrgProfile.name + '-' + [Environment]::UserName + '-' + [Environment]::MachineName
+        Host                = [Environment]::MachineName
+        User                = [Environment]::UserName
         Organization        = [pscustomobject]@{
             Name     = $targetOrgProfile.Name
             Identity = $targetOrgProfile.identity
@@ -27,4 +27,3 @@
     }
 
     }
-
