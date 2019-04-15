@@ -3,7 +3,7 @@
 ## In Progress And Help Wanted
 
 - [ ] Build out connection tracking for PSRemoting and DirectConnect systems to enable disconnect/cleanup at module unload and/or profile changes
-- [ ] - [ ] Add parameters for UsePsRemoting and DirectConnect to Connect-OneShellSystem
+- [ ] Add parameters for UsePsRemoting and DirectConnect to Connect-OneShellSystem
 - [ ] Add Disconnect-OneShellSystem, Remove-OneShellSystemPSSession, Get-OneShellConnection
 - [ ] Need to implement SessionManagementGroups logic to create and update/manage the group variables (partially complete - need to integrate connection removals as well)
 - [ ] Clean up/Remove PSSessions when switching user or Org Profiles with Use-*Profile functions
@@ -56,6 +56,7 @@
 - [ ] Need to add explicit loading of required module to establish PSSession for special cases (like SkypeForBusinessOnline)
 - [ ] Connection to MSOnline system types can fail when a different credential than the logged on user is used.  This may be isolated to SSO/Federation scenarios but the scope is currently unclear. This does not affect connections to other AzureAD system types or Exchange Online.
 - [ ] If you remove a credential from an User Profile the references to that credential in individual systems are left behind.  They have to be updated by usage of Set-OneShellUserProfileSystemCredential.
+- [ ] Use-OneShellUserProfile is creating InputFiles subfolder unexpectedly in certain scenarios
 
 ## Completed Items
 
